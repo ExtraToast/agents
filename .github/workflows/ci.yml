@@ -1,0 +1,145 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+  packages: read
+
+env:
+  GITHUB_ACTOR: ${{ github.actor }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  workflow-lint:
+    name: Workflow Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download actionlint
+        id: actionlint
+        shell: bash
+        run: bash <(curl --fail --silent --show-error --location https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+      - name: Lint workflows
+        run: '"${{ steps.actionlint.outputs.executable }}" -color .github/workflows/*.yml'
+
+  jvm-check:
+    name: JVM Lint, Test, Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Check JVM services
+        run: ./gradlew :services:agents-api:check :services:agent-gateway:check --no-daemon
+      - name: Build JVM services
+        run: ./gradlew :services:agents-api:bootJar :services:agent-gateway:bootJar --no-daemon
+
+  ui-check:
+    name: UI Lint, Test, Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install UI dependencies
+        run: |
+          pnpm config set //npm.pkg.github.com/:_authToken "$NODE_AUTH_TOKEN"
+          pnpm install --no-frozen-lockfile
+      - name: Lint UI
+        run: pnpm --filter @extratoast/agents-ui lint
+      - name: Typecheck UI
+        run: pnpm --filter @extratoast/agents-ui typecheck
+      - name: Test UI
+        run: pnpm --filter @extratoast/agents-ui test
+      - name: Build UI
+        run: pnpm --filter @extratoast/agents-ui build
+
+  openapi-contract:
+    name: OpenAPI Contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          pnpm config set //npm.pkg.github.com/:_authToken "$NODE_AUTH_TOKEN"
+          pnpm install --no-frozen-lockfile
+      - name: Export OpenAPI spec
+        run: ./gradlew :services:agents-api:exportOpenApiSpec --no-daemon
+      - name: Check committed OpenAPI spec
+        run: git diff --exit-code -- services/agents-api/openapi.json
+      - name: Check generated UI client
+        run: pnpm --filter @extratoast/agents-ui contract:check
+
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: agents-api
+            repository: ghcr.io/extratoast/agents/agents-api
+            dockerfile: services/agents-api/Dockerfile
+          - image: agents-ui
+            repository: ghcr.io/extratoast/agents/agents-ui
+            dockerfile: services/agents-ui/Dockerfile
+          - image: agent-gateway
+            repository: ghcr.io/extratoast/agents/agent-gateway
+            dockerfile: services/agent-gateway/Dockerfile
+          - image: agent-runner
+            repository: ghcr.io/extratoast/agents/agent-runner
+            dockerfile: services/agent-runner/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build ${{ matrix.image }} image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: false
+          tags: ${{ matrix.repository }}:${{ github.sha }}
+          secrets: |
+            github_token=${{ secrets.GITHUB_TOKEN }}
+            github_actor=${{ github.actor }}
+          build-args: |
+            NODE_AUTH_TOKEN=${{ secrets.GITHUB_TOKEN }}
+            GIT_SHA=${{ github.sha }}
+
+  pipeline-complete:
+    name: Pipeline Complete
+    if: always()
+    needs: [workflow-lint, jvm-check, ui-check, openapi-contract, docker-build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify all gating jobs succeeded
+        uses: re-actors/alls-green@release/v1
+        with:
+          jobs: ${{ toJSON(needs) }}
