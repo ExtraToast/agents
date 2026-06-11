@@ -238,5 +238,4 @@ object K3sTestSupport {
                 ).build()
         return KubernetesClientBuilder().withConfig(cfg).build()
     }
-
 }
