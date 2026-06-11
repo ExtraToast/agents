@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/ExtraToast/agents/compare/v0.1.0...v0.2.0) (2026-06-11)
+
+
+### Features
+
+* extract + rename the agent stack into ExtraToast/agents (spec 001) ([#2](https://github.com/ExtraToast/agents/issues/2)) ([7d2fc2a](https://github.com/ExtraToast/agents/commit/7d2fc2a03f0e2f675835084ac112cecb0593f2d9))
+
 ## 1.0.0 (2026-06-09)
 
 
