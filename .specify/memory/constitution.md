@@ -1,54 +1,78 @@
-# Project Constitution
+# agents Constitution
 
 ## Core Principles
 
-### I. Outcome-First Specifications
+### I. Human Authorship and No Attribution
 
-Every feature begins with a specification that describes user-visible outcomes,
-acceptance scenarios, non-goals, and success criteria before implementation
-details. Ambiguity must be marked explicitly with `NEEDS CLARIFICATION`.
+All repository work is authored solely by the human driver. Do not add
+`Co-Authored-By` trailers, generated-by footers, assistant names, model names,
+or automation-attribution text to commits, PRs, code comments, docs, generated
+files, or templates.
 
-### II. Plan Before Implementation
+### II. Validate Against Reality
 
-Implementation work starts only after the plan identifies real project paths,
-dependencies, validation commands, rollback considerations, and risks. Plans
-must prefer established local patterns over new abstractions.
+Claims about paths, APIs, config, cluster state, or tooling must be checked
+against the real codebase and, where relevant, live state. If a fact is unknown,
+search the repo, inspect the source, or run the narrowest safe command before
+designing around it. Do not invent secret paths, resource names, commands, or
+contracts.
 
-### III. Tests and Validation Are Mandatory
+### III. Claude/Codex Parity
 
-Each feature defines the smallest meaningful verification command before work
-begins. Changes are not complete until those checks pass or the remaining gap is
-documented with the exact reason validation could not run.
+Agent-facing behavior must stay equivalent across Claude and Codex surfaces.
+Any skill, hook, memory rule, installer behavior, command, or project guidance
+added for one agent must get the matching surface for the other in the same
+branch, unless an explicit unsupported reason is recorded.
 
-### IV. Small, Reviewable Changes
+### IV. Render and Validate Discipline
 
-Tasks and PRs must be independently reviewable, revertable, and scoped to one
-behavioral objective. Unrelated cleanup, broad refactors, and speculative
-flexibility are not allowed inside feature work.
+Render-managed files are edited only at their source templates or inventory.
+After touching a render source, run the owning renderer and commit the rendered
+output with the source change. Run the smallest meaningful validation command
+for the touched area, and state exactly what remains unverified if a check
+cannot run.
 
-### V. Durable Context Stays Current
+### V. Small Stacked PRs
 
-Specifications, plans, tasks, and durable project memory must reflect decisions
-that affect future work. Do not leave important behavior only in chat logs,
-temporary notes, or uncommitted local state.
+Every change should be reviewable, revertable, and scoped to one objective.
+Prefer small stacked PRs over broad bundles. Avoid tangential cleanup,
+speculative abstractions, unrelated refactors, and compatibility shims when a
+direct local-pattern change is available.
 
-## Workflow
+## Required Workflow
 
-1. `/speckit.specify` creates or updates `specs/<feature>/spec.md`.
-2. `/speckit.plan` creates `plan.md` and supporting design artifacts.
-3. `/speckit.tasks` creates `tasks.md` from the approved plan.
-4. Implementation follows tasks in dependency order, with tests close to the
-   behavior being changed.
-5. Completion requires validation evidence and any relevant documentation
-   updates.
+1. Start from a spec for user-visible or cross-cutting changes. The spec must
+   describe outcomes, acceptance criteria, non-goals, and open questions.
+2. Plan against existing repo patterns and real paths. Surface architectural
+   limitations before implementation begins.
+3. Break work into tasks that preserve small PR boundaries and parallel safety.
+4. Implement only the task scope. Never revert or overwrite unrelated parallel
+   edits.
+5. Validate with the smallest meaningful command for the touched area:
+   `./gradlew :services:<service>:test` for Kotlin services,
+   `./gradlew :platform:tooling:test` for platform tooling, and
+   `npm run typecheck && npm run lint && npm run test` inside Vue UIs.
+6. Capture durable lessons or decisions in the knowledge base when they affect
+   future repo behavior, without storing secrets, raw transcripts, or full
+   diffs.
+
+## Render-Managed Boundaries
+
+- `platform/inventory/fleet.yaml` is the source of truth for public service
+  routing, catalog, placement, exposure, and access intent.
+- Generated Traefik routes, catalog ConfigMaps, agent-kit mirrors, and installer
+  artifacts must not be hand-edited.
+- `.specify/memory/constitution.md` is committed and hand-edited for this repo.
+  The generic `.specify/templates/constitution-template.md` is only the
+  render-managed starter for future seed installs.
 
 ## Governance
 
-This constitution overrides informal conventions. Changes to these principles
-must be reviewed deliberately, with downstream templates and instructions
-updated in the same change.
+This constitution overrides ad-hoc agent behavior. Amend it deliberately when
+the governing workflow changes, and update `AGENTS.md`, `CLAUDE.md`, skills, or
+templates in the same branch when parity requires it.
 
 **Version**: 1.0.0
-**Ratified**: {{DATE}}
-**Last Amended**: {{DATE}}
+**Ratified**: 2026-06-08
+**Last Amended**: 2026-06-08
 
