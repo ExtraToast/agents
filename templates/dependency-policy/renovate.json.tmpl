@@ -1,0 +1,38 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    ":dependencyDashboard"
+  ],
+  "rangeStrategy": "pin",
+  "labels": ["dependencies"],
+  "minimumReleaseAge": "7 days",
+  "packageRules": [
+    {
+      "description": "Group routine minor and patch updates; major updates stay isolated outside this rule.",
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "{{routine_group_name}}",
+      "labels": ["dependencies", "routine-update"]
+    },
+    {
+      "description": "Optional ExtraToast shared-artifact grouping. Remove this rule for non-ExtraToast consumers.",
+      "matchPackagePatterns": ["^dev\\.extratoast", "^@extratoast/"],
+      "matchDepNames": ["ExtraToast/github-workflows"],
+      "groupName": "extratoast shared artifacts",
+      "labels": ["dependencies", "extratoast-platform"]
+    },
+    {
+      "description": "Pin GitHub Actions to immutable refs.",
+      "matchManagers": ["github-actions"],
+      "pinDigests": true
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["dependencies", "security"]
+  },
+  "lockFileMaintenance": {
+    "enabled": true
+  }
+}
