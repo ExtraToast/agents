@@ -16,7 +16,7 @@ import java.util.concurrent.ConcurrentHashMap
  * One WS per client-attach. Inbound JSON is `{"input": "...", "enter":
  * true}`; outbound JSON is `{"output": "...bytes-as-utf8..."}`. The
  * envelope intentionally stays trivial — the rich Block protocol
- * (Step 7) lives one layer up, inside assistant-api, which parses the
+ * (Step 7) lives one layer up, inside agents-api, which parses the
  * agent's stdout for fenced JSON blocks and emits Block frames to the
  * browser. Keeping the gateway dumb means a CLI flag flip in Claude
  * Code doesn't ripple into the runner image.

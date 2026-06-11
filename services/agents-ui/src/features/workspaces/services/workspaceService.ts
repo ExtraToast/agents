@@ -6,7 +6,7 @@ function getApi(): ReturnType<typeof useApiWithAuth> {
 }
 
 // A freshly-provisioned runner's gateway needs a JVM cold start before
-// it is Ready; assistant-api answers start-session with a 503 carrying
+// it is Ready; agents-api answers start-session with a 503 carrying
 // retryAfterSeconds until then. Poll through that window rather than
 // surfacing the transient 503 to the user.
 const SESSION_START_BUDGET_MS = 180_000

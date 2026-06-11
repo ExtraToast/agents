@@ -15,10 +15,10 @@ if (!target) {
 const banner = `/**
  * AUTO-GENERATED. Do not edit by hand.
  *
- * Source: services/assistant-api/openapi.json (committed)
- * Regenerate with: pnpm --filter @personal-stack/assistant-ui contract:generate
- * Drift gate: pnpm --filter @personal-stack/assistant-ui contract:check
- * Contract docs: services/assistant-api/CONTRACT.md
+ * Source: services/agents-api/openapi.json (committed)
+ * Regenerate with: pnpm --filter @extratoast/agents-ui contract:generate
+ * Drift gate: pnpm --filter @extratoast/agents-ui contract:check
+ * Contract docs: services/agents-api/CONTRACT.md
  */
 `
 

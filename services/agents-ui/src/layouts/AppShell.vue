@@ -10,7 +10,7 @@ const navItems: AppShellNavItem[] = [
 </script>
 
 <template>
-  <CommonsAppShell brand-main="assistant" :nav-items="navItems" :theme-options="personalStackThemeOptions">
+  <CommonsAppShell brand-main="agents" :nav-items="navItems" :theme-options="personalStackThemeOptions">
     <slot />
   </CommonsAppShell>
 </template>

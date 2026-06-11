@@ -27,3 +27,24 @@ updates:
         patterns:
           - "*"
     labels: ["dependencies", "github_actions"]
+  - package-ecosystem: gradle
+    directory: "/"
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    labels: ["dependencies", "gradle"]
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    labels: ["dependencies", "npm"]
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    labels: ["dependencies", "docker"]

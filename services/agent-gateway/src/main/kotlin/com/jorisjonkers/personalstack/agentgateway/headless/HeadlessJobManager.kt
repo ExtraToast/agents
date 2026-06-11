@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit
  * Cancellation kills the OS process and marks the job CANCELLED.
  *
  * The job registry is in-memory — Pod restarts lose running jobs. The
- * caller (assistant-api) should detect a missing job id and surface it
+ * caller (agents-api) should detect a missing job id and surface it
  * as a FAILED status.
  */
 @Component

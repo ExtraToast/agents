@@ -20,7 +20,7 @@ export interface GitHubAppLinksApi {
   readonly buildGitHubAppInstallationUrlForRepo: (repoUrl: string, appSlug?: string | null) => string | null
 }
 
-export const DEFAULT_GITHUB_APP_SLUG = 'personal-stack-agents'
+export const DEFAULT_GITHUB_APP_SLUG = 'extratoast-agents'
 export const GITHUB_APP_SLUG_ENV_KEY = 'VITE_GITHUB_APP_SLUG'
 
 const GITHUB_BASE_URL = 'https://github.com'

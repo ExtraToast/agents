@@ -7,7 +7,7 @@
 #   - uv + mise for fast Python/toolchain management
 #   - ast-grep (sg) for AST-scoped symbol search
 #   - the agent-gateway jar as PID 1, owning the tmux server and the
-#     REST/WS plane assistant-api talks to
+#     REST/WS plane agents-api talks to
 #
 # The image is deliberately mutable inside the container; adversarial
 # use is in scope. Isolation comes from the Pod boundary + the
@@ -18,11 +18,8 @@ FROM gradle:9.4-jdk21-alpine AS gateway-build
 WORKDIR /app
 COPY settings.gradle.kts build.gradle.kts gradle.properties* ./
 COPY gradle/ gradle/
-COPY services/auth-api/build.gradle.kts services/auth-api/
-COPY services/assistant-api/build.gradle.kts services/assistant-api/
-COPY services/knowledge-api/build.gradle.kts services/knowledge-api/
+COPY services/agents-api/build.gradle.kts services/agents-api/
 COPY services/agent-gateway/build.gradle.kts services/agent-gateway/
-COPY services/system-tests/build.gradle.kts services/system-tests/
 RUN --mount=type=secret,id=github_token \
     --mount=type=secret,id=github_actor \
     set -eu; \
@@ -189,7 +186,7 @@ RUN rm -f /usr/bin/sg \
 # The gateway jar runs on the Temurin 21 JDK installed above; the
 # entrypoint launches it with ZGC the same way every other service does.
 COPY --from=gateway-build /app/services/agent-gateway/build/libs/*.jar /opt/agent-gateway.jar
-COPY platform/agents/kit/templates/repo/.specify /opt/agent-kit/sdd
+COPY .specify /opt/agent-kit/sdd
 COPY services/agent-runner/entrypoint.sh /opt/entrypoint.sh
 RUN chmod +x /opt/entrypoint.sh
 RUN set -eu; \
@@ -209,14 +206,14 @@ RUN set -eu; \
     allow="$(REPO_URL='git@github.com:o/primary.git' REPO_URLS='https://github.com/o/extra.git#dev git@github.com:o/second.git' AGENT_RUNNER_ENTRYPOINT_SELF_TEST=repo-allow /opt/entrypoint.sh)"; \
     test "${allow}" = 'o/primary o/extra o/second'; \
     test -z "$(REPO_URL='' REPO_URLS='' AGENT_RUNNER_ENTRYPOINT_SELF_TEST=repo-allow /opt/entrypoint.sh)"; \
-    test "$(REPO_URL='git@github.com:o/personal-stack.git' AGENT_RUNNER_ENTRYPOINT_SELF_TEST=repo-dir /opt/entrypoint.sh)" = 'personal-stack'; \
+    test "$(REPO_URL='git@github.com:o/agents.git' AGENT_RUNNER_ENTRYPOINT_SELF_TEST=repo-dir /opt/entrypoint.sh)" = 'agents'; \
     test "$(REPO_URL='https://github.com/o/website.git' AGENT_RUNNER_ENTRYPOINT_SELF_TEST=repo-dir /opt/entrypoint.sh)" = 'website'; \
-    mkdir -p "${tmp}/workspace/personal-stack/.git"; \
+    mkdir -p "${tmp}/workspace/agents/.git"; \
     WORKSPACE_ROOT="${tmp}/workspace" AGENT_KIT_SDD_SOURCE=/opt/agent-kit/sdd AGENT_RUNNER_ENTRYPOINT_SELF_TEST=speckit-seed /opt/entrypoint.sh; \
-    test -f "${tmp}/workspace/personal-stack/.specify/templates/spec-template.md"; \
-    test -x "${tmp}/workspace/personal-stack/.specify/scripts/bash/create-new-feature.sh"; \
-    test -f "${tmp}/workspace/personal-stack/.specify/memory/constitution.md"; \
-    test -f "${tmp}/workspace/personal-stack/.specify/.agent-kit-sdd-seed.sha256"; \
+    test -f "${tmp}/workspace/agents/.specify/templates/spec-template.md"; \
+    test -x "${tmp}/workspace/agents/.specify/scripts/bash/create-new-feature.sh"; \
+    test -f "${tmp}/workspace/agents/.specify/memory/constitution.md"; \
+    test -f "${tmp}/workspace/agents/.specify/.agent-kit-sdd-seed.sha256"; \
     rm -rf "${tmp}"
 
 # Shared token helper used by gh, GitHub MCP, and Git's credential

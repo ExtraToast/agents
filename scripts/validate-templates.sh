@@ -231,7 +231,7 @@ for entrypoint_template in templates/docker-patterns/entrypoints/*.tmpl; do
 done
 
 log "checking for source-specific values in templates"
-forbidden_pattern='jorisjonkers|esa-blueshell|blueshell|personal-stack|frankfurt-contabo|enschede|167\.86\.79\.203|130\.89\.174\.190|192\.168\.0\.99|auth-system|assistant-system|knowledge-system|media-system|utility-system|data-system|secret/data/platform|secret/platform|secret/agents|auth-api|assistant-api|knowledge-api|uptime-kuma|stalwart|rabbitmq|valkey|postgres'
+forbidden_pattern='jorisjonkers|esa-blueshell|blueshell|frankfurt-contabo|enschede|167\.86\.79\.203|130\.89\.174\.190|192\.168\.0\.99|auth-system|knowledge-system|media-system|utility-system|data-system|secret/data/platform|secret/platform|secret/agents|auth-api|knowledge-api|uptime-kuma|stalwart|rabbitmq|valkey|postgres'
 if rg -n -i "$forbidden_pattern" templates; then
   fail "source-specific value found in templates"
 fi

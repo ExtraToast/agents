@@ -1,7 +1,6 @@
 # Contributing (ExtraToast conventions)
 
-These conventions are identical across every ExtraToast repo. This repo is the
-template; new repos are bootstrapped from it (see `docs/REPO_SETUP.md`).
+These conventions follow the standard ExtraToast repo shape for the agents stack.
 
 ## Branch & PR flow
 
@@ -22,14 +21,7 @@ succeeded. The org ruleset requires only that one check, so adding/renaming a
 job never touches branch protection — just keep it in the aggregator's
 `needs:`. See `.github/workflows/ci.yml`.
 
-Every repo also enforces **>=80% line coverage** in CI. Keep the `coverage` job
-in the `Pipeline Complete` aggregator and replace the placeholder with the
-repo's real gate:
-
-- Gradle: apply JaCoCo and run `jacocoTestCoverageVerification` with a line
-  coverage minimum of `0.80`.
-- Node: run Vitest with c8 coverage enforcement, for example `c8 --lines 80
-  vitest run`.
+Coverage and quality gates run through the JVM and UI jobs in `.github/workflows/ci.yml`.
 
 ## Versioning
 

@@ -1,16 +1,3 @@
-# Canonical single CI workflow for every ExtraToast repository.
-#
-# Org convention: ONE pipeline per repo, and it terminates in a single
-# aggregating job named "Pipeline Complete". That job name is the ONLY
-# required status check in the org/repo ruleset — every other job feeds
-# into it via `needs:`. Adding or renaming an upstream job never requires
-# touching branch protection: as long as it is in `needs:` below, it gates
-# merges through the aggregator.
-#
-# Replace the placeholder `lint` / `test` / `coverage` / `build` jobs with the
-# real work for this repo (or call reusable workflows from
-# ExtraToast/github-workflows), but ALWAYS keep the final `pipeline-complete`
-# job and list every gating job in its `needs:`.
 name: CI
 
 on:
@@ -25,15 +12,14 @@ concurrency:
 
 permissions:
   contents: read
+  packages: read
+
+env:
+  GITHUB_ACTOR: ${{ github.actor }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: echo "replace with real lint (or a reusable workflow from ExtraToast/github-workflows)"
-
   workflow-lint:
     name: Workflow Lint
     runs-on: ubuntu-latest
@@ -42,44 +28,115 @@ jobs:
       - name: Download actionlint
         id: actionlint
         shell: bash
+        run: bash <(curl --fail --silent --show-error --location https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+      - name: Lint workflows
+        run: '"${{ steps.actionlint.outputs.executable }}" -color .github/workflows/*.yml'
+
+  jvm-check:
+    name: JVM Lint, Test, Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Check JVM services
+        run: ./gradlew :services:agents-api:check :services:agent-gateway:check --no-daemon
+      - name: Build JVM services
+        run: ./gradlew :services:agents-api:bootJar :services:agent-gateway:bootJar --no-daemon
+
+  ui-check:
+    name: UI Lint, Test, Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install UI dependencies
         run: |
-          bash <(curl --fail --silent --show-error --location https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
-      - name: Lint GitHub Actions workflows
-        shell: bash
-        run: |
-          "${{ steps.actionlint.outputs.executable }}" -color .github/workflows/*.yml
+          pnpm config set //npm.pkg.github.com/:_authToken "$NODE_AUTH_TOKEN"
+          pnpm install --no-frozen-lockfile
+      - name: Lint UI
+        run: pnpm --filter @extratoast/agents-ui lint
+      - name: Typecheck UI
+        run: pnpm --filter @extratoast/agents-ui typecheck
+      - name: Test UI
+        run: pnpm --filter @extratoast/agents-ui test
+      - name: Build UI
+        run: pnpm --filter @extratoast/agents-ui build
 
-  test:
-    name: Test
+  openapi-contract:
+    name: OpenAPI Contract
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: echo "replace with real tests"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          pnpm config set //npm.pkg.github.com/:_authToken "$NODE_AUTH_TOKEN"
+          pnpm install --no-frozen-lockfile
+      - name: Export OpenAPI spec
+        run: ./gradlew :services:agents-api:exportOpenApiSpec --no-daemon
+      - name: Check committed OpenAPI spec
+        run: git diff --exit-code -- services/agents-api/openapi.json
+      - name: Check generated UI client
+        run: pnpm --filter @extratoast/agents-ui contract:check
 
-  coverage:
-    name: Coverage
+  docker-build:
+    name: Docker Build
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: agents-api
+            repository: ghcr.io/extratoast/agents/agents-api
+            dockerfile: services/agents-api/Dockerfile
+          - image: agents-ui
+            repository: ghcr.io/extratoast/agents/agents-ui
+            dockerfile: services/agents-ui/Dockerfile
+          - image: agent-gateway
+            repository: ghcr.io/extratoast/agents/agent-gateway
+            dockerfile: services/agent-gateway/Dockerfile
+          - image: agent-runner
+            repository: ghcr.io/extratoast/agents/agent-runner
+            dockerfile: services/agent-runner/Dockerfile
     steps:
       - uses: actions/checkout@v4
-      - run: echo "replace with the repo's real coverage gate — jacocoTestCoverageVerification >=80% for Gradle, or vitest/c8 --lines 80 for Node"
+      - uses: docker/setup-buildx-action@v3
+      - name: Build ${{ matrix.image }} image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: false
+          tags: ${{ matrix.repository }}:${{ github.sha }}
+          secrets: |
+            github_token=${{ secrets.GITHUB_TOKEN }}
+            github_actor=${{ github.actor }}
+          build-args: |
+            NODE_AUTH_TOKEN=${{ secrets.GITHUB_TOKEN }}
+            GIT_SHA=${{ github.sha }}
 
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: echo "replace with real build"
-
-  # ---------------------------------------------------------------------------
-  # Terminal aggregator. This is the single required check in the ruleset.
-  # It runs even when an upstream job fails/cancels (if: always()) and then
-  # explicitly fails unless every dependency succeeded — so a skipped or
-  # failed gating job can never be mistaken for a green pipeline.
-  # ---------------------------------------------------------------------------
   pipeline-complete:
     name: Pipeline Complete
     if: always()
-    needs: [lint, workflow-lint, test, coverage, build]
+    needs: [workflow-lint, jvm-check, ui-check, openapi-contract, docker-build]
     runs-on: ubuntu-latest
     steps:
       - name: Verify all gating jobs succeeded

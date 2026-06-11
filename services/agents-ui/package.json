@@ -1,5 +1,5 @@
 {
-  "name": "@personal-stack/assistant-ui",
+  "name": "@extratoast/agents-ui",
   "type": "module",
   "version": "0.0.1",
   "private": true,
@@ -15,8 +15,8 @@
     "test:e2e": "playwright test",
     "depcruise": "depcruise src --config .dependency-cruiser.cjs --output-type err",
     "stryker": "stryker run",
-    "contract:generate": "openapi-typescript ../assistant-api/openapi.json -o src/api/generated.ts && node scripts/contract-banner.mjs src/api/generated.ts",
-    "contract:check": "openapi-typescript ../assistant-api/openapi.json -o /tmp/assistant-ui-generated.ts && node scripts/contract-banner.mjs /tmp/assistant-ui-generated.ts && diff -u src/api/generated.ts /tmp/assistant-ui-generated.ts"
+    "contract:generate": "openapi-typescript ../agents-api/openapi.json -o src/api/generated.ts && node scripts/contract-banner.mjs src/api/generated.ts",
+    "contract:check": "openapi-typescript ../agents-api/openapi.json -o /tmp/agents-ui-generated.ts && node scripts/contract-banner.mjs /tmp/agents-ui-generated.ts && diff -u src/api/generated.ts /tmp/agents-ui-generated.ts"
   },
   "dependencies": {
     "@extratoast/vue-web-commons": "0.1.1",

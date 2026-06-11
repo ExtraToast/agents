@@ -17,7 +17,7 @@ describe('useSessionLabelsStore', () => {
     const store = useSessionLabelsStore()
     store.rename('sess-1', 'backend work')
     expect(store.labelFor('sess-1')).toBe('backend work')
-    expect(JSON.parse(localStorage.getItem('assistant-ui:session-labels')!)).toEqual({
+    expect(JSON.parse(localStorage.getItem('agents-ui:session-labels')!)).toEqual({
       'sess-1': 'backend work',
     })
   })
@@ -28,18 +28,18 @@ describe('useSessionLabelsStore', () => {
     expect(store.labelFor('sess-1')).toBe('spaced')
     store.rename('sess-1', '   ')
     expect(store.labelFor('sess-1')).toBeNull()
-    expect(localStorage.getItem('assistant-ui:session-labels')).toBe('{}')
+    expect(localStorage.getItem('agents-ui:session-labels')).toBe('{}')
   })
 
   it('hydrates existing labels from localStorage on init', () => {
-    localStorage.setItem('assistant-ui:session-labels', JSON.stringify({ 'sess-9': 'kept' }))
+    localStorage.setItem('agents-ui:session-labels', JSON.stringify({ 'sess-9': 'kept' }))
     setActivePinia(createPinia())
     const store = useSessionLabelsStore()
     expect(store.labelFor('sess-9')).toBe('kept')
   })
 
   it('survives malformed localStorage by starting empty', () => {
-    localStorage.setItem('assistant-ui:session-labels', 'not json')
+    localStorage.setItem('agents-ui:session-labels', 'not json')
     setActivePinia(createPinia())
     const store = useSessionLabelsStore()
     expect(store.labelFor('sess-1')).toBeNull()

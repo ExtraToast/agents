@@ -13,7 +13,7 @@ deploy target.
 3. The published-release event publishes artifacts at that exact version:
    - Maven libraries/plugins → GitHub Packages under `dev.extratoast.*`
    - npm packages → GitHub Packages under `@extratoast/*`
-   - container images → `ghcr.io/extratoast/<repo>/<image>:X.Y.Z`
+   - container images → `ghcr.io/extratoast/agents/<image>:X.Y.Z`
 
 SemVer: pre-1.0 (`0.y.z`) treats minor as the breaking lever
 (`bump-minor-pre-major`). Promote to `1.0.0` once an artifact's API is stable.
@@ -36,7 +36,7 @@ SemVer: pre-1.0 (`0.y.z`) treats minor as the breaking lever
 grouped into one platform bump). Every bump PR must pass `Pipeline Complete`
 before merge.
 
-## Deploying a specific version (apps, e.g. personal-stack)
+## Deploying a specific version
 
 Deployment is version-pinned and explicit:
 

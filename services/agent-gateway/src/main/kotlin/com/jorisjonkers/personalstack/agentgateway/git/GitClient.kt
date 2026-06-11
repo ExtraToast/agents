@@ -22,7 +22,7 @@ import kotlin.io.path.Path
  * `gh` is used for the PR open step because issuing a PAT for the
  * agent would be a wider blast radius than the per-repo deploy key
  * needs to cover — gh authenticates via a GH_TOKEN env var that
- * assistant-api injects per-Pod from a scoped fine-grained token.
+ * agents-api injects per-Pod from a scoped fine-grained token.
  */
 @Component
 class GitClient(
@@ -245,7 +245,7 @@ class GitClient(
     private fun ensureDeployKey(): Path {
         val source = Path(props.git.deployKeyDir).resolve("private_key")
         if (!Files.exists(source)) {
-            error("deploy key missing at $source — assistant-api should have projected it")
+            error("deploy key missing at $source — agents-api should have projected it")
         }
         // Stash in /tmp with 0600 — Secret-mounted files are owned by
         // root and have permissive default modes that openssh refuses.

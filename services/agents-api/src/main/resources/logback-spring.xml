@@ -14,7 +14,7 @@
         <includeMdcKeyName>trace_id</includeMdcKeyName>
         <includeMdcKeyName>span_id</includeMdcKeyName>
         <includeMdcKeyName>trace_flags</includeMdcKeyName>
-        <customFields>{"service":"assistant-api","service.name":"assistant-api","service.version":"${serviceVersion}","deployment.environment":"${deploymentEnvironment}"}</customFields>
+        <customFields>{"service":"agents-api","service.name":"agents-api","service.version":"${serviceVersion}","deployment.environment":"${deploymentEnvironment}"}</customFields>
       </encoder>
     </appender>
     <root level="INFO">

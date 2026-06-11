@@ -14,7 +14,7 @@ extension):
 ```sh
 ssh-keygen -t ed25519 \
   -f ./{{LINK_NAME}}-deploy \
-  -C "{{LINK_NAME}}@personal-stack" \
+  -C "{{LINK_NAME}}@agents" \
   -N ""
 ```
 
@@ -34,7 +34,7 @@ hostkeys by default, and ed25519 is what GitHub recommends as well.
 1. Open the **Deploy keys** page for this repository:
    <{{DEPLOY_KEY_PAGE_URL}}>
 2. Click **Add deploy key**.
-3. **Title:** `personal-stack — {{LINK_NAME}}`
+3. **Title:** `agents — {{LINK_NAME}}`
 4. **Key:** paste the entire contents of `./{{LINK_NAME}}-deploy.pub`.
 5. **Allow write access:** check this box **only** if agents in this
    project should be able to push branches and open PRs. Leave it
@@ -49,14 +49,14 @@ ssh-keygen -lf ./{{LINK_NAME}}-deploy.pub
 ```
 
 locally — the `SHA256:…` value should match the **Fingerprint**
-column that the personal-stack UI displays after step 3.
+column that the agents UI displays after step 3.
 
 For the official GitHub reference, see
 <https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys>.
 
 ## 3. Paste both keys into the wizard
 
-In the personal-stack UI, paste:
+In the agents UI, paste:
 
 - The **entire** contents of `./{{LINK_NAME}}-deploy` (multiple
   lines, including the `-----BEGIN OPENSSH PRIVATE KEY-----` and
@@ -88,6 +88,6 @@ as belt-and-braces.
 
 Generate a new keypair, attach it via the wizard (the old one will
 be overwritten in Vault), then delete the old public key from
-GitHub's Deploy keys page. The personal-stack UI shows the
+GitHub's Deploy keys page. The agents UI shows the
 `fingerprint` so you can match what's in Vault against what's in
 GitHub before pulling the rug.

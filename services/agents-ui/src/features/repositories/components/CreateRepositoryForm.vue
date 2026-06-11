@@ -68,7 +68,7 @@ async function onSubmit(): Promise<void> {
           :aria-describedby="describedBy"
           :aria-invalid="invalid"
           class="w-full rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3 py-2 text-sm"
-          placeholder="personal-stack"
+          placeholder="agents"
           data-testid="repo-name"
         />
       </template>
@@ -89,7 +89,7 @@ async function onSubmit(): Promise<void> {
           :aria-describedby="describedBy"
           :aria-invalid="invalid"
           class="w-full rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3 py-2 font-mono text-xs"
-          placeholder="git@github.com:ExtraToast/personal-stack.git"
+          placeholder="git@github.com:ExtraToast/agents.git"
           data-testid="repo-url"
         />
       </template>

@@ -6,11 +6,8 @@ WORKDIR /app
 # Layer 1: Copy only build scripts for dependency caching
 COPY settings.gradle.kts build.gradle.kts gradle.properties* ./
 COPY gradle/ gradle/
-COPY services/auth-api/build.gradle.kts services/auth-api/
-COPY services/assistant-api/build.gradle.kts services/assistant-api/
-COPY services/knowledge-api/build.gradle.kts services/knowledge-api/
+COPY services/agents-api/build.gradle.kts services/agents-api/
 COPY services/agent-gateway/build.gradle.kts services/agent-gateway/
-COPY services/system-tests/build.gradle.kts services/system-tests/
 
 # Resolve dependencies (cached unless build files change)
 RUN --mount=type=secret,id=github_token \
@@ -19,17 +16,17 @@ RUN --mount=type=secret,id=github_token \
     GITHUB_TOKEN="$(cat /run/secrets/github_token)"; \
     GITHUB_ACTOR="$(cat /run/secrets/github_actor)"; \
     export GITHUB_TOKEN GITHUB_ACTOR; \
-    gradle :services:assistant-api:dependencies --no-daemon || true
+    gradle :services:agents-api:dependencies --no-daemon || true
 
 # Layer 2: Copy source code and build
-COPY services/assistant-api/src/main/ services/assistant-api/src/main/
+COPY services/agents-api/src/main/ services/agents-api/src/main/
 RUN --mount=type=secret,id=github_token \
     --mount=type=secret,id=github_actor \
     set -eu; \
     GITHUB_TOKEN="$(cat /run/secrets/github_token)"; \
     GITHUB_ACTOR="$(cat /run/secrets/github_actor)"; \
     export GITHUB_TOKEN GITHUB_ACTOR; \
-    gradle :services:assistant-api:bootJar --no-daemon
+    gradle :services:agents-api:bootJar --no-daemon
 
 # Eclipse Temurin only used here for the otel jar download — its alpine
 # variant has curl out of the box and is small. The runtime stage has
@@ -52,7 +49,7 @@ RUN apk add --no-cache curl && \
 # /opt/crac/checkpoint. Used only by the crac-train CI workflow.
 FROM bellsoft/liberica-runtime-container:jdk-21-crac-slim-glibc AS train
 WORKDIR /app
-COPY --from=build /app/services/assistant-api/build/libs/*.jar app.jar
+COPY --from=build /app/services/agents-api/build/libs/*.jar app.jar
 COPY --from=otel /otel-javaagent.jar otel-javaagent.jar
 RUN mkdir -p /opt/crac/checkpoint
 EXPOSE 8082
@@ -66,11 +63,11 @@ ENTRYPOINT ["java", \
 
 FROM bellsoft/liberica-runtime-container:jdk-21-crac-slim-glibc
 WORKDIR /app
-# Build-time identity (see services/auth-api/Dockerfile for rationale).
+# Build-time identity surfaced in logs and tracing metadata.
 ARG GIT_SHA=unknown
 ENV SERVICE_VERSION=${GIT_SHA}
-COPY --from=build /app/services/assistant-api/build/libs/*.jar app.jar
+COPY --from=build /app/services/agents-api/build/libs/*.jar app.jar
 COPY --from=otel /otel-javaagent.jar otel-javaagent.jar
-COPY services/assistant-api/entrypoint.sh /app/entrypoint.sh
+COPY services/agents-api/entrypoint.sh /app/entrypoint.sh
 EXPOSE 8082
 ENTRYPOINT ["/app/entrypoint.sh", "-javaagent:otel-javaagent.jar", "-jar", "app.jar"]

@@ -204,10 +204,10 @@ fi
 
 check_agent_kit_manifests
 
-# Bootstrap git identity — assistant-api injects GIT_AUTHOR_NAME /
+# Bootstrap git identity — agents-api injects GIT_AUTHOR_NAME /
 # GIT_AUTHOR_EMAIL when it creates the Pod; fall back to a clearly
 # non-human identity so accidental commits are easy to spot.
-git config --global user.name  "${GIT_AUTHOR_NAME:-Personal Stack Agent}"
+git config --global user.name  "${GIT_AUTHOR_NAME:-Agents Agent}"
 git config --global user.email "${GIT_AUTHOR_EMAIL:-agents@jorisjonkers.dev}"
 git config --global init.defaultBranch main
 git config --global credential.helper agent-gh-app

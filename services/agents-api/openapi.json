@@ -1,12 +1,12 @@
 {
   "openapi" : "3.1.0",
   "info" : {
-    "title" : "Assistant API",
+    "title" : "Agents API",
     "description" : "Conversation and messaging service for jorisjonkers.dev",
     "version" : "1.0.0"
   },
   "servers" : [ {
-    "url" : "https://assistant.jorisjonkers.dev",
+    "url" : "https://agents.jorisjonkers.dev",
     "description" : "Production"
   }, {
     "url" : "http://localhost:8082",

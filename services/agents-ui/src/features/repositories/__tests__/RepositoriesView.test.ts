@@ -46,7 +46,7 @@ describe('repositoriesView', () => {
     expect(header.element.compareDocumentPosition(reference.element)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     expect(reference.element.compareDocumentPosition(loading.element)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     expect(reference.get('[data-testid="github-app-public-link"]').attributes('href')).toBe(
-      'https://github.com/apps/personal-stack-agents',
+      'https://github.com/apps/extratoast-agents',
     )
   })
 })

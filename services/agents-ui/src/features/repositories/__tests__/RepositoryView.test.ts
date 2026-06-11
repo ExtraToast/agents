@@ -117,11 +117,11 @@ describe('repositoryView access status', () => {
     expect(wrapper.find('[data-testid="github-app-approval-note"]').text()).toContain('approval on each installation')
 
     const expectedLinks = {
-      'github-app-install-link': 'https://github.com/apps/personal-stack-agents/installations/new?state=ExtraToast',
+      'github-app-install-link': 'https://github.com/apps/extratoast-agents/installations/new?state=ExtraToast',
       'github-app-user-installations-link': 'https://github.com/settings/installations',
       'github-app-organization-installations-link':
         'https://github.com/organizations/ExtraToast/settings/installations',
-      'github-app-permissions-link': 'https://github.com/settings/apps/personal-stack-agents/permissions',
+      'github-app-permissions-link': 'https://github.com/settings/apps/extratoast-agents/permissions',
     }
 
     for (const [testId, href] of Object.entries(expectedLinks)) {

@@ -30,7 +30,7 @@ function onSubmit(): void {
         type="text"
         required
         class="w-full rounded border border-[var(--color-surface-border)] bg-surface-darker px-3 py-2"
-        placeholder="personal-stack"
+        placeholder="agents"
       />
       <p class="text-xs text-[var(--color-text-muted)] mt-1">
         Used as the deploy-key file name on your laptop and in the GitHub key title.

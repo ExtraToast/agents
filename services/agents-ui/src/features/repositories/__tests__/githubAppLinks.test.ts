@@ -19,12 +19,12 @@ describe('githubAppLinks', () => {
   })
 
   it.each([
-    ['git@github.com:ExtraToast/personal-stack.git', 'ExtraToast', 'personal-stack'],
-    ['git@github.com:ExtraToast/personal-stack', 'ExtraToast', 'personal-stack'],
-    ['ssh://git@github.com/ExtraToast/personal-stack.git', 'ExtraToast', 'personal-stack'],
-    ['https://github.com/ExtraToast/personal-stack.git', 'ExtraToast', 'personal-stack'],
-    ['https://github.com/ExtraToast/personal-stack', 'ExtraToast', 'personal-stack'],
-    ['https://github.com/ExtraToast/personal-stack/', 'ExtraToast', 'personal-stack'],
+    ['git@github.com:ExtraToast/agents.git', 'ExtraToast', 'agents'],
+    ['git@github.com:ExtraToast/agents', 'ExtraToast', 'agents'],
+    ['ssh://git@github.com/ExtraToast/agents.git', 'ExtraToast', 'agents'],
+    ['https://github.com/ExtraToast/agents.git', 'ExtraToast', 'agents'],
+    ['https://github.com/ExtraToast/agents', 'ExtraToast', 'agents'],
+    ['https://github.com/ExtraToast/agents/', 'ExtraToast', 'agents'],
     ['https://x-access-token:tok@github.com/ExtraToast/repo.git', 'ExtraToast', 'repo'],
   ])('parses owner and repo from %s', (repoUrl, owner, repo) => {
     expect(parseGitHubRepositoryUrl(repoUrl)).toEqual({ owner, repo })
@@ -63,7 +63,7 @@ describe('githubAppLinks', () => {
   })
 
   it.each([
-    { slug: 'personal-stack-agents', expected: true },
+    { slug: 'extratoast-agents', expected: true },
     { slug: 'custom-app-1', expected: true },
     { slug: 'a', expected: true },
     { slug: '', expected: false },
@@ -100,10 +100,10 @@ describe('githubAppLinks', () => {
 
   it('builds the canonical GitHub App installation URL with owner state', () => {
     expect(buildGitHubAppInstallationUrl('ExtraToast')).toBe(
-      'https://github.com/apps/personal-stack-agents/installations/new?state=ExtraToast',
+      'https://github.com/apps/extratoast-agents/installations/new?state=ExtraToast',
     )
-    expect(buildGitHubAppInstallationUrlForRepo('git@github.com:ExtraToast/personal-stack.git')).toBe(
-      'https://github.com/apps/personal-stack-agents/installations/new?state=ExtraToast',
+    expect(buildGitHubAppInstallationUrlForRepo('git@github.com:ExtraToast/agents.git')).toBe(
+      'https://github.com/apps/extratoast-agents/installations/new?state=ExtraToast',
     )
   })
 

@@ -5,11 +5,8 @@ WORKDIR /app
 
 COPY settings.gradle.kts build.gradle.kts gradle.properties* ./
 COPY gradle/ gradle/
-COPY services/auth-api/build.gradle.kts services/auth-api/
-COPY services/assistant-api/build.gradle.kts services/assistant-api/
-COPY services/knowledge-api/build.gradle.kts services/knowledge-api/
+COPY services/agents-api/build.gradle.kts services/agents-api/
 COPY services/agent-gateway/build.gradle.kts services/agent-gateway/
-COPY services/system-tests/build.gradle.kts services/system-tests/
 
 RUN --mount=type=secret,id=github_token \
     --mount=type=secret,id=github_actor \

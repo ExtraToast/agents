@@ -1,6 +1,6 @@
 /**
  * Thin wrapper around the browser WebSocket for the
- * `/api/v1/ws/sessions/{id}/attach` endpoint. The assistant-api
+ * `/api/v1/ws/sessions/{id}/attach` endpoint. The agents-api
  * handler speaks two envelope shapes:
  *
  *   inbound  -> `{ "input": "...", "enter": true }`
@@ -50,11 +50,11 @@ const HEARTBEAT_INTERVAL_MS = 30_000
 
 export function attachSessionSocket(opts: SessionSocketOptions): SessionSocket {
   const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  // The terminal WS uses the dedicated `assistant-ws` host, which a
-  // co-located Enschede assistant-api replica answers (split-DNS keeps
+  // The terminal WS uses the dedicated `agents-ws` host, which a
+  // co-located Enschede agents-api replica answers (split-DNS keeps
   // on-site keystrokes local instead of detouring through Frankfurt).
   // Other hosts (e.g. localhost in dev) are left unchanged.
-  const wsHost = window.location.host.replace(/^assistant\./, 'assistant-ws.')
+  const wsHost = window.location.host.replace(/^agents\./, 'agents-ws.')
   const url = `${proto}//${wsHost}/api/v1/ws/sessions/${opts.sessionId}/attach`
 
   let ws: WebSocket | null = null

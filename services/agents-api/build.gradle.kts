@@ -8,7 +8,7 @@ plugins {
 
 jooqCodegen {
     schemaName.set("PUBLIC")
-    packageName.set("com.jorisjonkers.personalstack.assistant.jooq")
+    packageName.set("com.jorisjonkers.personalstack.agents.jooq")
     migrationLocations.set(listOf("filesystem:src/main/resources/db/migration"))
 }
 
@@ -70,7 +70,7 @@ dependencies {
 // `@ConditionalOnProperty` adapters that only wire when their
 // upstream is available; unit tests can't reach them and the
 // integration tier doesn't yet stand up a Vault / knowledge-api
-// fixture for the assistant-api integration test suite (the
+// fixture for the agents-api integration test suite (the
 // Fabric8 orchestrator integration test covers the k8s side). They
 // follow the same IO-bound exclusion treatment as
 // `HttpAgentGatewayClient`. The trailing `*.class` (rather than just
@@ -88,12 +88,12 @@ dependencies {
     "**/infrastructure/ws/**",
 )
 
-// The OpenAPI contract is pinned to `services/assistant-api/openapi.json`
+// The OpenAPI contract is pinned to `services/agents-api/openapi.json`
 // (committed). The `contract-export` JUnit tag identifies the single
 // springdoc MVC slice test that hits `/api/v1/api-docs` without booting the
 // app server and writes the spec to disk. The default `integrationTest` task
 // skips that tag; `exportOpenApiSpec` runs only that tag for the contract
-// drift gate and the `services/assistant-ui` contract-typegen pipeline.
+// drift gate and the `services/agents-ui` contract-typegen pipeline.
 tasks.named<Test>("integrationTest") {
     useJUnitPlatform {
         includeTags("integration")
@@ -102,7 +102,7 @@ tasks.named<Test>("integrationTest") {
 }
 
 tasks.register<Test>("exportOpenApiSpec") {
-    description = "Exports the OpenAPI spec to services/assistant-api/openapi.json from a springdoc MVC slice"
+    description = "Exports the OpenAPI spec to services/agents-api/openapi.json from a springdoc MVC slice"
     group = "documentation"
     testClassesDirs = sourceSets["integrationTest"].output.classesDirs
     classpath = sourceSets["integrationTest"].runtimeClasspath

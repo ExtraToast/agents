@@ -4,7 +4,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import * as workspaceService from '../services/workspaceService'
 
-const ACTIVE_SESSION_STORAGE_KEY = 'assistant-ui:workspace-active-session'
+const ACTIVE_SESSION_STORAGE_KEY = 'agents-ui:workspace-active-session'
 
 function isLiveSession(session: AgentSession): boolean {
   return session.status === 'STARTING' || session.status === 'RUNNING'

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Prints a GitHub token for the requested repo. A pre-seeded
 # GH_TOKEN/GITHUB_PERSONAL_ACCESS_TOKEN wins; otherwise the helper mints
-# a short-lived GitHub App installation token through assistant-api and
+# a short-lived GitHub App installation token through agents-api and
 # caches it per repo until it is close to expiry. The target repo is the
 # first argument, else AGENT_GITHUB_REPO_URL, else the current git
 # remote, else REPO_URL. That keeps commands run inside

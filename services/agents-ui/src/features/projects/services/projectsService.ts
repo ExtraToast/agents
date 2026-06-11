@@ -60,7 +60,7 @@ export async function unlinkRepository(projectId: string, repositoryId: string):
 
 /**
  * Returns the markdown body of the deploy-key setup guide as a
- * string. The assistant-api endpoint returns `text/markdown`; we
+ * string. The agents-api endpoint returns `text/markdown`; we
  * rely on the helper's text-fallback rather than the JSON path.
  */
 export async function getSetupGuide(projectId: string, linkId: string): Promise<string> {

@@ -194,7 +194,7 @@ function messageTestId(m: ChatMessage): string {
             :class="messageClass(m)"
             :data-testid="messageTestId(m)"
           >
-            <p class="text-xs text-[var(--color-text-muted)] mb-1">{{ m.role === 'USER' ? 'You' : 'Assistant' }}</p>
+            <p class="text-xs text-[var(--color-text-muted)] mb-1">{{ m.role === 'USER' ? 'You' : 'Agent' }}</p>
             <p class="whitespace-pre-wrap">
               {{ m.body }}<span v-if="m.streaming" class="ml-0.5 animate-pulse" aria-hidden="true">...</span>
             </p>

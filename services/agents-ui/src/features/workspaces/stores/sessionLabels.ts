@@ -4,9 +4,9 @@ import { ref } from 'vue'
 // Session tabs default to "<KIND> <id8>", which is unreadable once a
 // workspace has several agents. A custom label is a purely cosmetic,
 // per-device convenience, so it lives in localStorage keyed by session
-// id rather than the assistant-api (no schema/contract churn for a
+// id rather than the agents-api (no schema/contract churn for a
 // display string). Cleared labels fall back to the default in the tab.
-const STORAGE_KEY = 'assistant-ui:session-labels'
+const STORAGE_KEY = 'agents-ui:session-labels'
 
 function load(): Record<string, string> {
   const out: Record<string, string> = {}

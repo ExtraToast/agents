@@ -8,7 +8,7 @@ import './index.css'
 async function bootstrap(): Promise<void> {
   // Real-user monitoring. See app-ui/src/main.ts for the rationale.
   void initFaro({
-    appName: 'assistant-ui',
+    appName: 'agents-ui',
     environment: import.meta.env.MODE,
     otlpUrl: import.meta.env.VITE_FARO_URL,
   })

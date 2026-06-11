@@ -97,7 +97,7 @@ async function handleSubmit(): Promise<void> {
         class="mt-2 overflow-x-auto rounded border border-[var(--color-surface-border)] bg-black/40 px-3 py-2 text-xs"
       ><code>ssh-keygen -t ed25519 \
   -f ./ps-{{ props.repository.name }} \
-  -C "ps-{{ props.repository.name }}@personal-stack" \
+  -C "ps-{{ props.repository.name }}@agents" \
   -N ""
 cat ./ps-{{ props.repository.name }}.pub      # public key
 cat ./ps-{{ props.repository.name }}          # private key</code></pre>

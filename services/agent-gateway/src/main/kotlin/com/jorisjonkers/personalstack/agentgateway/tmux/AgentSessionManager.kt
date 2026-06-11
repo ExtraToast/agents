@@ -19,7 +19,7 @@ import kotlin.io.path.Path
 
 /**
  * In-memory registry of active agents on this Pod. The Pod is the
- * unit of restart, and assistant-api owns the source-of-truth state,
+ * unit of restart, and agents-api owns the source-of-truth state,
  * so persisting here would double-bookkeeper for no win.
  *
  * Concurrency: ConcurrentHashMap is enough — the only racy operation

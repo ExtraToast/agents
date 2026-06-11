@@ -1,7 +1,7 @@
 # Profile activated by the CRaC training stage in CI. Drives synthetic local
 # traffic against the running JVM to JIT-compile the request pipeline before
 # `Core.checkpointRestore()` dumps the JVM. See auth-api's
-# application-crac-train.yml for the broader rationale; assistant-api's
+# application-crac-train.yml for the broader rationale; agents-api's
 # warmup endpoint list differs because it serves a conversation/message API
 # rather than OAuth2.
 #

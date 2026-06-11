@@ -73,7 +73,7 @@ async function onSubmit(): Promise<void> {
           maxlength="80"
           :aria-invalid="invalid"
           class="w-full rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3 py-2 text-sm"
-          placeholder="Personal Stack"
+          placeholder="Agents"
           data-testid="proj-name"
         />
       </template>
@@ -94,7 +94,7 @@ async function onSubmit(): Promise<void> {
           pattern="^[a-z0-9][a-z0-9-]{0,62}$"
           :aria-invalid="invalid"
           class="w-full rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3 py-2 font-mono text-xs"
-          placeholder="personal-stack"
+          placeholder="agents"
           data-testid="proj-slug"
           @input="onSlugInput"
         />

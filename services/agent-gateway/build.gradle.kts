@@ -12,7 +12,7 @@ dependencies {
     implementation("org.springframework:spring-aop")
     implementation("org.aspectj:aspectjweaver:1.9.25.1")
     implementation("org.springframework.boot:spring-boot-starter-websocket")
-    // Tracing runtime jars — same shape as auth-api / assistant-api so
+    // Tracing runtime jars — same shape as auth-api / agents-api so
     // TimingAutoConfiguration in kotlin-commons-timing activates.
     runtimeOnly("io.micrometer:micrometer-tracing-bridge-otel")
     runtimeOnly("io.opentelemetry:opentelemetry-exporter-otlp")

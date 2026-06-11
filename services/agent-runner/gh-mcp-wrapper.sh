@@ -3,7 +3,7 @@
 #
 # github-mcp-server requires GITHUB_PERSONAL_ACCESS_TOKEN at process
 # start. The shared token helper returns a pre-seeded token or mints a
-# fresh GitHub App installation token through assistant-api using the
+# fresh GitHub App installation token through agents-api using the
 # same cache as the gh CLI wrapper.
 set -u
 
