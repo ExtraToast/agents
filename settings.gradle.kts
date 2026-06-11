@@ -57,10 +57,6 @@ dependencyResolutionManagement {
 // inside minimal service build contexts. Flip with PLATFORM_TOOLING=1 if you
 // deliberately want to force inclusion.
 if (file("platform/tooling").isDirectory || System.getenv("PLATFORM_TOOLING") == "1") {
-    include(":platform:tooling")
 }
-include(":services:auth-api")
-include(":services:assistant-api")
-include(":services:knowledge-api")
+include(":services:agents-api")
 include(":services:agent-gateway")
-include(":services:system-tests")

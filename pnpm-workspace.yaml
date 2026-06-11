@@ -1,4 +1,2 @@
 packages:
-  - 'services/auth-ui'
-  - 'services/assistant-ui'
-  - 'services/app-ui'
+  - 'services/agents-ui'
