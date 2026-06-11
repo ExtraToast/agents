@@ -1,0 +1,88 @@
+# Canonical single CI workflow for every ExtraToast repository.
+#
+# Org convention: ONE pipeline per repo, and it terminates in a single
+# aggregating job named "Pipeline Complete". That job name is the ONLY
+# required status check in the org/repo ruleset — every other job feeds
+# into it via `needs:`. Adding or renaming an upstream job never requires
+# touching branch protection: as long as it is in `needs:` below, it gates
+# merges through the aggregator.
+#
+# Replace the placeholder `lint` / `test` / `coverage` / `build` jobs with the
+# real work for this repo (or call reusable workflows from
+# ExtraToast/github-workflows), but ALWAYS keep the final `pipeline-complete`
+# job and list every gating job in its `needs:`.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "replace with real lint (or a reusable workflow from ExtraToast/github-workflows)"
+
+  workflow-lint:
+    name: Workflow Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download actionlint
+        id: actionlint
+        shell: bash
+        run: |
+          bash <(curl --fail --silent --show-error --location https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+      - name: Lint GitHub Actions workflows
+        shell: bash
+        run: |
+          "${{ steps.actionlint.outputs.executable }}" -color .github/workflows/*.yml
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "replace with real tests"
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "replace with the repo's real coverage gate — jacocoTestCoverageVerification >=80% for Gradle, or vitest/c8 --lines 80 for Node"
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "replace with real build"
+
+  # ---------------------------------------------------------------------------
+  # Terminal aggregator. This is the single required check in the ruleset.
+  # It runs even when an upstream job fails/cancels (if: always()) and then
+  # explicitly fails unless every dependency succeeded — so a skipped or
+  # failed gating job can never be mistaken for a green pipeline.
+  # ---------------------------------------------------------------------------
+  pipeline-complete:
+    name: Pipeline Complete
+    if: always()
+    needs: [lint, workflow-lint, test, coverage, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify all gating jobs succeeded
+        uses: re-actors/alls-green@release/v1
+        with:
+          jobs: ${{ toJSON(needs) }}
