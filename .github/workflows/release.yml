@@ -63,7 +63,9 @@ jobs:
           context: .
           file: ${{ matrix.dockerfile }}
           push: true
-          tags: ${{ matrix.repository }}:${{ needs.release-please.outputs.tag_name }}
+          tags: |
+            ${{ matrix.repository }}:${{ needs.release-please.outputs.tag_name }}
+            ${{ matrix.repository }}:latest
           secrets: |
             github_token=${{ secrets.GITHUB_TOKEN }}
             github_actor=${{ github.actor }}
