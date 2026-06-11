@@ -50,7 +50,7 @@ direct local-pattern change is available.
    edits.
 5. Validate with the smallest meaningful command for the touched area:
    `./gradlew :services:<service>:test` for Kotlin services,
-   `./gradlew :platform:tooling:test` for platform tooling, and
+   the agents build + tests for platform tooling, and
    `npm run typecheck && npm run lint && npm run test` inside Vue UIs.
 6. Capture durable lessons or decisions in the knowledge base when they affect
    future repo behavior, without storing secrets, raw transcripts, or full
