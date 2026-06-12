@@ -210,7 +210,7 @@ class AgentAttachHandler(
                 requestedOffset.value != null &&
                 requestedOffset.value in metadata.logicalStart..metadata.logicalEnd
         val resume = (mode == "RESUME" || mode == null) && canResume
-        val replayStart = if (resume) requestedOffset.value!! else metadata.logicalStart
+        val replayStart = if (resume) requestedOffset.value else metadata.logicalStart
         val control = if (resume) "RESUME" else "SNAPSHOT"
 
         runCatching {

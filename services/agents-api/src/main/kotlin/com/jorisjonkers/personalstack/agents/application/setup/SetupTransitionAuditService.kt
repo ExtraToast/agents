@@ -1,3 +1,5 @@
+@file:Suppress("LongMethod", "TooGenericExceptionCaught")
+
 package com.jorisjonkers.personalstack.agents.application.setup
 
 import com.jorisjonkers.personalstack.agents.application.observability.AgentsApiTelemetry

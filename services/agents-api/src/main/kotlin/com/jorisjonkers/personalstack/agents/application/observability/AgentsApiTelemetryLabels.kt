@@ -1,3 +1,5 @@
+@file:Suppress("CyclomaticComplexMethod")
+
 package com.jorisjonkers.personalstack.agents.application.observability
 
 interface TelemetryLabel {

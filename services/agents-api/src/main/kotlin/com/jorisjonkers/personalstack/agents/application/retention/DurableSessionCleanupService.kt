@@ -1,3 +1,5 @@
+@file:Suppress("LongMethod")
+
 package com.jorisjonkers.personalstack.agents.application.retention
 
 import com.jorisjonkers.personalstack.agents.application.observability.AgentsApiTelemetry

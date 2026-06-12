@@ -1,3 +1,5 @@
+@file:Suppress("ThrowsCount", "TooGenericExceptionCaught")
+
 package com.jorisjonkers.personalstack.agents.application.sessionbinding
 
 import com.jorisjonkers.personalstack.agents.application.exception.AgentRunnerUnavailableException

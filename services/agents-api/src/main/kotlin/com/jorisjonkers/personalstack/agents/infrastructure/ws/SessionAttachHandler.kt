@@ -1,3 +1,5 @@
+@file:Suppress("TooManyFunctions", "LargeClass")
+
 package com.jorisjonkers.personalstack.agents.infrastructure.ws
 
 import com.jorisjonkers.personalstack.agents.application.idle.ConnectedClientTracker

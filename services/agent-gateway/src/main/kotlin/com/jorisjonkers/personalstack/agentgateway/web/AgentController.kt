@@ -1,3 +1,5 @@
+@file:Suppress("LongMethod", "ThrowsCount", "TooGenericExceptionCaught")
+
 package com.jorisjonkers.personalstack.agentgateway.web
 
 import com.jorisjonkers.personalstack.agentgateway.observability.AgentGatewayTelemetry

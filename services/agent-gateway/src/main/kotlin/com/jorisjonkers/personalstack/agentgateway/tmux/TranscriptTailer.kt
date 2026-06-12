@@ -1,3 +1,5 @@
+@file:Suppress("LongMethod")
+
 package com.jorisjonkers.personalstack.agentgateway.tmux
 
 import io.micrometer.observation.Observation

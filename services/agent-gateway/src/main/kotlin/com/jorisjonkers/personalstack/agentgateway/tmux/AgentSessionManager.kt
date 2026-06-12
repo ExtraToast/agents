@@ -1,3 +1,5 @@
+@file:Suppress("TooManyFunctions", "LargeClass", "TooGenericExceptionCaught", "LongMethod", "CyclomaticComplexMethod")
+
 package com.jorisjonkers.personalstack.agentgateway.tmux
 
 import com.jorisjonkers.personalstack.agentgateway.config.GatewayProperties

@@ -1,3 +1,5 @@
+@file:Suppress("UnusedParameter")
+
 package com.jorisjonkers.personalstack.agentgateway.tmux
 
 import com.jorisjonkers.personalstack.agentgateway.config.GatewayProperties

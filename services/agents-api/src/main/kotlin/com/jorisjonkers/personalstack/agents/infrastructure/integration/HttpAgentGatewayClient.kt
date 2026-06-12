@@ -1,3 +1,5 @@
+@file:Suppress("LargeClass", "CyclomaticComplexMethod")
+
 package com.jorisjonkers.personalstack.agents.infrastructure.integration
 
 import com.jorisjonkers.personalstack.agents.application.observability.AgentsApiTelemetry
