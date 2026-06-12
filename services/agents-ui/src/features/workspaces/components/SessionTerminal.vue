@@ -11,6 +11,9 @@ const props = defineProps<{ sessionId: string; active?: boolean }>()
 const container = ref<HTMLDivElement | null>(null)
 const composeInput = ref<HTMLInputElement | null>(null)
 const composeText = ref('')
+// Touch makes it easy to scroll up by accident; surface a jump-to-latest
+// control whenever the viewport is parked above the live tail.
+const atBottom = ref(true)
 
 // Phones don't reliably surface raw keystrokes to xterm's hidden textarea
 // (IME/autocorrect interfere and you can't see what you typed), so on coarse
@@ -36,6 +39,17 @@ function fitAndReportSize(): void {
   fitAddon.fit()
   // The gateway sizes the PTY from the RESIZE frame; xterm's own
   // onResize fires from fit(), so the report happens via that handler.
+}
+
+function updateAtBottom(): void {
+  const buffer = term?.buffer?.active
+  atBottom.value = buffer == null || buffer.viewportY >= buffer.baseY
+}
+
+function jumpToLatest(): void {
+  term?.scrollToBottom?.()
+  updateAtBottom()
+  if (props.active) void revealAndFocus()
 }
 
 function selectedText(): string {
@@ -107,9 +121,11 @@ onMounted(() => {
   term.open(el)
   fitAddon.fit()
 
+  term.onScroll?.(updateAtBottom)
+
   socket = attachSessionSocket({
     sessionId: props.sessionId,
-    onOutput: (text) => term?.write(text),
+    onOutput: (text) => term?.write(text, updateAtBottom),
     onControl: (_epoch, snapshot) => {
       if (snapshot) term?.clear()
     },
@@ -212,12 +228,23 @@ onBeforeUnmount(() => {
         Copy
       </button>
     </div>
-    <div
-      ref="container"
-      class="min-h-0 flex-1 overflow-hidden p-2"
-      data-testid="session-terminal"
-      @click="revealAndFocus"
-    />
+    <div class="relative flex min-h-0 flex-1 flex-col">
+      <div
+        ref="container"
+        class="min-h-0 flex-1 overflow-hidden p-2"
+        data-testid="session-terminal"
+        @click="revealAndFocus"
+      />
+      <button
+        v-show="!atBottom"
+        type="button"
+        class="absolute bottom-3 right-3 inline-flex min-h-10 items-center gap-1 rounded-full border border-white/15 bg-[#11151c]/90 px-3 text-xs font-semibold text-slate-100 shadow-lg backdrop-blur transition-colors hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)]"
+        data-testid="terminal-jump-latest"
+        @click="jumpToLatest"
+      >
+        ↓ Latest
+      </button>
+    </div>
     <form class="terminal-compose border-t border-white/10 bg-[#11151c] px-2 py-1" @submit.prevent="submitCompose">
       <input
         ref="composeInput"
