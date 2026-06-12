@@ -2,7 +2,7 @@ package com.jorisjonkers.personalstack.agents.infrastructure.ws
 
 import com.jorisjonkers.personalstack.agents.application.idle.ConnectedClientTracker
 import com.jorisjonkers.personalstack.agents.application.idle.WorkspaceActivityTracker
-import com.jorisjonkers.personalstack.agents.application.sessionbinding.EnsureRunnerSessionBoundRequest
+import com.jorisjonkers.personalstack.agents.application.sessionbinding.EnsureRunnerSessionBoundInput
 import com.jorisjonkers.personalstack.agents.application.sessionbinding.RunnerSessionBindingResult
 import com.jorisjonkers.personalstack.agents.application.sessionbinding.RunnerSessionBindingService
 import com.jorisjonkers.personalstack.agents.domain.model.Workspace
@@ -95,7 +95,7 @@ class SessionAttachHandler(
                 ?: return closeAndReturn(clientSession, "unknown session", CloseStatus.BAD_DATA)
         var reboundWorkspace: Workspace? = null
         if (agentSession.status == WorkspaceAgentSessionStatus.RUNNING && agentSession.gatewayAgentId == null) {
-            when (val result = binding.ensureBound(EnsureRunnerSessionBoundRequest(sessionId = sessionId))) {
+            when (val result = binding.ensureBound(EnsureRunnerSessionBoundInput(sessionId = sessionId))) {
                 is RunnerSessionBindingResult.Bound -> {
                     agentSession = result.session
                     reboundWorkspace = result.workspace
@@ -312,7 +312,7 @@ class SessionAttachHandler(
                         sessions.clearGatewayBindingIfGeneration(sessionId, it.generation)
                     }
                     binding.ensureBound(
-                        EnsureRunnerSessionBoundRequest(sessionId = sessionId, workspaceId = workspaceId),
+                        EnsureRunnerSessionBoundInput(sessionId = sessionId, workspaceId = workspaceId),
                     )
                 }
             }

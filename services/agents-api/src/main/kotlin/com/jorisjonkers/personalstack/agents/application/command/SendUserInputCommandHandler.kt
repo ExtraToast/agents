@@ -1,7 +1,7 @@
 package com.jorisjonkers.personalstack.agents.application.command
 
 import com.jorisjonkers.personalstack.agents.application.rag.ContextBuilder
-import com.jorisjonkers.personalstack.agents.application.sessionbinding.EnsureRunnerSessionBoundRequest
+import com.jorisjonkers.personalstack.agents.application.sessionbinding.EnsureRunnerSessionBoundInput
 import com.jorisjonkers.personalstack.agents.application.sessionbinding.RunnerSessionBindingResult
 import com.jorisjonkers.personalstack.agents.application.sessionbinding.RunnerSessionBindingService
 import com.jorisjonkers.personalstack.agents.domain.model.Turn
@@ -44,7 +44,7 @@ class SendUserInputCommandHandler(
     private fun resolveBinding(command: SendUserInputCommand): RunnerSessionBindingResult.Bound {
         val result =
             binding.ensureBound(
-                EnsureRunnerSessionBoundRequest(
+                EnsureRunnerSessionBoundInput(
                     sessionId = command.sessionId,
                 ),
             )

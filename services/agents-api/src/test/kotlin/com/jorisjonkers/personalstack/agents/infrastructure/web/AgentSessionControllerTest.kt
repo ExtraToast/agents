@@ -1,7 +1,7 @@
 package com.jorisjonkers.personalstack.agents.infrastructure.web
 
 import com.jorisjonkers.personalstack.agents.application.query.GetTurnHistoryQueryService
-import com.jorisjonkers.personalstack.agents.application.sessionbinding.RestartAgentSessionRequest
+import com.jorisjonkers.personalstack.agents.application.sessionbinding.RestartAgentSessionInput
 import com.jorisjonkers.personalstack.agents.application.sessionbinding.RestartAgentSessionService
 import com.jorisjonkers.personalstack.agents.application.sessionbinding.RunnerProvisioningResult
 import com.jorisjonkers.personalstack.agents.application.sessionbinding.RunnerSessionBindingResult
@@ -77,7 +77,7 @@ class AgentSessionControllerTest {
         val restarted = agentSession().copy(epoch = 3, generation = 7)
         every {
             restartAgentSession.restart(
-                RestartAgentSessionRequest(
+                RestartAgentSessionInput(
                     workspaceId = workspaceId,
                     sessionId = sessionId,
                     expectedGeneration = 6,

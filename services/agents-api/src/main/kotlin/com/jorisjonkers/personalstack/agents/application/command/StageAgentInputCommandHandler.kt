@@ -1,6 +1,6 @@
 package com.jorisjonkers.personalstack.agents.application.command
 
-import com.jorisjonkers.personalstack.agents.application.sessionbinding.EnsureRunnerSessionBoundRequest
+import com.jorisjonkers.personalstack.agents.application.sessionbinding.EnsureRunnerSessionBoundInput
 import com.jorisjonkers.personalstack.agents.application.sessionbinding.RunnerSessionBindingResult
 import com.jorisjonkers.personalstack.agents.application.sessionbinding.RunnerSessionBindingService
 import com.jorisjonkers.personalstack.agents.domain.port.AgentGatewayClient
@@ -16,7 +16,7 @@ class StageAgentInputCommandHandler(
             when (
                 val result =
                     binding.ensureBound(
-                        EnsureRunnerSessionBoundRequest(
+                        EnsureRunnerSessionBoundInput(
                             sessionId = command.sessionId,
                             workspaceId = command.workspaceId,
                         ),

@@ -4,7 +4,7 @@ import com.jorisjonkers.personalstack.agents.application.exception.AgentRunnerUn
 import com.jorisjonkers.personalstack.agents.application.sessionbinding.RunnerSessionBinder
 import com.jorisjonkers.personalstack.agents.application.sessionbinding.RunnerSessionBindingResult
 import com.jorisjonkers.personalstack.agents.application.sessionbinding.RunnerSessionBindingService
-import com.jorisjonkers.personalstack.agents.application.sessionbinding.StartRunnerSessionBindingRequest
+import com.jorisjonkers.personalstack.agents.application.sessionbinding.StartRunnerSessionBindingInput
 import com.jorisjonkers.personalstack.common.command.CommandHandler
 import org.springframework.stereotype.Component
 
@@ -22,7 +22,7 @@ class StartAgentSessionCommandHandler(
         when (
             val result =
                 binding.start(
-                    StartRunnerSessionBindingRequest(
+                    StartRunnerSessionBindingInput(
                         workspaceId = command.workspaceId,
                         sessionId = command.sessionId,
                         kind = command.kind,

@@ -1,7 +1,7 @@
 package com.jorisjonkers.personalstack.agents.application.command
 
 import com.jorisjonkers.personalstack.agents.application.rag.ContextBuilder
-import com.jorisjonkers.personalstack.agents.application.sessionbinding.EnsureRunnerSessionBoundRequest
+import com.jorisjonkers.personalstack.agents.application.sessionbinding.EnsureRunnerSessionBoundInput
 import com.jorisjonkers.personalstack.agents.application.sessionbinding.RunnerProvisioningResult
 import com.jorisjonkers.personalstack.agents.application.sessionbinding.RunnerSessionBindingResult
 import com.jorisjonkers.personalstack.agents.application.sessionbinding.RunnerSessionBindingService
@@ -38,7 +38,7 @@ class SendUserInputCommandHandlerTest {
     fun `handle persists user turn and forwards input to the current gateway binding`() {
         val ws = workspace()
         val session = session(ws.id, gatewayAgentId = "abc12345")
-        every { binding.ensureBound(EnsureRunnerSessionBoundRequest(sessionId = session.id)) } returns
+        every { binding.ensureBound(EnsureRunnerSessionBoundInput(sessionId = session.id)) } returns
             bound(ws, session)
         val savedTurn = slot<Turn>()
         every { turns.save(capture(savedTurn)) } answers { savedTurn.captured }
@@ -54,7 +54,7 @@ class SendUserInputCommandHandlerTest {
     fun `handle forwards augmented prompt while persisting raw user text`() {
         val ws = workspace()
         val session = session(ws.id, gatewayAgentId = "abc12345")
-        every { binding.ensureBound(EnsureRunnerSessionBoundRequest(sessionId = session.id)) } returns
+        every { binding.ensureBound(EnsureRunnerSessionBoundInput(sessionId = session.id)) } returns
             bound(ws, session)
         val savedTurn = slot<Turn>()
         every { turns.save(capture(savedTurn)) } answers { savedTurn.captured }

@@ -35,7 +35,7 @@ class RestartAgentSessionServiceTest {
         every { sessions.findById(session.id) } returns session
         every {
             binding.restart(
-                RestartRunnerSessionBindingRequest(
+                RestartRunnerSessionBindingInput(
                     workspaceId = ws.id,
                     sessionId = session.id,
                     expectedGeneration = 4,
@@ -46,7 +46,7 @@ class RestartAgentSessionServiceTest {
 
         val result =
             service.restart(
-                RestartAgentSessionRequest(
+                RestartAgentSessionInput(
                     workspaceId = ws.id,
                     sessionId = session.id,
                     expectedGeneration = 4,
@@ -68,7 +68,7 @@ class RestartAgentSessionServiceTest {
         every { sessions.findById(session.id) } returns session
         every { binding.restart(any()) } returns bound(ws, session)
 
-        service.restart(RestartAgentSessionRequest(workspaceId = ws.id, sessionId = session.id))
+        service.restart(RestartAgentSessionInput(workspaceId = ws.id, sessionId = session.id))
 
         verify { binding.restart(any()) }
     }
@@ -83,7 +83,7 @@ class RestartAgentSessionServiceTest {
         every { sessions.findById(session.id) } returns session
 
         assertThrows<IllegalArgumentException> {
-            service.restart(RestartAgentSessionRequest(workspaceId = ws.id, sessionId = session.id))
+            service.restart(RestartAgentSessionInput(workspaceId = ws.id, sessionId = session.id))
         }
     }
 
@@ -97,7 +97,7 @@ class RestartAgentSessionServiceTest {
         every { sessions.findById(session.id) } returns session
 
         assertThrows<IllegalArgumentException> {
-            service.restart(RestartAgentSessionRequest(workspaceId = ws.id, sessionId = session.id))
+            service.restart(RestartAgentSessionInput(workspaceId = ws.id, sessionId = session.id))
         }
     }
 
@@ -109,7 +109,7 @@ class RestartAgentSessionServiceTest {
         every { sessions.findById(session.id) } returns session
 
         assertThrows<IllegalArgumentException> {
-            service.restart(RestartAgentSessionRequest(workspaceId = ws.id, sessionId = session.id))
+            service.restart(RestartAgentSessionInput(workspaceId = ws.id, sessionId = session.id))
         }
     }
 
@@ -122,7 +122,7 @@ class RestartAgentSessionServiceTest {
 
         val result =
             service.restart(
-                RestartAgentSessionRequest(
+                RestartAgentSessionInput(
                     workspaceId = ws.id,
                     sessionId = session.id,
                     expectedGeneration = 8,

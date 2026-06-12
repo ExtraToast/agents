@@ -67,7 +67,7 @@ class RunnerSessionBindingServiceTest {
 
         val result =
             binder.start(
-                StartRunnerSessionBindingRequest(
+                StartRunnerSessionBindingInput(
                     workspaceId = ws.id,
                     sessionId = sessionId,
                     kind = WorkspaceAgentKind.CLAUDE,
@@ -129,7 +129,7 @@ class RunnerSessionBindingServiceTest {
 
         val result =
             binder.ensureBound(
-                EnsureRunnerSessionBoundRequest(
+                EnsureRunnerSessionBoundInput(
                     sessionId = session.id,
                     workspaceId = ws.id,
                 ),
@@ -173,7 +173,7 @@ class RunnerSessionBindingServiceTest {
             { created.captured.bindGatewayAgent("abc12345", "native-1") }
 
         binder.start(
-            StartRunnerSessionBindingRequest(
+            StartRunnerSessionBindingInput(
                 workspaceId = ws.id,
                 sessionId = sessionId,
                 kind = WorkspaceAgentKind.CLAUDE,
@@ -234,7 +234,7 @@ class RunnerSessionBindingServiceTest {
 
         val result =
             binder.restart(
-                RestartRunnerSessionBindingRequest(
+                RestartRunnerSessionBindingInput(
                     workspaceId = ws.id,
                     sessionId = session.id,
                     expectedGeneration = 6,

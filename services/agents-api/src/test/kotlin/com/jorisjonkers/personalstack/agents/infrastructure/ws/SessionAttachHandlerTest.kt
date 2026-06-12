@@ -2,7 +2,7 @@ package com.jorisjonkers.personalstack.agents.infrastructure.ws
 
 import com.jorisjonkers.personalstack.agents.application.idle.ConnectedClientTracker
 import com.jorisjonkers.personalstack.agents.application.idle.WorkspaceActivityTracker
-import com.jorisjonkers.personalstack.agents.application.sessionbinding.EnsureRunnerSessionBoundRequest
+import com.jorisjonkers.personalstack.agents.application.sessionbinding.EnsureRunnerSessionBoundInput
 import com.jorisjonkers.personalstack.agents.application.sessionbinding.RunnerProvisioningResult
 import com.jorisjonkers.personalstack.agents.application.sessionbinding.RunnerSessionBindingResult
 import com.jorisjonkers.personalstack.agents.application.sessionbinding.RunnerSessionBindingService
@@ -204,7 +204,7 @@ class SessionAttachHandlerTest {
         val rebound = agentSession(gatewayAgentId = "fresh")
         every { sessions.findById(sessionId) } returns agentSession(gatewayAgentId = null)
         every {
-            binding.ensureBound(EnsureRunnerSessionBoundRequest(sessionId = sessionId))
+            binding.ensureBound(EnsureRunnerSessionBoundInput(sessionId = sessionId))
         } returns bound(rebound)
         val uriSlot = slot<String>()
         every {
@@ -220,9 +220,9 @@ class SessionAttachHandlerTest {
     fun `unknown upstream agent clears stale binding and asks binder to rebind`() {
         val client = clientSession()
         every { client.close(any()) } just Runs
-        every { sessions.clearGatewayBindingIfGeneration(sessionId, 0) } returns true
+        every { sessions.clearGatewayBindingIfGeneration(sessionId, 0, any()) } returns true
         every {
-            binding.ensureBound(EnsureRunnerSessionBoundRequest(sessionId = sessionId, workspaceId = workspaceId))
+            binding.ensureBound(EnsureRunnerSessionBoundInput(sessionId = sessionId, workspaceId = workspaceId))
         } returns bound(agentSession(gatewayAgentId = "fresh"))
         val handlerSlot = slot<org.springframework.web.socket.WebSocketHandler>()
         every {
@@ -232,10 +232,10 @@ class SessionAttachHandlerTest {
         handler.afterConnectionEstablished(client)
         handlerSlot.captured.afterConnectionClosed(upstream, CloseStatus.BAD_DATA.withReason("unknown agent"))
 
-        verify { sessions.clearGatewayBindingIfGeneration(sessionId, 0) }
+        verify { sessions.clearGatewayBindingIfGeneration(sessionId, 0, any()) }
         verify {
             binding.ensureBound(
-                EnsureRunnerSessionBoundRequest(sessionId = sessionId, workspaceId = workspaceId),
+                EnsureRunnerSessionBoundInput(sessionId = sessionId, workspaceId = workspaceId),
             )
         }
         val closed = slot<CloseStatus>()

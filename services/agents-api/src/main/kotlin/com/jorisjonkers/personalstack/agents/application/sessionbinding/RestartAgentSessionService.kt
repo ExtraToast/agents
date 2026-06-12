@@ -17,7 +17,7 @@ class RestartAgentSessionService(
     private val binding: RunnerSessionBindingService,
     private val clock: Clock = Clock.systemUTC(),
 ) {
-    fun restart(request: RestartAgentSessionRequest): RunnerSessionBindingResult {
+    fun restart(request: RestartAgentSessionInput): RunnerSessionBindingResult {
         workspaces.findById(request.workspaceId)
             ?: throw NoSuchElementException("workspace not found: ${request.workspaceId.value}")
         val session =
@@ -38,7 +38,7 @@ class RestartAgentSessionService(
             return RunnerSessionBindingResult.Conflict(current = session)
         }
         return binding.restart(
-            RestartRunnerSessionBindingRequest(
+            RestartRunnerSessionBindingInput(
                 workspaceId = request.workspaceId,
                 sessionId = request.sessionId,
                 expectedGeneration = expectedGeneration,
@@ -64,7 +64,7 @@ class RestartAgentSessionService(
     }
 }
 
-data class RestartAgentSessionRequest(
+data class RestartAgentSessionInput(
     val workspaceId: WorkspaceId,
     val sessionId: WorkspaceAgentSessionId,
     val expectedGeneration: Long? = null,

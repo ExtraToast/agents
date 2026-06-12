@@ -3,7 +3,7 @@ package com.jorisjonkers.personalstack.agents.application.command
 import com.jorisjonkers.personalstack.agents.application.sessionbinding.RunnerProvisioningResult
 import com.jorisjonkers.personalstack.agents.application.sessionbinding.RunnerSessionBindingResult
 import com.jorisjonkers.personalstack.agents.application.sessionbinding.RunnerSessionBindingService
-import com.jorisjonkers.personalstack.agents.application.sessionbinding.StartRunnerSessionBindingRequest
+import com.jorisjonkers.personalstack.agents.application.sessionbinding.StartRunnerSessionBindingInput
 import com.jorisjonkers.personalstack.agents.domain.model.Workspace
 import com.jorisjonkers.personalstack.agents.domain.model.WorkspaceAgentKind
 import com.jorisjonkers.personalstack.agents.domain.model.WorkspaceAgentSession
@@ -32,7 +32,7 @@ class StartAgentSessionCommandHandlerTest {
                 workspaceId = WorkspaceId.random(),
                 kind = WorkspaceAgentKind.CLAUDE,
             )
-        val request = slot<StartRunnerSessionBindingRequest>()
+        val request = slot<StartRunnerSessionBindingInput>()
         every { binding.start(capture(request)) } returns
             RunnerSessionBindingResult.Bound(
                 workspace = workspace(command.workspaceId),

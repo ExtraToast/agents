@@ -8,27 +8,27 @@ import com.jorisjonkers.personalstack.agents.domain.model.WorkspaceId
 import com.jorisjonkers.personalstack.agents.domain.port.AgentGatewayClient
 
 interface RunnerSessionBindingService {
-    fun start(request: StartRunnerSessionBindingRequest): RunnerSessionBindingResult
+    fun start(request: StartRunnerSessionBindingInput): RunnerSessionBindingResult
 
-    fun restart(request: RestartRunnerSessionBindingRequest): RunnerSessionBindingResult
+    fun restart(request: RestartRunnerSessionBindingInput): RunnerSessionBindingResult
 
-    fun ensureBound(request: EnsureRunnerSessionBoundRequest): RunnerSessionBindingResult
+    fun ensureBound(request: EnsureRunnerSessionBoundInput): RunnerSessionBindingResult
 }
 
-data class StartRunnerSessionBindingRequest(
+data class StartRunnerSessionBindingInput(
     val workspaceId: WorkspaceId,
     val sessionId: WorkspaceAgentSessionId,
     val kind: WorkspaceAgentKind,
 )
 
-data class RestartRunnerSessionBindingRequest(
+data class RestartRunnerSessionBindingInput(
     val workspaceId: WorkspaceId,
     val sessionId: WorkspaceAgentSessionId,
     val expectedGeneration: Long,
     val reason: String? = null,
 )
 
-data class EnsureRunnerSessionBoundRequest(
+data class EnsureRunnerSessionBoundInput(
     val sessionId: WorkspaceAgentSessionId,
     val workspaceId: WorkspaceId? = null,
 )

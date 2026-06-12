@@ -25,7 +25,7 @@ class RunnerSessionBinder(
 ) : RunnerSessionBindingService {
     private val log = LoggerFactory.getLogger(RunnerSessionBinder::class.java)
 
-    override fun start(request: StartRunnerSessionBindingRequest): RunnerSessionBindingResult {
+    override fun start(request: StartRunnerSessionBindingInput): RunnerSessionBindingResult {
         val workspace =
             workspaces.findById(request.workspaceId)
                 ?: throw NoSuchElementException("workspace not found: ${request.workspaceId.value}")
@@ -49,7 +49,7 @@ class RunnerSessionBinder(
 
     // Restart is a transactional guard chain where early conflicts are observable.
     @Suppress("LongMethod", "ReturnCount")
-    override fun restart(request: RestartRunnerSessionBindingRequest): RunnerSessionBindingResult {
+    override fun restart(request: RestartRunnerSessionBindingInput): RunnerSessionBindingResult {
         val session =
             sessions.findById(request.sessionId)
                 ?: return RunnerSessionBindingResult.Conflict(current = null)
@@ -88,7 +88,7 @@ class RunnerSessionBinder(
 
     // Binding recovery has explicit conflict exits to preserve caller semantics.
     @Suppress("LongMethod", "ReturnCount")
-    override fun ensureBound(request: EnsureRunnerSessionBoundRequest): RunnerSessionBindingResult {
+    override fun ensureBound(request: EnsureRunnerSessionBoundInput): RunnerSessionBindingResult {
         val session =
             sessions.findById(request.sessionId)
                 ?: return RunnerSessionBindingResult.Conflict(current = null)
