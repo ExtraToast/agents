@@ -285,6 +285,7 @@ class AgentSessionManagerTest {
     fun `trims a session log once it outgrows its disk cap`(
         @TempDir tmp: Path,
     ) {
+        val stable = "11111111-1111-1111-1111-111111111111"
         val props =
             GatewayProperties(
                 workspaceRoot = tmp.resolve("workspace").also { Files.createDirectories(it) }.toString(),
@@ -292,8 +293,6 @@ class AgentSessionManagerTest {
                     GatewayProperties.Tmux(
                         socketName = "agent-gw",
                         stateDir = tmp.toString(),
-                        logCapBytes = 64,
-                        logTrimIntervalSeconds = 1,
                     ),
                 cli = GatewayProperties.Cli(claude = "/c", codex = "/x"),
                 git = GatewayProperties.Git(deployKeyDir = "/x"),
@@ -304,12 +303,30 @@ class AgentSessionManagerTest {
                         trimIntervalSeconds = 1,
                     ),
             )
-        val mgr = AgentSessionManager(tmux, props)
+        val store = TranscriptStore(props)
+        val mgr = AgentSessionManager(tmux, props, store)
         try {
-            val s = mgr.spawn(AgentKind.SHELL)
-            Files.write(s.logFile, ByteArray(200) { 'x'.code.toByte() })
-            assertThat(Files.size(s.logFile)).isEqualTo(200L)
-            await().atMost(Duration.ofSeconds(5)).until { Files.size(s.logFile) == 0L }
+            val s = mgr.spawn(AgentKind.SHELL, stableSessionId = stable)
+            val firstSegment = store.activeSegmentPath(requireNotNull(s.stableSessionId))
+            val payload = ByteArray(96) { 'x'.code.toByte() }
+            assertThat(firstSegment).isEqualTo(s.logFile)
+
+            Files.write(firstSegment, payload)
+
+            await().atMost(Duration.ofSeconds(5)).until {
+                val current = mgr.get(s.id)
+                current != null &&
+                    current.logFile != firstSegment &&
+                    !Files.exists(firstSegment) &&
+                    store.recoverMetadata(stable).logicalStart == payload.size.toLong()
+            }
+            val current = requireNotNull(mgr.get(s.id))
+            val metadata = store.recoverMetadata(stable)
+            assertThat(current.logFile).isEqualTo(store.activeSegmentPath(stable))
+            assertThat(current.transcriptFile).isEqualTo(current.logFile)
+            assertThat(metadata.logicalStart).isEqualTo(payload.size.toLong())
+            assertThat(metadata.byteCount).isLessThanOrEqualTo(props.transcripts.capBytes)
+            assertThat(Files.size(current.logFile)).isLessThanOrEqualTo(props.transcripts.segmentBytes)
         } finally {
             mgr.shutdown()
         }
