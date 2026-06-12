@@ -16,6 +16,8 @@ import org.springframework.web.client.RestClient
  * verbs actually mean, so this client deliberately holds no logic of
  * its own beyond URI building and response mapping.
  */
+// One method per gateway endpoint keeps route parity visible in this adapter.
+@Suppress("TooManyFunctions")
 @Component
 class HttpAgentGatewayClient(
     private val restClient: RestClient,

@@ -43,7 +43,8 @@ class DurableSessionCleanupServiceTest {
     fun `sweep marks expired stopped and failed sessions cleanup pending`() {
         val stopped = session(status = WorkspaceAgentSessionStatus.STOPPED)
         val failed = session(status = WorkspaceAgentSessionStatus.FAILED)
-        every { sessions.findReadyForCleanup(now, runtime.durableSessionCleanupBatchSize) } returns listOf(stopped, failed)
+        every { sessions.findReadyForCleanup(now, runtime.durableSessionCleanupBatchSize) } returns
+            listOf(stopped, failed)
         every { sessions.markCleanupRequested(stopped.id, now) } returns true
         every { sessions.markCleanupRequested(failed.id, now) } returns true
         every { sessions.findCleanupRequested(runtime.durableSessionCleanupBatchSize) } returns emptyList()

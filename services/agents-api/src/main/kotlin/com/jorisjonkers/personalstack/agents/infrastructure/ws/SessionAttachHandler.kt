@@ -81,9 +81,10 @@ class SessionAttachHandler(
      * the resolution means we close the client WS with a labelled
      * status; the chain reads cleaner with explicit guards than
      * with a flattened let/Result alternative, so detekt's bounded-
-     * return rule is suppressed with intent.
+     * branch and return rules are suppressed with intent.
      */
-    @Suppress("ReturnCount")
+    // Explicit attach guards preserve the close reason for each failure.
+    @Suppress("CyclomaticComplexMethod", "LongMethod", "ReturnCount")
     private fun resolveAttach(clientSession: WebSocketSession): ResolvedAttach? {
         val sessionId =
             sessionIdOf(clientSession)

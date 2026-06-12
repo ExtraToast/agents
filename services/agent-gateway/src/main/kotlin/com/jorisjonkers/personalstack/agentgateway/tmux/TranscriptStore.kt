@@ -16,6 +16,8 @@ import kotlin.io.path.Path
 import kotlin.streams.toList
 
 @Component
+// Transcript metadata, leases, and segment paths share one lock namespace.
+@Suppress("LargeClass", "TooManyFunctions")
 class TranscriptStore(
     private val props: GatewayProperties,
 ) {
@@ -52,6 +54,8 @@ class TranscriptStore(
         }
     }
 
+    // Lease validation and atomic persistence are kept together under one lock.
+    @Suppress("LongMethod")
     fun acquireLease(
         stableSessionId: String,
         owner: String,
@@ -102,7 +106,10 @@ class TranscriptStore(
         return synchronized(lockFor(id)) {
             val existing = readLease(leaseFile(id)) ?: return null
             if (existing.token != lease.token) return null
-            val renewed = existing.copy(expiresAtMillis = clock.millis() + props.transcripts.leaseTtlSeconds * MILLIS_PER_SECOND)
+            val renewed =
+                existing.copy(
+                    expiresAtMillis = clock.millis() + props.transcripts.leaseTtlSeconds * MILLIS_PER_SECOND,
+                )
             writePropertiesAtomic(
                 leaseFile(id),
                 Properties().apply {
@@ -238,6 +245,8 @@ class TranscriptStore(
         }
     }
 
+    // Early exits map directly to cleanup safety gates.
+    @Suppress("ReturnCount")
     fun cleanup(stableSessionId: String): Boolean {
         val id = validateStableSessionId(stableSessionId)
         return synchronized(lockFor(id)) {
@@ -256,6 +265,8 @@ class TranscriptStore(
         }
     }
 
+    // The segment scan advances or stops at precise byte boundaries.
+    @Suppress("LoopWithTooManyJumpStatements")
     fun readRaw(
         stableSessionId: String,
         fromOffset: Long,

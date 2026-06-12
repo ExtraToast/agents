@@ -23,7 +23,8 @@ class StageAgentInputCommandHandler(
                     )
             ) {
                 is RunnerSessionBindingResult.Bound -> result
-                is RunnerSessionBindingResult.Conflict -> error("session generation conflict: ${command.sessionId.value}")
+                is RunnerSessionBindingResult.Conflict ->
+                    error("session generation conflict: ${command.sessionId.value}")
                 is RunnerSessionBindingResult.Unavailable -> error("agent runner unavailable: ${result.runnerStatus}")
             }
         return gateway.stageInput(current.workspace, current.gatewayAgent.id, command.content, command.name)

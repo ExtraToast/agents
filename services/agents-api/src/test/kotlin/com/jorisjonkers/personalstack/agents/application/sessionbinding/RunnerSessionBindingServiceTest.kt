@@ -87,7 +87,8 @@ class RunnerSessionBindingServiceTest {
             session(ws.id, gatewayAgentId = "stale-agent")
                 .copy(epoch = 4, generation = 2)
         val repointed = ws.withPodInfo("agent-runner-fresh001", "workspace-abcdef01", "http://fresh:8090")
-        every { sessions.findById(session.id) } returns session andThen session.beginGeneration(nextEpoch = 5).bindGatewayAgent("fresh")
+        every { sessions.findById(session.id) } returns session andThen
+            session.beginGeneration(nextEpoch = 5).bindGatewayAgent("fresh")
         every { workspaces.findById(ws.id) } returns ws
         every { gateway.isReady(any()) } returnsMany listOf(false, false, true)
         every {
@@ -191,7 +192,8 @@ class RunnerSessionBindingServiceTest {
             session(ws.id, gatewayAgentId = "old-agent")
                 .copy(epoch = 2, generation = 6)
         val repointed = ws.withPodInfo("agent-runner-fresh001", "workspace-abcdef01", "http://fresh:8090")
-        every { sessions.findById(session.id) } returns session andThen session.beginGeneration(nextEpoch = 3).bindGatewayAgent("fresh")
+        every { sessions.findById(session.id) } returns session andThen
+            session.beginGeneration(nextEpoch = 3).bindGatewayAgent("fresh")
         every { workspaces.findById(ws.id) } returns ws
         every {
             sessions.beginGeneration(

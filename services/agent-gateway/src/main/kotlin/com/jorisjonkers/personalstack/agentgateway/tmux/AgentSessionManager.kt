@@ -1,9 +1,12 @@
 package com.jorisjonkers.personalstack.agentgateway.tmux
 
 import com.jorisjonkers.personalstack.agentgateway.config.GatewayProperties
+import com.jorisjonkers.personalstack.agentgateway.process.ProcessFailedException
+import com.jorisjonkers.personalstack.agentgateway.process.ProcessTimeoutException
 import jakarta.annotation.PreDestroy
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
+import java.io.IOException
 import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.Path
@@ -83,6 +86,8 @@ class AgentSessionManager(
         }
     }
 
+    // Lease cleanup must stay adjacent to transcript and tmux startup ordering.
+    @Suppress("CyclomaticComplexMethod", "LongMethod")
     fun spawn(
         kind: AgentKind,
         workspacePath: String? = null,
@@ -93,7 +98,9 @@ class AgentSessionManager(
         val id = UUID.randomUUID().toString().substring(0, 8)
         val tmuxSession = "agent-$id"
         val cwd = workspacePath ?: props.workspaceRoot
-        val durableStableSessionId = stableSessionId?.let(transcriptStore::validateStableSessionId) ?: UUID.randomUUID().toString()
+        val durableStableSessionId =
+            stableSessionId?.let(transcriptStore::validateStableSessionId)
+                ?: UUID.randomUUID().toString()
         val durableEpoch = epoch ?: 1
         require(durableEpoch > 0) { "epoch must be positive" }
         val lease = transcriptStore.acquireLease(durableStableSessionId, tmuxSession, durableEpoch)
@@ -104,7 +111,16 @@ class AgentSessionManager(
                     transcriptStore.appendContinuationDelimiter(durableStableSessionId, durableEpoch, continuation)
                 }
                 transcriptStore.activeSegmentPath(durableStableSessionId)
-            } catch (e: Exception) {
+            } catch (e: IOException) {
+                transcriptStore.releaseLease(lease)
+                throw e
+            } catch (e: NumberFormatException) {
+                transcriptStore.releaseLease(lease)
+                throw e
+            } catch (e: IllegalArgumentException) {
+                transcriptStore.releaseLease(lease)
+                throw e
+            } catch (e: IllegalStateException) {
                 transcriptStore.releaseLease(lease)
                 throw e
             }
@@ -113,7 +129,19 @@ class AgentSessionManager(
         try {
             tmux.newSession(tmuxSession, command, cwd)
             tmux.startPipeToFile(tmuxSession, logFile)
-        } catch (e: Exception) {
+        } catch (e: IOException) {
+            transcriptStore.releaseLease(lease)
+            throw e
+        } catch (e: InterruptedException) {
+            transcriptStore.releaseLease(lease)
+            throw e
+        } catch (e: ProcessFailedException) {
+            transcriptStore.releaseLease(lease)
+            throw e
+        } catch (e: ProcessTimeoutException) {
+            transcriptStore.releaseLease(lease)
+            throw e
+        } catch (e: SecurityException) {
             transcriptStore.releaseLease(lease)
             throw e
         }

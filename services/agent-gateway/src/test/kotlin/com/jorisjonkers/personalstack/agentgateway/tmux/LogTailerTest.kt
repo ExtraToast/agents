@@ -145,7 +145,11 @@ class LogTailerTest {
         val received = CopyOnWriteArrayList<TranscriptTextFrame>()
         TranscriptTailer(store, stable, startOffset = 0, intervalMs = 20, onText = received::add).use { tailer ->
             tailer.start()
-            Files.write(store.activeSegmentPath(stable), byteArrayOf(0xE2.toByte(), 0x94.toByte()), StandardOpenOption.APPEND)
+            Files.write(
+                store.activeSegmentPath(stable),
+                byteArrayOf(0xE2.toByte(), 0x94.toByte()),
+                StandardOpenOption.APPEND,
+            )
             Thread.sleep(40)
             Files.write(store.activeSegmentPath(stable), byteArrayOf(0x80.toByte(), 0x41), StandardOpenOption.APPEND)
             await().atMost(Duration.ofSeconds(2)).until { received.joinToString("") { it.output } == "─A" }

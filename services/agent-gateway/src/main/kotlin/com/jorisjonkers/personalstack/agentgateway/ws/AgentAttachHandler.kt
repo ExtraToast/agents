@@ -91,6 +91,8 @@ class AgentAttachHandler(
         sendJson(session, mapOf("output" to text))
     }
 
+    // Durable attach sends control frames before starting the transcript tailer.
+    @Suppress("LongMethod")
     private fun attachDurable(
         session: WebSocketSession,
         stableSessionId: String,

@@ -6,6 +6,7 @@ private const val DEFAULT_LOG_CAP_BYTES = 8L * 1024 * 1024
 private const val DEFAULT_STAGED_INPUT_MAX_BYTES = 5L * 1024 * 1024
 private const val DEFAULT_TRANSCRIPT_SEGMENT_BYTES = 2L * 1024 * 1024
 private const val DEFAULT_TRANSCRIPT_CAP_BYTES = 64L * 1024 * 1024
+private const val DEFAULT_TRANSCRIPT_RETENTION_SECONDS = 7L * 24 * 60 * 60
 
 @ConfigurationProperties(prefix = "agent-gateway")
 data class GatewayProperties(
@@ -56,6 +57,6 @@ data class GatewayProperties(
         val capBytes: Long = DEFAULT_TRANSCRIPT_CAP_BYTES,
         val trimIntervalSeconds: Long = 30,
         val leaseTtlSeconds: Long = 120,
-        val retentionSeconds: Long = 7 * 24 * 60 * 60,
+        val retentionSeconds: Long = DEFAULT_TRANSCRIPT_RETENTION_SECONDS,
     )
 }

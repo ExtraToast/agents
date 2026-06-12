@@ -47,6 +47,8 @@ class RunnerSessionBinder(
         return spawnAndBind(ready.workspace, session, continuation = null, provisioning = ready.provisioning)
     }
 
+    // Restart is a transactional guard chain where early conflicts are observable.
+    @Suppress("LongMethod", "ReturnCount")
     override fun restart(request: RestartRunnerSessionBindingRequest): RunnerSessionBindingResult {
         val session =
             sessions.findById(request.sessionId)
@@ -84,6 +86,8 @@ class RunnerSessionBinder(
         )
     }
 
+    // Binding recovery has explicit conflict exits to preserve caller semantics.
+    @Suppress("LongMethod", "ReturnCount")
     override fun ensureBound(request: EnsureRunnerSessionBoundRequest): RunnerSessionBindingResult {
         val session =
             sessions.findById(request.sessionId)
@@ -97,7 +101,11 @@ class RunnerSessionBinder(
         }
 
         val gatewayAgentId = session.gatewayAgentId
-        if (session.status == WorkspaceAgentSessionStatus.RUNNING && gatewayAgentId != null && gateway.isReady(workspace)) {
+        if (
+            session.status == WorkspaceAgentSessionStatus.RUNNING &&
+            gatewayAgentId != null &&
+            gateway.isReady(workspace)
+        ) {
             return RunnerSessionBindingResult.Bound(
                 workspace = workspace,
                 session = session,
@@ -114,7 +122,10 @@ class RunnerSessionBinder(
             )
         }
 
-        require(session.status == WorkspaceAgentSessionStatus.RUNNING || session.status == WorkspaceAgentSessionStatus.STARTING) {
+        require(
+            session.status == WorkspaceAgentSessionStatus.RUNNING ||
+                session.status == WorkspaceAgentSessionStatus.STARTING,
+        ) {
             "session is not running: ${request.sessionId.value}"
         }
 
@@ -177,6 +188,8 @@ class RunnerSessionBinder(
         return forceProvisionAndWait(workspace)
     }
 
+    // Provisioning and readiness persistence share one failure boundary.
+    @Suppress("LongMethod")
     private fun forceProvisionAndWait(workspace: Workspace): RunnerReady {
         val handle =
             runCatching {
@@ -223,6 +236,8 @@ class RunnerSessionBinder(
         )
     }
 
+    // Retry logging and final unavailable mapping need the same last failure.
+    @Suppress("LongMethod")
     private fun spawnAgentWithRetry(
         workspace: Workspace,
         session: WorkspaceAgentSession,
