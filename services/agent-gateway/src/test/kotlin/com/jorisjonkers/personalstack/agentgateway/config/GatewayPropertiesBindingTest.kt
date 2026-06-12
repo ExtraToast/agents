@@ -3,25 +3,24 @@ package com.jorisjonkers.personalstack.agentgateway.config
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.boot.context.properties.bind.Binder
-import org.springframework.boot.context.properties.source.ConfigurationPropertySources
-import org.springframework.core.env.SystemEnvironmentPropertySource
+import org.springframework.boot.context.properties.source.MapConfigurationPropertySource
 
 class GatewayPropertiesBindingTest {
     @Test
     fun `runner identity binds from injected pod environment`() {
         val props =
-            bindEnvironment(
+            bind(
                 mapOf(
-                    "AGENT_GATEWAY_WORKSPACE_ROOT" to "/workspace",
-                    "AGENT_GATEWAY_TMUX_SOCKET_NAME" to "agent-gw",
-                    "AGENT_GATEWAY_TMUX_STATE_DIR" to "/tmp/agent-gateway",
-                    "AGENT_GATEWAY_CLI_CLAUDE" to "claude",
-                    "AGENT_GATEWAY_CLI_CODEX" to "codex",
-                    "AGENT_GATEWAY_GIT_DEPLOY_KEY_DIR" to "/var/run/secrets/agents/github-deploy-key",
-                    "AGENT_GATEWAY_RUNNER_SETUP_ID" to "gpu",
-                    "AGENT_GATEWAY_RUNNER_SETUP_VERSION" to "7",
-                    "AGENT_GATEWAY_RUNNER_SETUP_HASH" to "abc123",
-                    "AGENT_GATEWAY_RUNNER_GENERATION" to "42",
+                    "agent-gateway.workspace-root" to "/workspace",
+                    "agent-gateway.tmux.socket-name" to "agent-gw",
+                    "agent-gateway.tmux.state-dir" to "/tmp/agent-gateway",
+                    "agent-gateway.cli.claude" to "claude",
+                    "agent-gateway.cli.codex" to "codex",
+                    "agent-gateway.git.deploy-key-dir" to "/var/run/secrets/agents/github-deploy-key",
+                    "agent-gateway.runner.setup-id" to "gpu",
+                    "agent-gateway.runner.setup-version" to "7",
+                    "agent-gateway.runner.setup-hash" to "abc123",
+                    "agent-gateway.runner.generation" to "42",
                 ),
             )
 
@@ -31,12 +30,9 @@ class GatewayPropertiesBindingTest {
         assertThat(props.runner.generation).isEqualTo(42L)
     }
 
-    private fun bindEnvironment(properties: Map<String, Any>): GatewayProperties {
-        val source = SystemEnvironmentPropertySource("test-env", properties)
-        // from(...) is a platform-typed Iterable with nullable elements; drop the
-        // nulls so the Binder(Iterable<ConfigurationPropertySource>) overload resolves.
-        val sources = ConfigurationPropertySources.from(source).filterNotNull()
-        return Binder(sources)
+    private fun bind(properties: Map<String, String>): GatewayProperties {
+        val source = MapConfigurationPropertySource(properties)
+        return Binder(source)
             .bind("agent-gateway", GatewayProperties::class.java)
             .get()
     }
