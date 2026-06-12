@@ -114,7 +114,7 @@ class HeadlessJobManagerTest {
         val telemetry = RecordingTelemetry()
         val rawExitText = "result: ok from private run"
         val prompt = "summarize secret prompt"
-        val mgr = manager(tmp, { _, _ -> processOf(exitCode = 0, output = rawExitText) }, telemetry)
+        val mgr = manager(tmp, telemetry = telemetry) { _, _ -> processOf(exitCode = 0, output = rawExitText) }
 
         val job = mgr.launch(AgentKind.CLAUDE, prompt, workspacePath = tmp.resolve("workspace-a").toString())
 
@@ -169,7 +169,7 @@ class HeadlessJobManagerTest {
     ) {
         val telemetry = RecordingTelemetry()
         val rawExitText = "raw exit text with /private/workspace"
-        val mgr = manager(tmp, { _, _ -> processOf(exitCode = 17, output = rawExitText) }, telemetry)
+        val mgr = manager(tmp, telemetry = telemetry) { _, _ -> processOf(exitCode = 17, output = rawExitText) }
 
         val job = mgr.launch(AgentKind.CODEX, "prompt should not become a label")
 
@@ -202,11 +202,7 @@ class HeadlessJobManagerTest {
         val telemetry = RecordingTelemetry()
         val exceptionMessage = "cannot start in ${tmp.resolve("secret-workspace")}"
         val mgr =
-            manager(
-                tmp,
-                { _, _ -> throw IOException(exceptionMessage) },
-                telemetry,
-            )
+            manager(tmp, telemetry = telemetry) { _, _ -> throw IOException(exceptionMessage) }
 
         val job = mgr.launch(AgentKind.SHELL, "secret shell prompt")
 
@@ -236,7 +232,7 @@ class HeadlessJobManagerTest {
         @TempDir tmp: Path,
     ) {
         val telemetry = RecordingTelemetry()
-        val mgr = manager(tmp, { _, _ -> sleepingProcess() }, telemetry)
+        val mgr = manager(tmp, telemetry = telemetry) { _, _ -> sleepingProcess() }
 
         val job = mgr.launch(AgentKind.CLAUDE, "timeout prompt", timeoutSeconds = 0)
 
@@ -267,13 +263,9 @@ class HeadlessJobManagerTest {
         val telemetry = RecordingTelemetry()
         val started = CountDownLatch(1)
         val mgr =
-            manager(
-                tmp,
-                { _, _ ->
-                    sleepingProcess().also { started.countDown() }
-                },
-                telemetry,
-            )
+            manager(tmp, telemetry = telemetry) { _, _ ->
+                sleepingProcess().also { started.countDown() }
+            }
 
         val job = mgr.launch(AgentKind.CLAUDE, "cancel prompt")
         assertThat(started.await(3, TimeUnit.SECONDS)).isTrue()
