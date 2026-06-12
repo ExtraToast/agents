@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/ExtraToast/agents/compare/v0.2.1...v0.2.2) (2026-06-12)
+
+
+### Bug Fixes
+
+* build agents-ui multi-arch (amd64+arm64) ([#11](https://github.com/ExtraToast/agents/issues/11)) ([08b8a39](https://github.com/ExtraToast/agents/commit/08b8a39ef7a6fcf68c6008fa4f7d28d2bba8588c))
+
 ## [0.2.1](https://github.com/ExtraToast/agents/compare/v0.2.0...v0.2.1) (2026-06-11)
 
 
