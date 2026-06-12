@@ -42,7 +42,7 @@ class AgentSetupExceptionHandler {
                     type = URI.create("https://jorisjonkers.dev/errors/agent-setup-validation"),
                     title = "Agent setup validation failed",
                     status = HttpStatus.UNPROCESSABLE_ENTITY.value(),
-                    detail = "Agent setup target is not valid for this workspace or session.",
+                    detail = "Agent setup validation failed.",
                     instance = path?.let(URI::create),
                     errors = ex.result.issues.map { it.redactedFieldError() },
                     traceId = traceId,
