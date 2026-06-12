@@ -12,6 +12,7 @@ import com.jorisjonkers.personalstack.agents.application.query.ListWorkspacesQue
 import com.jorisjonkers.personalstack.agents.application.query.ProjectQueryService
 import com.jorisjonkers.personalstack.agents.application.query.RepositoryQueryService
 import com.jorisjonkers.personalstack.agents.application.setup.SetupGuideService
+import com.jorisjonkers.personalstack.agents.application.sessionbinding.RestartAgentSessionService
 import com.jorisjonkers.personalstack.agents.config.OpenApiConfig
 import com.jorisjonkers.personalstack.agents.domain.port.AgentGatewayClient
 import com.jorisjonkers.personalstack.agents.domain.port.GithubLinkRepository
@@ -166,6 +167,9 @@ class OpenApiSpecExportTest {
 
         @Bean
         fun repositoryVerificationService(): RepositoryVerificationService = mockk(relaxed = true)
+
+        @Bean
+        fun restartAgentSessionService(): RestartAgentSessionService = mockk(relaxed = true)
 
         @Bean
         fun runnerMaintenanceService(): RunnerMaintenanceService = mockk(relaxed = true)

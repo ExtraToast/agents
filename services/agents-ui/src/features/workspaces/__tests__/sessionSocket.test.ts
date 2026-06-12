@@ -71,6 +71,7 @@ describe('sessionSocket', () => {
     sock = attachSessionSocket({ sessionId: 's1', onOutput: () => {} })
     expect(MockWebSocket.instances).toHaveLength(1)
     expect(latest().url).toContain('/api/v1/ws/sessions/s1/attach')
+    expect(latest().url).not.toContain('?')
   })
 
   it('queues input typed before open and flushes it once open', () => {
@@ -89,6 +90,62 @@ describe('sessionSocket', () => {
     latest().message(JSON.stringify({ other: 'x' }))
     latest().message('not-json')
     expect(out).toEqual(['hello'])
+  })
+
+  it('fires control callbacks and resumes reconnects from the last epoch offset', () => {
+    const control = vi.fn()
+    sock = attachSessionSocket({ sessionId: 's1', onOutput: () => {}, onControl: control })
+    latest().open()
+    latest().message(JSON.stringify({ epoch: 7, snapshot: true }))
+    latest().message(JSON.stringify({ output: 'hello', off: 12 }))
+
+    expect(control).toHaveBeenCalledWith(7, true)
+
+    latest().serverClose()
+    vi.advanceTimersByTime(600)
+
+    expect(MockWebSocket.instances).toHaveLength(2)
+    expect(latest().url).toContain('/api/v1/ws/sessions/s1/attach?')
+    expect(latest().url).toContain('epoch=7')
+    expect(latest().url).toContain('offset=12')
+  })
+
+  it('updates the reconnect cursor from cursor frames and ignores empty cursor frames', () => {
+    sock = attachSessionSocket({ sessionId: 's1', onOutput: () => {} })
+    latest().open()
+    latest().message(JSON.stringify({ epoch: 3, snapshot: true }))
+    latest().message(JSON.stringify({ cursor: { off: 9 } }))
+    latest().message(JSON.stringify({ cursor: {} }))
+
+    latest().serverClose()
+    vi.advanceTimersByTime(600)
+
+    expect(latest().url).toContain('epoch=3')
+    expect(latest().url).toContain('offset=9')
+  })
+
+  it('omits the reconnect cursor after a stale epoch snapshot until a new offset arrives', () => {
+    sock = attachSessionSocket({ sessionId: 's1', onOutput: () => {} })
+    latest().open()
+    latest().message(JSON.stringify({ epoch: 1, snapshot: true }))
+    latest().message(JSON.stringify({ output: 'old', off: 10 }))
+    latest().serverClose()
+    vi.advanceTimersByTime(600)
+
+    latest().open()
+    latest().message(JSON.stringify({ epoch: 2, snapshot: true }))
+    latest().serverClose()
+    vi.advanceTimersByTime(600)
+
+    expect(latest().url).not.toContain('?')
+
+    latest().open()
+    latest().message(JSON.stringify({ output: 'new', off: 4 }))
+    latest().serverClose()
+    vi.advanceTimersByTime(600)
+
+    expect(latest().url).toContain('epoch=2')
+    expect(latest().url).toContain('offset=4')
   })
 
   it('reconnects after an unexpected close and fires onReopen on the new open', () => {

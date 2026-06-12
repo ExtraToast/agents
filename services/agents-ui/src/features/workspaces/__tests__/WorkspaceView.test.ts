@@ -230,8 +230,8 @@ describe('workspaceView terminal persistence', () => {
     expect(term.dispose).toHaveBeenCalledTimes(1)
   })
 
-  it('stages large text then sends only a pointer prompt to the active session', async () => {
-    getWorkspace.mockResolvedValue(detail([fakeSession({ id: 'sess-a', gatewayAgentId: 'abc12345' })]))
+  it('stages large text for a running session without requiring a gateway binding', async () => {
+    getWorkspace.mockResolvedValue(detail([fakeSession({ id: 'sess-a', gatewayAgentId: null })]))
     stageInput.mockResolvedValue({
       path: '/workspace/.agent-inputs/20260604-source.txt',
       bytes: 14,
@@ -283,14 +283,14 @@ describe('workspaceView terminal persistence', () => {
   })
 
   for (const status of ['STOPPED', 'FAILED'] as const) {
-    it(`hides ${status.toLowerCase()} sessions from the top tab strip`, async () => {
+    it(`keeps retained ${status.toLowerCase()} sessions in the top tab strip without mounting a terminal`, async () => {
       getWorkspace.mockResolvedValue(detail([fakeSession({ id: 'sess-a' }), fakeSession({ id: 'sess-b', status })]))
 
       const wrapper = await mountView()
       const sessionStrip = wrapper.get('[data-testid="workspace-session-strip"]')
 
       expect(sessionStrip.find('[data-testid="session-tab-sess-a"]').exists()).toBe(true)
-      expect(sessionStrip.find('[data-testid="session-tab-sess-b"]').exists()).toBe(false)
+      expect(sessionStrip.find('[data-testid="session-tab-sess-b"]').exists()).toBe(true)
       expect(wrapper.findAll('[data-testid="session-terminal"]').length).toBe(1)
     })
   }
@@ -300,7 +300,8 @@ describe('workspaceView terminal persistence', () => {
 
     const wrapper = await mountView()
 
-    expect(wrapper.get('[data-testid="workspace-session-strip"]').text()).toContain('No sessions yet.')
+    expect(wrapper.find('[data-testid="session-tab-sess-a"]').exists()).toBe(true)
+    expect(wrapper.findAll('[data-testid="session-terminal"]').length).toBe(0)
     expect(wrapper.text()).toContain('Start an agent from the top bar.')
     expect(wrapper.get('[data-testid="stage-input-open"]').attributes('disabled')).toBeDefined()
   })
@@ -368,7 +369,7 @@ describe('workspaceView terminal persistence', () => {
     )
   })
 
-  it('sends the split command to the active running session', async () => {
+  it('sends the split command to the active running session without requiring a gateway binding', async () => {
     const primary = fakeWorkspaceRepository({ id: 'repo-primary', name: 'primary', isPrimary: true })
     const destination = fakeWorkspaceRepository({
       id: 'repo-dest',
@@ -376,7 +377,7 @@ describe('workspaceView terminal persistence', () => {
       repoUrl: 'git@github.com:owner/split-dest.git',
     })
     getWorkspace.mockResolvedValue(
-      detail([fakeSession({ id: 'sess-a', gatewayAgentId: 'abc12345' })], { repositories: [primary, destination] }),
+      detail([fakeSession({ id: 'sess-a', gatewayAgentId: null })], { repositories: [primary, destination] }),
     )
 
     const wrapper = await mountView()

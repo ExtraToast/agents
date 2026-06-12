@@ -1,0 +1,31 @@
+package com.jorisjonkers.personalstack.agents.application.command
+
+import com.jorisjonkers.personalstack.agents.application.sessionbinding.EnsureRunnerSessionBoundRequest
+import com.jorisjonkers.personalstack.agents.application.sessionbinding.RunnerSessionBindingResult
+import com.jorisjonkers.personalstack.agents.application.sessionbinding.RunnerSessionBindingService
+import com.jorisjonkers.personalstack.agents.domain.port.AgentGatewayClient
+import org.springframework.stereotype.Component
+
+@Component
+class StageAgentInputCommandHandler(
+    private val binding: RunnerSessionBindingService,
+    private val gateway: AgentGatewayClient,
+) {
+    fun handle(command: StageAgentInputCommand): AgentGatewayClient.StagedInput {
+        val current =
+            when (
+                val result =
+                    binding.ensureBound(
+                        EnsureRunnerSessionBoundRequest(
+                            sessionId = command.sessionId,
+                            workspaceId = command.workspaceId,
+                        ),
+                    )
+            ) {
+                is RunnerSessionBindingResult.Bound -> result
+                is RunnerSessionBindingResult.Conflict -> error("session generation conflict: ${command.sessionId.value}")
+                is RunnerSessionBindingResult.Unavailable -> error("agent runner unavailable: ${result.runnerStatus}")
+            }
+        return gateway.stageInput(current.workspace, current.gatewayAgent.id, command.content, command.name)
+    }
+}

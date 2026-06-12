@@ -1,4 +1,4 @@
-import type { AgentKind, StagedInput, Turn, Workspace, WorkspaceDetail } from '../types'
+import type { AgentKind, RestartSessionResponse, StagedInput, Turn, Workspace, WorkspaceDetail } from '../types'
 import { ApiError, useApiWithAuth } from '@/lib/vueWebCommons'
 
 function getApi(): ReturnType<typeof useApiWithAuth> {
@@ -102,6 +102,15 @@ export async function startSession(
 
 export async function stopSession(workspaceId: string, sessionId: string): Promise<void> {
   return getApi().del(`/workspaces/${workspaceId}/sessions/${sessionId}`)
+}
+
+export async function restartSession(
+  workspaceId: string,
+  sessionId: string,
+  expectedGeneration?: number,
+): Promise<RestartSessionResponse> {
+  const body = expectedGeneration === undefined ? {} : { expectedGeneration }
+  return getApi().post<RestartSessionResponse>(`/workspaces/${workspaceId}/sessions/${sessionId}/restart`, body)
 }
 
 export async function getTurns(workspaceId: string, sessionId: string): Promise<Turn[]> {

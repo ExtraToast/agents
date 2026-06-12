@@ -187,6 +187,50 @@
         }
       }
     },
+    "/api/v1/workspaces/{workspaceId}/sessions/{sessionId}/restart" : {
+      "post" : {
+        "tags" : [ "agent-session-controller" ],
+        "operationId" : "restart",
+        "parameters" : [ {
+          "name" : "workspaceId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "sessionId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RestartAgentSessionHttpRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RestartAgentSessionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/workspaces/{workspaceId}/git/open-pr" : {
       "post" : {
         "tags" : [ "git-controller" ],
@@ -1333,6 +1377,36 @@
           }
         },
         "required" : [ "enter", "text" ]
+      },
+      "RestartAgentSessionHttpRequest" : {
+        "type" : "object",
+        "properties" : {
+          "expectedGeneration" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          }
+        }
+      },
+      "RestartAgentSessionResponse" : {
+        "type" : "object",
+        "properties" : {
+          "sessionId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "epoch" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "generation" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "epoch", "generation", "sessionId", "status" ]
       },
       "OpenPrRequest" : {
         "type" : "object",

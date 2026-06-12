@@ -34,10 +34,9 @@ const isSidebarCollapsed = ref(false)
 // dropping out of this set (STOPPED/FAILED) unmounts its
 // SessionTerminal, which closes the socket and disposes xterm.
 const liveSessions = computed(() => store.sessions.filter((s) => s.status === 'STARTING' || s.status === 'RUNNING'))
-const activeLiveSession = computed(() => liveSessions.value.find((s) => s.id === store.activeSessionId) ?? null)
 const activeStageSession = computed(() => {
-  const session = activeLiveSession.value
-  return session?.status === 'RUNNING' && session.gatewayAgentId ? session : null
+  const session = store.sessions.find((s) => s.id === store.activeSessionId) ?? null
+  return session?.status === 'RUNNING' ? session : null
 })
 const agentKindLabels: Record<AgentKind, string> = {
   CLAUDE: 'Claude Code',
@@ -181,7 +180,7 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
       data-testid="workspace-session-strip"
     >
       <SessionTabs
-        :sessions="liveSessions"
+        :sessions="store.sessions"
         :active-id="store.activeSessionId"
         @select="store.selectSession"
         @stop="onStopSession"
@@ -247,7 +246,7 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
         >
           <h2 class="text-sm font-semibold">Tools</h2>
           <p id="stage-input-hint" class="sr-only">
-            Stage text is available when the active session is running and attached to a gateway.
+            Stage text is available when the active session is running.
           </p>
           <button
             type="button"

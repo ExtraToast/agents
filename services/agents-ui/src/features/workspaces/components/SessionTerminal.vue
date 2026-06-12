@@ -46,10 +46,9 @@ onMounted(() => {
   socket = attachSessionSocket({
     sessionId: props.sessionId,
     onOutput: (text) => term?.write(text),
-    // A reconnect re-attaches and the gateway resends a current-screen
-    // snapshot; reset first so it repaints cleanly instead of stacking
-    // under the stale buffer.
-    onReopen: () => term?.reset(),
+    onControl: (_epoch, snapshot) => {
+      if (snapshot) term?.clear()
+    },
   })
   // Only the visible terminal keeps its socket warm; a hidden tab is
   // allowed to lapse so it does not pin its runner against the idle

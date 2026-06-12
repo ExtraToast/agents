@@ -93,6 +93,13 @@ export interface StagedInput {
   name: string
 }
 
+export interface RestartSessionResponse {
+  sessionId: string
+  epoch: number
+  generation: number
+  status: AgentSessionStatus
+}
+
 export interface WorkspaceDetail {
   workspace: WorkspaceDetailWorkspace
   sessions: AgentSession[]

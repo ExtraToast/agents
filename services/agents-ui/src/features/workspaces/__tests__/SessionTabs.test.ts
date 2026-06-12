@@ -99,4 +99,19 @@ describe('sessionTabs', () => {
     expect(wrapper.get('[data-testid="session-tabs-list"]').classes()).toContain('overflow-x-auto')
     expect(wrapper.findAll('li').every((li) => li.classes().includes('shrink-0'))).toBe(true)
   })
+
+  it('renders retained stopped and failed sessions without stop controls', () => {
+    const sessions = [
+      fakeSession({ id: 'sess-stopped', status: 'STOPPED' }),
+      fakeSession({ id: 'sess-failed', status: 'FAILED' }),
+    ]
+    const wrapper = mount(SessionTabs, {
+      props: { sessions, activeId: 'sess-stopped' },
+    })
+
+    expect(wrapper.find('[data-testid="session-tab-sess-stopped"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="session-tab-sess-failed"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="session-tab-stop-sess-stopped"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="session-tab-stop-sess-failed"]').exists()).toBe(false)
+  })
 })
