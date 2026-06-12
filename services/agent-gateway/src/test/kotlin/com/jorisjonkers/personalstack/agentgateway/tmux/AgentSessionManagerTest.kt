@@ -309,10 +309,7 @@ class AgentSessionManagerTest {
             val s = mgr.spawn(AgentKind.SHELL)
             Files.write(s.logFile, ByteArray(200) { 'x'.code.toByte() })
             assertThat(Files.size(s.logFile)).isEqualTo(200L)
-            await().atMost(Duration.ofSeconds(5)).until {
-                verify(exactly = 2) { tmux.startPipeToFile(s.tmuxSession, any()) }
-                true
-            }
+            await().atMost(Duration.ofSeconds(5)).until { Files.size(s.logFile) == 0L }
         } finally {
             mgr.shutdown()
         }
