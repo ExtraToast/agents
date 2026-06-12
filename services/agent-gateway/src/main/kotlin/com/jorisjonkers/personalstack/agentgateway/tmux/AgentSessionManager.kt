@@ -87,7 +87,7 @@ class AgentSessionManager(
     }
 
     // Lease cleanup must stay adjacent to transcript and tmux startup ordering.
-    @Suppress("CyclomaticComplexMethod", "LongMethod")
+    @Suppress("CyclomaticComplexMethod", "LongMethod", "ThrowsCount")
     fun spawn(
         kind: AgentKind,
         workspacePath: String? = null,
