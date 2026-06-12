@@ -21,8 +21,8 @@ import java.util.concurrent.TimeUnit
 class HeadlessJobManagerTest {
     private fun manager(
         tmp: Path,
-        processFactory: HeadlessJobManager.ProcessFactory,
         telemetry: AgentGatewayTelemetry = AgentGatewayTelemetry.NOOP,
+        processFactory: HeadlessJobManager.ProcessFactory,
     ): HeadlessJobManager {
         val props =
             GatewayProperties(

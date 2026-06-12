@@ -76,7 +76,7 @@ class StartHeadlessJobCommandHandlerTest {
         assertThat(saved.captured.runMode).isEqualTo(StartHeadlessJobCommandHandler.HEADLESS_RUN_MODE)
         assertThat(saved.captured.currentSetupId).isEqualTo(AgentSetupId("gpu"))
         assertThat(saved.captured.currentSetupVersion).isEqualTo(AgentSetupVersion(2))
-        assertThat(telemetry.operations.single()).satisfies { event: OperationTelemetry ->
+        telemetry.operations.single().let { event ->
             assertThat(event.operation).isEqualTo(OperationLabel.START_SESSION)
             assertThat(event.mode).isEqualTo(ModeLabel.HEADLESS)
             assertThat(event.outcome).isEqualTo(OutcomeLabel.SUCCESS)
@@ -115,7 +115,7 @@ class StartHeadlessJobCommandHandlerTest {
             }
 
         assertThat(ex.runnerStatus).contains("agent-runner-abcdef01")
-        assertThat(telemetry.operations.single()).satisfies { event: OperationTelemetry ->
+        telemetry.operations.single().let { event ->
             assertThat(event.outcome).isEqualTo(OutcomeLabel.FAILURE)
             assertThat(event.reason).isEqualTo(FailureReasonLabel.UPSTREAM_UNAVAILABLE)
             assertThat(event.labels()).doesNotContain(
@@ -156,7 +156,7 @@ class StartHeadlessJobCommandHandlerTest {
             )
         }
 
-        assertThat(telemetry.operations.single()).satisfies { event: OperationTelemetry ->
+        telemetry.operations.single().let { event ->
             assertThat(event.outcome).isEqualTo(OutcomeLabel.FAILURE)
             assertThat(event.reason).isEqualTo(FailureReasonLabel.UPSTREAM_UNAVAILABLE)
             assertThat(event.labels()).doesNotContain(
@@ -204,7 +204,7 @@ class StartHeadlessJobCommandHandlerTest {
             }
 
         assertThat(ex.message).isEqualTo(exceptionMessage)
-        assertThat(telemetry.operations.single()).satisfies { event: OperationTelemetry ->
+        telemetry.operations.single().let { event ->
             assertThat(event.outcome).isEqualTo(OutcomeLabel.FAILURE)
             assertThat(event.reason).isEqualTo(FailureReasonLabel.OTHER)
             assertThat(event.labels()).doesNotContain(
@@ -234,7 +234,7 @@ class StartHeadlessJobCommandHandlerTest {
                 )
             }
         assertThat(ex.message).contains(missingId.value.toString())
-        assertThat(telemetry.operations.single()).satisfies { event: OperationTelemetry ->
+        telemetry.operations.single().let { event ->
             assertThat(event.outcome).isEqualTo(OutcomeLabel.FAILURE)
             assertThat(event.reason).isEqualTo(FailureReasonLabel.NOT_FOUND)
             assertThat(event.labels()).doesNotContain(missingId.value.toString(), ex.message.orEmpty())

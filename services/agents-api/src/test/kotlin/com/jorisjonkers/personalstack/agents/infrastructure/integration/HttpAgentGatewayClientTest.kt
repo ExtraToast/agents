@@ -201,7 +201,7 @@ class HttpAgentGatewayClientTest {
 
         assertThat(job.id).isEqualTo(jobId)
         assertThat(job.output).isEqualTo(outputFile)
-        assertThat(telemetry.operations.single()).satisfies { event ->
+        telemetry.operations.single().let { event ->
             assertThat(event.operation).isEqualTo(OperationLabel.OTHER)
             assertThat(event.mode).isEqualTo(ModeLabel.HEADLESS)
             assertThat(event.outcome).isEqualTo(OutcomeLabel.SUCCESS)
