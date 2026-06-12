@@ -39,8 +39,7 @@ class AgentSessionControllerTest {
         MockMvcBuilders
             .standaloneSetup(
                 AgentSessionController(commandBus, turnHistory, sessions, workspaces, gateway, restartAgentSession),
-            )
-            .build()
+            ).build()
 
     private val workspaceId = WorkspaceId.random()
     private val sessionId = WorkspaceAgentSessionId.random()

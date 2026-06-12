@@ -327,7 +327,11 @@ class TranscriptStore(
     }
 
     private fun segmentIndex(path: Path): Int =
-        SEGMENT_FILE.matchEntire(path.fileName.toString())?.groupValues?.get(1)?.toInt()
+        SEGMENT_FILE
+            .matchEntire(path.fileName.toString())
+            ?.groupValues
+            ?.get(1)
+            ?.toInt()
             ?: error("invalid segment file: $path")
 
     private fun readMetadata(stableSessionId: String): TranscriptMetadata? {
@@ -343,7 +347,8 @@ class TranscriptStore(
             activeSegment = p.getProperty("activeSegment", "0").toInt(),
             sealed = p.getProperty("sealed", "false").toBoolean(),
             delimiterEpochs =
-                p.getProperty("delimiterEpochs", "")
+                p
+                    .getProperty("delimiterEpochs", "")
                     .split(',')
                     .mapNotNull { it.trim().takeIf(String::isNotBlank)?.toLong() }
                     .toSet(),
@@ -399,8 +404,7 @@ class TranscriptStore(
         }
     }
 
-    private fun lockFor(stableSessionId: String): Any =
-        locks.computeIfAbsent(stableSessionId) { Any() }
+    private fun lockFor(stableSessionId: String): Any = locks.computeIfAbsent(stableSessionId) { Any() }
 
     private fun InputStream.skipFully(bytes: Long) {
         var remaining = bytes

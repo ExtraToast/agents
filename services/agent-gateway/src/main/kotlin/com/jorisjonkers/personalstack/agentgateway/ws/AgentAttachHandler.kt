@@ -163,8 +163,7 @@ class AgentAttachHandler(
         return raw.toLongOrNull()
     }
 
-    private fun decodeQuery(value: String): String =
-        URLDecoder.decode(value, StandardCharsets.UTF_8)
+    private fun decodeQuery(value: String): String = URLDecoder.decode(value, StandardCharsets.UTF_8)
 
     override fun handleTextMessage(
         session: WebSocketSession,

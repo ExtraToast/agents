@@ -11,8 +11,8 @@ import com.jorisjonkers.personalstack.agents.application.query.GetWorkspaceQuery
 import com.jorisjonkers.personalstack.agents.application.query.ListWorkspacesQueryService
 import com.jorisjonkers.personalstack.agents.application.query.ProjectQueryService
 import com.jorisjonkers.personalstack.agents.application.query.RepositoryQueryService
-import com.jorisjonkers.personalstack.agents.application.setup.SetupGuideService
 import com.jorisjonkers.personalstack.agents.application.sessionbinding.RestartAgentSessionService
+import com.jorisjonkers.personalstack.agents.application.setup.SetupGuideService
 import com.jorisjonkers.personalstack.agents.config.OpenApiConfig
 import com.jorisjonkers.personalstack.agents.domain.port.AgentGatewayClient
 import com.jorisjonkers.personalstack.agents.domain.port.GithubLinkRepository

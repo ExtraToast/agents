@@ -60,22 +60,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/workspaces/{workspaceId}/sessions/{sessionId}/input": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["send"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/workspaces/{workspaceId}/sessions/{sessionId}/restart": {
         parameters: {
             query?: never;
@@ -86,6 +70,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["restart"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/sessions/{sessionId}/input": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["send"];
         delete?: never;
         options?: never;
         head?: never;
@@ -552,10 +552,6 @@ export interface components {
             bytes: number;
             name: string;
         };
-        SendUserInputRequest: {
-            text: string;
-            enter: boolean;
-        };
         RestartAgentSessionHttpRequest: {
             /** Format: int64 */
             expectedGeneration?: number | null;
@@ -568,6 +564,10 @@ export interface components {
             /** Format: int64 */
             generation: number;
             status: string;
+        };
+        SendUserInputRequest: {
+            text: string;
+            enter: boolean;
         };
         OpenPrRequest: {
             repoDir: string;
@@ -898,31 +898,6 @@ export interface operations {
             };
         };
     };
-    send: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                workspaceId: string;
-                sessionId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SendUserInputRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
     restart: {
         parameters: {
             query?: never;
@@ -947,6 +922,31 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["RestartAgentSessionResponse"];
                 };
+            };
+        };
+    };
+    send: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendUserInputRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

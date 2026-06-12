@@ -15,8 +15,9 @@ import org.springframework.web.client.RestClient
  * one HTTP call; the gateway is the sole authority over what those
  * verbs actually mean, so this client deliberately holds no logic of
  * its own beyond URI building and response mapping.
+ *
+ * One method per gateway endpoint keeps route parity visible in this adapter.
  */
-// One method per gateway endpoint keeps route parity visible in this adapter.
 @Suppress("TooManyFunctions")
 @Component
 class HttpAgentGatewayClient(
@@ -116,8 +117,7 @@ class HttpAgentGatewayClient(
                         epoch = epoch,
                         continuation = continuation?.toBody(),
                     ),
-                )
-                .retrieve()
+                ).retrieve()
                 .body(GatewayAgentDto::class.java)
                 ?: error("empty response from gateway")
         return AgentGatewayClient.GatewayAgent(
@@ -310,8 +310,7 @@ class HttpAgentGatewayClient(
                         continuation = continuation?.toBody(),
                         timeoutSeconds = timeoutSeconds,
                     ),
-                )
-                .retrieve()
+                ).retrieve()
                 .body(HeadlessJobDto::class.java)
                 ?: error("empty response from gateway /agents/headless")
         return dto.toDomain()

@@ -111,8 +111,9 @@ class AgentSessionController(
                 throw AgentRunnerUnavailableException(
                     workspaceId = result.workspaceId,
                     runnerStatus = result.runnerStatus,
-                    retryAfterSeconds = result.retryAfterSeconds
-                        ?: AgentRunnerUnavailableException.DEFAULT_RETRY_AFTER_SECONDS,
+                    retryAfterSeconds =
+                        result.retryAfterSeconds
+                            ?: AgentRunnerUnavailableException.DEFAULT_RETRY_AFTER_SECONDS,
                 )
         }
     }

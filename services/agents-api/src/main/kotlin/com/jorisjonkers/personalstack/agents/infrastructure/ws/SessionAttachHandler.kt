@@ -82,8 +82,9 @@ class SessionAttachHandler(
      * status; the chain reads cleaner with explicit guards than
      * with a flattened let/Result alternative, so detekt's bounded-
      * branch and return rules are suppressed with intent.
+     *
+     * Explicit attach guards preserve the close reason for each failure.
      */
-    // Explicit attach guards preserve the close reason for each failure.
     @Suppress("CyclomaticComplexMethod", "LongMethod", "ReturnCount")
     private fun resolveAttach(clientSession: WebSocketSession): ResolvedAttach? {
         val sessionId =
@@ -235,8 +236,7 @@ class SessionAttachHandler(
     private fun decodeQuery(value: String): String? =
         runCatching { URLDecoder.decode(value, StandardCharsets.UTF_8) }.getOrNull()
 
-    private fun nonNegativeLong(value: String?): Long? =
-        value?.toLongOrNull()?.takeIf { it >= 0 }
+    private fun nonNegativeLong(value: String?): Long? = value?.toLongOrNull()?.takeIf { it >= 0 }
 
     private fun upstreamUri(
         gatewayBase: String,

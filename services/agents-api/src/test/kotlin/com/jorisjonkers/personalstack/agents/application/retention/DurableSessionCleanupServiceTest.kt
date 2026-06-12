@@ -109,11 +109,12 @@ class DurableSessionCleanupServiceTest {
         every { gateway.isReady(workspace) } returns false
         every {
             orchestrator.provision(workspace)
-        } returns AgentRunnerOrchestrator.RunnerHandle(
-            podName = "agent-runner-new",
-            pvcName = "workspace-pvc",
-            gatewayEndpoint = "http://new:8090",
-        )
+        } returns
+            AgentRunnerOrchestrator.RunnerHandle(
+                podName = "agent-runner-new",
+                pvcName = "workspace-pvc",
+                gatewayEndpoint = "http://new:8090",
+            )
         every { workspaces.save(capture(saved)) } answers { saved.captured }
         every { gateway.isReady(match { it.gatewayEndpoint == "http://new:8090" }) } returns true
         every { sessions.delete(pending.id) } returns Unit
