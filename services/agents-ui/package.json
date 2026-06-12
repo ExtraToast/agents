@@ -19,7 +19,7 @@
     "contract:check": "openapi-typescript ../agents-api/openapi.json -o /tmp/agents-ui-generated.ts && node scripts/contract-banner.mjs /tmp/agents-ui-generated.ts && diff -u src/api/generated.ts /tmp/agents-ui-generated.ts"
   },
   "dependencies": {
-    "@extratoast/vue-web-commons": "0.1.1",
+    "@extratoast/vue-web-commons": "^0.3.0",
     "@grafana/faro-web-sdk": "^2.7.1",
     "@grafana/faro-web-tracing": "^2.7.1",
     "@xterm/addon-fit": "0.11.0",

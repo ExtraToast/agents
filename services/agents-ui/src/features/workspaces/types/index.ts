@@ -72,7 +72,11 @@ export interface AgentSession {
   workspaceId: string
   kind: AgentKind
   gatewayAgentId: string | null
+  epoch?: number
+  generation?: number
+  gatewayBoundAt?: string | null
   status: AgentSessionStatus
+  idle?: boolean
   createdAt: string
   updatedAt: string
 }

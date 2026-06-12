@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '@/lib/vueWebCommons'
-import { startSession } from '../services/workspaceService'
+import { restartSession, startSession } from '../services/workspaceService'
 
 const post = vi.fn()
 vi.mock('@/lib/vueWebCommons', async (importOriginal) => {
@@ -57,5 +57,27 @@ describe('startSession cold-start retry', () => {
     post.mockRejectedValueOnce(err(500))
     await expect(startSession('ws-1', 'CLAUDE')).rejects.toBeInstanceOf(ApiError)
     expect(post).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('restartSession request body', () => {
+  beforeEach(() => {
+    post.mockReset()
+  })
+
+  it('sends an empty body when no expected generation is available', async () => {
+    post.mockResolvedValueOnce({ sessionId: 'sess-1', epoch: 1, generation: 0, status: 'RUNNING' })
+
+    await restartSession('ws-1', 'sess-1')
+
+    expect(post).toHaveBeenCalledWith('/workspaces/ws-1/sessions/sess-1/restart', {})
+  })
+
+  it('sends the expected generation when provided', async () => {
+    post.mockResolvedValueOnce({ sessionId: 'sess-1', epoch: 2, generation: 7, status: 'RUNNING' })
+
+    await restartSession('ws-1', 'sess-1', 6)
+
+    expect(post).toHaveBeenCalledWith('/workspaces/ws-1/sessions/sess-1/restart', { expectedGeneration: 6 })
   })
 })

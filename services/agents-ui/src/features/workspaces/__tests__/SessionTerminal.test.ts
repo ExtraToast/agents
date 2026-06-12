@@ -1,4 +1,5 @@
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
+import { nextTick } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import SessionTerminal from '../components/SessionTerminal.vue'
 import { attachSessionSocket } from '../services/sessionSocket'
@@ -8,6 +9,8 @@ import { attachSessionSocket } from '../services/sessionSocket'
 // handlers and exposes the write spy so both directions can be asserted.
 let onDataCb: ((data: string) => void) | undefined
 let onResizeCb: ((e: { cols: number; rows: number }) => void) | undefined
+let onSelectionChangeCb: (() => void) | undefined
+let customKeyHandler: ((event: KeyboardEvent) => boolean) | undefined
 const term = {
   write: vi.fn(),
   loadAddon: vi.fn(),
@@ -18,6 +21,14 @@ const term = {
   onResize: vi.fn((cb: (e: { cols: number; rows: number }) => void) => {
     onResizeCb = cb
   }),
+  onSelectionChange: vi.fn((cb: () => void) => {
+    onSelectionChangeCb = cb
+  }),
+  attachCustomKeyEventHandler: vi.fn((cb: (event: KeyboardEvent) => boolean) => {
+    customKeyHandler = cb
+  }),
+  hasSelection: vi.fn(() => false),
+  getSelection: vi.fn(() => ''),
   focus: vi.fn(),
   clear: vi.fn(),
   reset: vi.fn(),
@@ -31,6 +42,10 @@ vi.mock('@xterm/xterm', () => ({
     open = term.open
     onData = term.onData
     onResize = term.onResize
+    onSelectionChange = term.onSelectionChange
+    attachCustomKeyEventHandler = term.attachCustomKeyEventHandler
+    hasSelection = term.hasSelection
+    getSelection = term.getSelection
     focus = term.focus
     clear = term.clear
     reset = term.reset
@@ -59,29 +74,45 @@ const socket = {
 let capturedOnOutput: ((text: string) => void) | undefined
 let capturedOnReopen: (() => void) | undefined
 let capturedOnControl: ((epoch: number, snapshot: boolean) => void) | undefined
+let capturedOnReplayComplete: ((cursor: number | null) => void) | undefined
 vi.mock('../services/sessionSocket', () => ({
   attachSessionSocket: vi.fn((opts: {
     onOutput: (t: string) => void
     onControl?: (epoch: number, snapshot: boolean) => void
+    onReplayComplete?: (cursor: number | null) => void
     onReopen?: () => void
   }) => {
     capturedOnOutput = opts.onOutput
     capturedOnControl = opts.onControl
+    capturedOnReplayComplete = opts.onReplayComplete
     capturedOnReopen = opts.onReopen
     return socket
   }),
 }))
 
+const clipboard = {
+  writeText: vi.fn(async () => undefined),
+  readText: vi.fn(async () => 'pasted text'),
+}
+
 describe('sessionTerminal', () => {
   beforeEach(() => {
     Object.values(term).forEach((m) => m.mockClear())
     Object.values(socket).forEach((m) => m.mockClear())
+    Object.values(clipboard).forEach((m) => m.mockClear())
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: clipboard,
+    })
     vi.mocked(attachSessionSocket).mockClear()
     capturedOnOutput = undefined
     capturedOnControl = undefined
+    capturedOnReplayComplete = undefined
     capturedOnReopen = undefined
     onDataCb = undefined
     onResizeCb = undefined
+    onSelectionChangeCb = undefined
+    customKeyHandler = undefined
     termOptions = undefined
   })
 
@@ -102,9 +133,16 @@ describe('sessionTerminal', () => {
 
   it('writes inbound output frames to the terminal', () => {
     mountTerminal()
-    expect(attachSessionSocket).toHaveBeenCalledWith(expect.objectContaining({ sessionId: 'sess-1' }))
+    expect(attachSessionSocket).toHaveBeenCalledWith(
+      expect.objectContaining({
+        onReplayComplete: expect.any(Function),
+        sessionId: 'sess-1',
+      }),
+    )
     capturedOnOutput?.('[31mhello[0m')
-    expect(term.write).toHaveBeenCalledWith('[31mhello[0m')
+    capturedOnOutput?.('--- restart delimiter from gateway ---\r\n')
+    expect(term.write).toHaveBeenNthCalledWith(1, '[31mhello[0m')
+    expect(term.write).toHaveBeenNthCalledWith(2, '--- restart delimiter from gateway ---\r\n')
   })
 
   it('forwards terminal keystrokes as input frames with enter=false', () => {
@@ -128,8 +166,9 @@ describe('sessionTerminal', () => {
     expect(term.dispose).toHaveBeenCalled()
   })
 
-  it('focuses the terminal when mounted active', () => {
+  it('focuses the terminal when mounted active', async () => {
     mountTerminal({ active: true })
+    await nextTick()
     expect(term.focus).toHaveBeenCalled()
   })
 
@@ -144,6 +183,7 @@ describe('sessionTerminal', () => {
     expect(term.focus).not.toHaveBeenCalled()
 
     await wrapper.setProps({ active: true })
+    await nextTick()
 
     expect(term.focus).toHaveBeenCalled()
     // The socket is attached once at mount; toggling active must not
@@ -195,5 +235,188 @@ describe('sessionTerminal', () => {
     // reach within minutes; the terminal must request far more. This is
     // browser memory only and does not affect the streaming backend.
     expect(termOptions?.scrollback).toBeGreaterThanOrEqual(50_000)
+  })
+
+  it('enables terminal selection hooks and right-click word selection', () => {
+    mountTerminal()
+
+    expect(termOptions?.rightClickSelectsWord).toBe(true)
+    expect(term.onSelectionChange).toHaveBeenCalledWith(expect.any(Function))
+  })
+
+  it('uses replay-complete to refit and focus the active terminal', async () => {
+    mountTerminal({ active: true })
+    await nextTick()
+    term.focus.mockClear()
+
+    capturedOnReplayComplete?.(23)
+    await nextTick()
+
+    expect(term.focus).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not focus an inactive terminal on replay complete', async () => {
+    mountTerminal({ active: false })
+
+    capturedOnReplayComplete?.(23)
+    await nextTick()
+
+    expect(term.focus).not.toHaveBeenCalled()
+  })
+
+  it('copies the current terminal selection when the Copy control is clicked', async () => {
+    const wrapper = mountTerminal({ active: true })
+    term.getSelection.mockReturnValue('selected text')
+
+    await wrapper.get('[data-testid="session-terminal-copy"]').trigger('click')
+    await flushPromises()
+
+    expect(clipboard.writeText).toHaveBeenCalledWith('selected text')
+  })
+
+  it('copies selected text when xterm reports a selection change', async () => {
+    mountTerminal({ active: true })
+    term.hasSelection.mockReturnValue(true)
+    term.getSelection.mockReturnValue('copy-on-select')
+
+    onSelectionChangeCb?.()
+    await flushPromises()
+
+    expect(clipboard.writeText).toHaveBeenCalledWith('copy-on-select')
+  })
+
+  it('handles Ctrl+C as copy when text is selected', async () => {
+    mountTerminal({ active: true })
+    term.hasSelection.mockReturnValue(true)
+    term.getSelection.mockReturnValue('selected')
+    const preventDefault = vi.fn()
+
+    const handled = customKeyHandler?.({
+      altKey: false,
+      ctrlKey: true,
+      key: 'c',
+      metaKey: false,
+      preventDefault,
+      shiftKey: false,
+      type: 'keydown',
+    } as KeyboardEvent)
+    await flushPromises()
+
+    expect(handled).toBe(false)
+    expect(preventDefault).toHaveBeenCalled()
+    expect(clipboard.writeText).toHaveBeenCalledWith('selected')
+    expect(socket.sendKey).not.toHaveBeenCalled()
+  })
+
+  it('handles Cmd+C as copy when text is selected', async () => {
+    mountTerminal({ active: true })
+    term.hasSelection.mockReturnValue(true)
+    term.getSelection.mockReturnValue('selected')
+
+    const handled = customKeyHandler?.({
+      altKey: false,
+      ctrlKey: false,
+      key: 'C',
+      metaKey: true,
+      preventDefault: vi.fn(),
+      shiftKey: false,
+      type: 'keydown',
+    } as KeyboardEvent)
+    await flushPromises()
+
+    expect(handled).toBe(false)
+    expect(clipboard.writeText).toHaveBeenCalledWith('selected')
+    expect(socket.sendKey).not.toHaveBeenCalled()
+  })
+
+  it('passes Ctrl+C through as an interrupt when no text is selected', () => {
+    mountTerminal({ active: true })
+    const preventDefault = vi.fn()
+
+    const handled = customKeyHandler?.({
+      altKey: false,
+      ctrlKey: true,
+      key: 'c',
+      metaKey: false,
+      preventDefault,
+      shiftKey: false,
+      type: 'keydown',
+    } as KeyboardEvent)
+
+    expect(handled).toBe(false)
+    expect(preventDefault).toHaveBeenCalled()
+    expect(clipboard.writeText).not.toHaveBeenCalled()
+    expect(socket.sendKey).toHaveBeenCalledWith('\x03')
+  })
+
+  it('lets non-copy custom key events continue through xterm', () => {
+    mountTerminal({ active: true })
+
+    const handled = customKeyHandler?.({
+      altKey: false,
+      ctrlKey: false,
+      key: 'x',
+      metaKey: false,
+      preventDefault: vi.fn(),
+      shiftKey: false,
+      type: 'keydown',
+    } as KeyboardEvent)
+
+    expect(handled).toBe(true)
+    expect(socket.sendKey).not.toHaveBeenCalled()
+  })
+
+  it('sends touch bar keys through sendKey and focuses from the focus control', async () => {
+    const wrapper = mountTerminal({ active: true })
+    term.focus.mockClear()
+
+    await wrapper.get('[data-testid="terminal-touch-esc"]').trigger('click')
+    await wrapper.get('[data-testid="terminal-touch-ctrl-c"]').trigger('click')
+    await wrapper.get('[data-testid="terminal-touch-left"]').trigger('click')
+    await wrapper.get('[data-testid="terminal-touch-up"]').trigger('click')
+    await wrapper.get('[data-testid="terminal-touch-down"]').trigger('click')
+    await wrapper.get('[data-testid="terminal-touch-right"]').trigger('click')
+    await wrapper.get('[data-testid="terminal-touch-tab"]').trigger('click')
+    await wrapper.get('[data-testid="terminal-touch-focus"]').trigger('click')
+    await nextTick()
+
+    expect(socket.sendKey.mock.calls).toEqual([
+      ['\x1b'],
+      ['\x03'],
+      ['\x1b[D'],
+      ['\x1b[A'],
+      ['\x1b[B'],
+      ['\x1b[C'],
+      ['\t'],
+    ])
+    expect(term.focus).toHaveBeenCalled()
+  })
+
+  it('pastes clipboard text through sendKey from the touch bar', async () => {
+    const wrapper = mountTerminal({ active: true })
+    clipboard.readText.mockResolvedValue('from clipboard')
+
+    await wrapper.get('[data-testid="terminal-touch-paste"]').trigger('click')
+    await flushPromises()
+
+    expect(clipboard.readText).toHaveBeenCalled()
+    expect(socket.sendKey).toHaveBeenCalledWith('from clipboard')
+  })
+
+  it('preserves the terminal buffer across inactive and active tab switches', async () => {
+    const wrapper = mountTerminal({ active: true })
+    capturedOnOutput?.('existing buffer')
+    term.clear.mockClear()
+    term.dispose.mockClear()
+    vi.mocked(attachSessionSocket).mockClear()
+
+    await wrapper.setProps({ active: false })
+    await wrapper.setProps({ active: true })
+    await nextTick()
+
+    expect(term.write).toHaveBeenCalledWith('existing buffer')
+    expect(term.clear).not.toHaveBeenCalled()
+    expect(term.dispose).not.toHaveBeenCalled()
+    expect(attachSessionSocket).not.toHaveBeenCalled()
   })
 })

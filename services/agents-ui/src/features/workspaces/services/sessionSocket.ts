@@ -5,9 +5,10 @@
  *
  *   inbound  -> `{ "input": "...", "enter": true }`
  *   inbound  -> `{ "resize": { "cols": <int>, "rows": <int> } }`
- *   outbound -> `{ "epoch": 1, "snapshot": true }`
+ *   outbound -> `{ "control": "SNAPSHOT|RESUME|REPLAY_COMPLETE", "epoch": 1 }`
+ *   outbound -> `{ "reset": true }`
  *   outbound -> `{ "output": "...bytes-as-utf8...", "off": 123 }`
- *   outbound -> `{ "cursor": { "off": 123 } }`
+ *   outbound -> `{ "cursor": 123 }`
  *
  * The socket self-heals. A backgrounded tab's WS is idle-closed by the
  * proxy/container after a while; without reconnection the terminal
@@ -29,6 +30,7 @@ export interface SessionSocketOptions {
   sessionId: string
   onOutput: (text: string) => void
   onControl?: (epoch: number, snapshot: boolean) => void
+  onReplayComplete?: (cursor: number | null) => void
   /** Fired when a *reconnect* (not the first connect) opens. */
   onReopen?: () => void
   onClose?: (code: number, reason: string) => void
@@ -129,12 +131,55 @@ export function attachSessionSocket(opts: SessionSocketOptions): SessionSocket {
     return typeof value === 'number' && Number.isFinite(value) && value >= 0
   }
 
-  function updateCursor(epoch: unknown, off: unknown): void {
-    if (isNonNegativeNumber(epoch)) {
-      if (lastEpoch !== epoch) lastOff = null
-      lastEpoch = epoch
+  function applyEpoch(epoch: unknown, clear = false): boolean {
+    if (!isNonNegativeNumber(epoch)) return clear
+    if (lastEpoch !== epoch) {
+      if (lastEpoch !== null) clear = true
     }
+    if (clear) lastOff = null
+    lastEpoch = epoch
+    return clear
+  }
+
+  function updateCursor(epoch: unknown, off: unknown): void {
+    applyEpoch(epoch)
     if (isNonNegativeNumber(off) && lastEpoch !== null) lastOff = off
+  }
+
+  function updateTrim(trim: unknown): void {
+    if (!isNonNegativeNumber(trim) || lastEpoch === null) return
+    if (lastOff === null || lastOff < trim) lastOff = trim
+  }
+
+  function cursorOffset(cursor: unknown): unknown {
+    if (isNonNegativeNumber(cursor)) return cursor
+    if (cursor && typeof cursor === 'object') {
+      const value = cursor as Record<string, unknown> // eslint-disable-line ts/consistent-type-assertions
+      updateCursor(value.epoch, value.off ?? value.offset)
+      return undefined
+    }
+    return undefined
+  }
+
+  function emitControl(epoch: unknown, snapshot: boolean): void {
+    if (isNonNegativeNumber(epoch)) opts.onControl?.(epoch, snapshot)
+  }
+
+  function handleControl(frame: Record<string, unknown>): void {
+    const control = typeof frame.control === 'string' ? frame.control.toUpperCase() : null
+    if (control === 'SNAPSHOT' || control === 'RESUME') {
+      const snapshot = applyEpoch(frame.epoch, control === 'SNAPSHOT')
+      emitControl(lastEpoch, snapshot)
+    } else if (control === 'REPLAY_COMPLETE') {
+      updateCursor(frame.epoch, cursorOffset(frame.cursor) ?? frame.off ?? frame.offset)
+      opts.onReplayComplete?.(lastOff)
+    }
+  }
+
+  function handleLegacyControl(frame: Record<string, unknown>): void {
+    if (typeof frame.snapshot !== 'boolean') return
+    const snapshot = applyEpoch(frame.epoch, frame.snapshot)
+    emitControl(frame.epoch, snapshot)
   }
 
   function handleMessage(data: string): void {
@@ -143,15 +188,18 @@ export function attachSessionSocket(opts: SessionSocketOptions): SessionSocket {
       if (!payload || typeof payload !== 'object') return
       const frame = payload as Record<string, unknown> // eslint-disable-line ts/consistent-type-assertions
 
-      if (isNonNegativeNumber(frame.epoch) && typeof frame.snapshot === 'boolean') {
-        if (lastEpoch !== frame.epoch || frame.snapshot) lastOff = null
-        lastEpoch = frame.epoch
-        opts.onControl?.(frame.epoch, frame.snapshot)
+      handleControl(frame)
+      handleLegacyControl(frame)
+
+      if (frame.reset === true) {
+        lastOff = null
+        emitControl(lastEpoch, true)
       }
 
-      if ('cursor' in frame && frame.cursor && typeof frame.cursor === 'object') {
-        const cursor = frame.cursor as Record<string, unknown> // eslint-disable-line ts/consistent-type-assertions
-        updateCursor(cursor.epoch, cursor.off ?? cursor.offset)
+      if ('trim' in frame) updateTrim(frame.trim)
+
+      if ('cursor' in frame) {
+        updateCursor(undefined, cursorOffset(frame.cursor))
       }
 
       if ('output' in frame) {
@@ -160,6 +208,8 @@ export function attachSessionSocket(opts: SessionSocketOptions): SessionSocket {
           opts.onOutput(output)
           updateCursor(frame.epoch, frame.off ?? frame.offset)
         }
+      } else {
+        updateCursor(frame.epoch, frame.off ?? frame.offset)
       }
     } catch {
       // ignore non-JSON frames

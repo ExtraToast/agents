@@ -2,9 +2,19 @@ import type { CreateWorkspaceInput } from '../services/workspaceService'
 import type { AgentKind, AgentSession, RestartSessionResponse, Turn, Workspace, WorkspaceDetailWorkspace } from '../types'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { ApiError } from '@/lib/vueWebCommons'
 import * as workspaceService from '../services/workspaceService'
 
 const ACTIVE_SESSION_STORAGE_KEY = 'agents-ui:workspace-active-session'
+
+export type RestartSessionState =
+  | 'idle'
+  | 'confirm-pending'
+  | 'in-progress'
+  | 'reattaching'
+  | 'replaying-history'
+  | 'live'
+  | 'failed'
 
 function isLiveSession(session: AgentSession): boolean {
   return session.status === 'STARTING' || session.status === 'RUNNING'
@@ -72,6 +82,48 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
   // True while a new session's runner is cold-starting (start-session
   // is polling through the runner's not-ready 503 window).
   const startingSession = ref(false)
+  const restartStates = ref<Record<string, RestartSessionState>>({})
+
+  function restartStateFor(sessionId: string): RestartSessionState {
+    return restartStates.value[sessionId] ?? 'idle'
+  }
+
+  function setRestartState(sessionId: string, state: RestartSessionState): void {
+    restartStates.value = {
+      ...restartStates.value,
+      [sessionId]: state,
+    }
+  }
+
+  function clearRestartState(sessionId: string): void {
+    const next = { ...restartStates.value }
+    delete next[sessionId]
+    restartStates.value = next
+  }
+
+  function requestRestartConfirmation(sessionId: string): void {
+    setRestartState(sessionId, 'confirm-pending')
+  }
+
+  function cancelRestartConfirmation(sessionId: string): void {
+    clearRestartState(sessionId)
+  }
+
+  function markRestartReattaching(sessionId: string): void {
+    setRestartState(sessionId, 'reattaching')
+  }
+
+  function markRestartReplayingHistory(sessionId: string): void {
+    setRestartState(sessionId, 'replaying-history')
+  }
+
+  function markRestartLive(sessionId: string): void {
+    setRestartState(sessionId, 'live')
+  }
+
+  function markRestartFailed(sessionId: string): void {
+    setRestartState(sessionId, 'failed')
+  }
 
   async function loadAll(): Promise<void> {
     isLoading.value = true
@@ -85,7 +137,7 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
     }
   }
 
-  async function open(id: string): Promise<void> {
+  async function open(id: string, options: { loadTurns?: boolean } = {}): Promise<void> {
     isLoading.value = true
     error.value = null
     try {
@@ -96,7 +148,9 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
       activeSessionId.value = chooseActiveSession(sessions.value, preferredId)
       if (activeSessionId.value) {
         writePreferredSession(id, activeSessionId.value)
-        await loadTurns(activeSessionId.value)
+        if (options.loadTurns !== false) {
+          await loadTurns(activeSessionId.value)
+        }
       } else {
         turns.value = []
       }
@@ -152,11 +206,27 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
   async function restartSession(sessionId: string, expectedGeneration?: number): Promise<RestartSessionResponse | null> {
     const ws = activeWorkspace.value
     if (!ws) return null
-    const restarted = await workspaceService.restartSession(ws.id, sessionId, expectedGeneration)
-    activeSessionId.value = restarted.sessionId
-    writePreferredSession(ws.id, restarted.sessionId)
-    await open(ws.id)
-    return restarted
+    const previousActiveId = activeSessionId.value
+    const generation = expectedGeneration ?? sessions.value.find((s) => s.id === sessionId)?.generation
+    setRestartState(sessionId, 'in-progress')
+    try {
+      const restarted = await workspaceService.restartSession(ws.id, sessionId, generation)
+      if (!previousActiveId) {
+        activeSessionId.value = restarted.sessionId
+        writePreferredSession(ws.id, restarted.sessionId)
+      }
+      markRestartReattaching(sessionId)
+      await open(ws.id, { loadTurns: false })
+      return restarted
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        markRestartReattaching(sessionId)
+        await open(ws.id, { loadTurns: false })
+        return null
+      }
+      markRestartFailed(sessionId)
+      throw err
+    }
   }
 
   async function loadTurns(sessionId: string): Promise<void> {
@@ -224,6 +294,7 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
     isLoading,
     error,
     startingSession,
+    restartStates,
     loadAll,
     open,
     create,
@@ -235,6 +306,15 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
     attachRepository,
     detachRepository,
     selectSession,
+    restartStateFor,
+    setRestartState,
+    clearRestartState,
+    requestRestartConfirmation,
+    cancelRestartConfirmation,
+    markRestartReattaching,
+    markRestartReplayingHistory,
+    markRestartLive,
+    markRestartFailed,
     appendStreamedOutput,
     appendUserTurn,
   }

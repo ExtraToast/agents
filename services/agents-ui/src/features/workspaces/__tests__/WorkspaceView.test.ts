@@ -52,18 +52,35 @@ vi.mock('../services/sessionSocket', () => ({
   attachSessionSocket: () => attachSessionSocket(),
 }))
 
+const statusStream = {
+  close: vi.fn(),
+  readyState: vi.fn(() => 1),
+}
+let statusStreamOptions: { onOpen?: () => void; onError?: () => void } | null = null
+const openSessionStatusStream = vi.fn((opts: { onOpen?: () => void; onError?: () => void }) => {
+  statusStreamOptions = opts
+  return statusStream
+})
+vi.mock('../services/sessionStatusStream', () => ({
+  openSessionStatusStream: (opts: { onOpen?: () => void; onError?: () => void }) => openSessionStatusStream(opts),
+}))
+
 const getWorkspace = vi.fn<(id: string) => Promise<WorkspaceDetail>>()
 const attachRepository = vi.fn()
 const detachRepository = vi.fn()
+const startSession = vi.fn()
+const stopSession = vi.fn()
 const sendInput = vi.fn()
 const stageInput = vi.fn()
+const restartSession = vi.fn()
 vi.mock('../services/workspaceService', () => ({
   listWorkspaces: vi.fn(),
   getWorkspace: (id: string) => getWorkspace(id),
   createWorkspace: vi.fn(),
   destroyWorkspace: vi.fn(),
-  startSession: vi.fn(),
-  stopSession: vi.fn(),
+  startSession: (...args: unknown[]) => startSession(...args),
+  stopSession: (...args: unknown[]) => stopSession(...args),
+  restartSession: (...args: unknown[]) => restartSession(...args),
   attachRepository: (...args: unknown[]) => attachRepository(...args),
   detachRepository: (...args: unknown[]) => detachRepository(...args),
   getTurns: vi.fn(async () => []),
@@ -173,17 +190,27 @@ function requireElement<T extends Element>(selector: string): T {
 
 describe('workspaceView terminal persistence', () => {
   beforeEach(() => {
+    localStorage.clear()
     setActivePinia(createPinia())
     Object.values(term).forEach((m) => m.mockClear())
     Object.values(socket).forEach((m) => m.mockClear())
     attachSessionSocket.mockClear()
+    Object.values(statusStream).forEach((m) => m.mockClear())
+    statusStreamOptions = null
+    openSessionStatusStream.mockClear()
     getWorkspace.mockReset()
     attachRepository.mockReset()
     detachRepository.mockReset()
+    startSession.mockReset()
+    startSession.mockResolvedValue({ sessionId: 'sess-new' })
+    stopSession.mockReset()
+    stopSession.mockResolvedValue(undefined)
     listRepositories.mockReset()
     listRepositories.mockResolvedValue([])
     sendInput.mockReset()
     stageInput.mockReset()
+    restartSession.mockReset()
+    restartSession.mockResolvedValue({ sessionId: 'sess-a', epoch: 2, generation: 4, status: 'RUNNING' })
     vi.stubGlobal(
       'ResizeObserver',
       class {
@@ -262,35 +289,37 @@ describe('workspaceView terminal persistence', () => {
     expect(sendInput.mock.calls[0]?.[2]).not.toContain('large document')
   })
 
-  it('places agent controls and sessions in the top chrome while keeping tools in the sidebar', async () => {
+  it('composes the console with session list, hero terminal, lifecycle controls, and status rail', async () => {
     getWorkspace.mockResolvedValue(detail([fakeSession({ id: 'sess-a', gatewayAgentId: 'abc12345' })]))
 
     const wrapper = await mountView()
     const header = wrapper.get('[data-testid="workspace-view-header"]')
-    const sessionStrip = wrapper.get('[data-testid="workspace-session-strip"]')
+    const sessionList = wrapper.get('[data-testid="workspace-session-list"]')
+    const hero = wrapper.get('[data-testid="workspace-hero-terminal"]')
     const sidebar = wrapper.get('[data-testid="workspace-sidebar"]')
 
-    expect(header.find('[data-testid="workspace-agent-panel"]').exists()).toBe(true)
-    expect(header.find('[data-testid="workspace-new-agent"]').exists()).toBe(true)
+    expect(header.find('[data-testid="workspace-session-list-toggle"]').exists()).toBe(true)
     expect(header.find('[data-testid="stage-input-open"]').exists()).toBe(false)
-    expect(sessionStrip.find('[data-testid="session-tabs"]').exists()).toBe(true)
-    expect(sessionStrip.find('[data-testid="session-tab-sess-a"]').exists()).toBe(true)
-    expect(sidebar.find('[data-testid="workspace-agent-panel"]').exists()).toBe(false)
-    expect(sidebar.find('[data-testid="session-tabs"]').exists()).toBe(false)
+    expect(sessionList.find('[data-testid="session-tabs"]').exists()).toBe(true)
+    expect(sessionList.find('[data-testid="session-tab-sess-a"]').exists()).toBe(true)
+    expect(hero.find('[data-testid="session-terminal"]').exists()).toBe(true)
+    expect(sidebar.find('[data-testid="session-status-rail"]').exists()).toBe(true)
+    expect(sidebar.find('[data-testid="workspace-lifecycle-controls"]').exists()).toBe(true)
+    expect(sidebar.find('[data-testid="workspace-new-agent"]').exists()).toBe(true)
     expect(sidebar.find('[data-testid="workspace-tools-panel"]').exists()).toBe(true)
     expect(sidebar.find('[data-testid="stage-input-open"]').exists()).toBe(true)
     expect(sidebar.find('[data-testid="workspace-repositories-panel"]').exists()).toBe(true)
   })
 
   for (const status of ['STOPPED', 'FAILED'] as const) {
-    it(`keeps retained ${status.toLowerCase()} sessions in the top tab strip without mounting a terminal`, async () => {
+    it(`keeps retained ${status.toLowerCase()} sessions in the session rail without mounting a terminal`, async () => {
       getWorkspace.mockResolvedValue(detail([fakeSession({ id: 'sess-a' }), fakeSession({ id: 'sess-b', status })]))
 
       const wrapper = await mountView()
-      const sessionStrip = wrapper.get('[data-testid="workspace-session-strip"]')
+      const sessionList = wrapper.get('[data-testid="workspace-session-list"]')
 
-      expect(sessionStrip.find('[data-testid="session-tab-sess-a"]').exists()).toBe(true)
-      expect(sessionStrip.find('[data-testid="session-tab-sess-b"]').exists()).toBe(true)
+      expect(sessionList.find('[data-testid="session-tab-sess-a"]').exists()).toBe(true)
+      expect(sessionList.find('[data-testid="session-tab-sess-b"]').exists()).toBe(true)
       expect(wrapper.findAll('[data-testid="session-terminal"]').length).toBe(1)
     })
   }
@@ -302,27 +331,122 @@ describe('workspaceView terminal persistence', () => {
 
     expect(wrapper.find('[data-testid="session-tab-sess-a"]').exists()).toBe(true)
     expect(wrapper.findAll('[data-testid="session-terminal"]').length).toBe(0)
-    expect(wrapper.text()).toContain('Start an agent from the top bar.')
+    expect(wrapper.get('[data-testid="workspace-empty-state"]').text()).toContain('Session stopped')
+    expect(wrapper.get('[data-testid="workspace-empty-state"]').text()).toContain('Restart this session or switch to a live one.')
     expect(wrapper.get('[data-testid="stage-input-open"]').attributes('disabled')).toBeDefined()
   })
 
-  it('folds the right sidebar with the triple-bar control', async () => {
+  it('collapses the session list with the rail control', async () => {
     getWorkspace.mockResolvedValue(detail([fakeSession({ id: 'sess-a' })]))
 
     const wrapper = await mountView()
-    const toggle = wrapper.get('[data-testid="workspace-sidebar-toggle"]')
-    const sidebar = wrapper.get('[data-testid="workspace-sidebar"]')
+    const toggle = wrapper.get('[data-testid="workspace-session-list-collapse"]')
+    const sessionList = wrapper.get('[data-testid="workspace-session-list"]')
 
     expect(toggle.attributes('aria-expanded')).toBe('true')
-    expect(toggle.attributes('aria-controls')).toBe('workspace-sidebar')
-    expect(sidebar.classes()).toContain('translate-x-0')
+    expect(toggle.attributes('aria-controls')).toBe('workspace-session-list-tabs')
+    expect(sessionList.classes()).toContain('lg:w-72')
 
     await toggle.trigger('click')
 
     expect(toggle.attributes('aria-expanded')).toBe('false')
-    expect(sidebar.classes()).toContain('translate-x-full')
-    expect(sidebar.attributes('aria-hidden')).toBe('true')
-    expect(sidebar.attributes('inert')).toBeDefined()
+    expect(sessionList.classes()).toContain('lg:w-14')
+    expect(sessionList.attributes('aria-hidden')).toBe('true')
+  })
+
+  it('opens the status subscription for the workspace and closes it on unmount', async () => {
+    getWorkspace.mockResolvedValue(detail([fakeSession({ id: 'sess-a' })]))
+
+    const wrapper = await mountView()
+
+    expect(openSessionStatusStream).toHaveBeenCalledOnce()
+    expect(wrapper.get('[data-testid="session-status-rail-connection"]').attributes('data-state')).toBe('connecting')
+
+    statusStreamOptions?.onOpen?.()
+    await flush()
+
+    expect(wrapper.get('[data-testid="session-status-rail-connection"]').attributes('data-state')).toBe('open')
+
+    wrapper.unmount()
+
+    expect(statusStream.close).toHaveBeenCalledOnce()
+  })
+
+  it('drives restart confirmation, progress, replay, live, and failed states through the rail', async () => {
+    getWorkspace.mockResolvedValue(detail([fakeSession({ id: 'sess-a', generation: 3 })]))
+    const wrapper = await mountView()
+    const store = useWorkspacesStore()
+
+    await wrapper.get('[data-testid="workspace-active-restart"]').trigger('click')
+    await flush()
+
+    expect(wrapper.get('[data-testid="workspace-restart-confirmation"]').exists()).toBe(true)
+    expect(document.activeElement).toBe(wrapper.get('[data-testid="workspace-lifecycle-controls"]').element)
+
+    await wrapper.get('[data-testid="workspace-restart-confirm"]').trigger('click')
+    await flush()
+
+    expect(restartSession).toHaveBeenCalledWith('ws-1', 'sess-a', 3)
+    expect(wrapper.get('[data-testid="session-status-rail-restart"]').text()).toContain('Reattaching terminal')
+
+    store.markRestartReplayingHistory('sess-a')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.get('[data-testid="session-status-rail-restart"]').text()).toContain('Replaying terminal history')
+
+    store.markRestartLive('sess-a')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.get('[data-testid="session-status-rail-restart"]').text()).toContain('Restart complete')
+    expect(wrapper.get('[data-testid="workspace-restart-dismiss"]').exists()).toBe(true)
+
+    store.markRestartFailed('sess-a')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.get('[data-testid="session-status-rail-restart"]').text()).toContain('Restart failed')
+  })
+
+  it('focuses the hero terminal when switching sessions from the rail', async () => {
+    getWorkspace.mockResolvedValue(detail([fakeSession({ id: 'sess-a' }), fakeSession({ id: 'sess-b', status: 'STOPPED' })]))
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-testid="session-tab-sess-b"]').trigger('click')
+    await flush()
+
+    expect(useWorkspacesStore().activeSessionId).toBe('sess-b')
+    expect(document.activeElement).toBe(wrapper.get('[data-testid="workspace-hero-terminal"]').element)
+  })
+
+  it('keeps mobile-safe viewport and target sizing on the console shell', async () => {
+    getWorkspace.mockResolvedValue(detail([fakeSession({ id: 'sess-a' })]))
+
+    const wrapper = await mountView()
+
+    expect(wrapper.get('[data-testid="workspace-console"]').classes()).toContain('h-dvh')
+    expect(wrapper.get('[data-testid="workspace-console"]').classes()).toContain('min-h-[100svh]')
+    expect(wrapper.get('[data-testid="workspace-console"]').classes()).toContain('pt-[env(safe-area-inset-top)]')
+    expect(wrapper.get('[data-testid="workspace-console-main"]').classes()).toContain(
+      'pb-[env(safe-area-inset-bottom)]',
+    )
+    expect(wrapper.get('[data-testid="workspace-session-list-toggle"]').classes()).toContain('min-h-10')
+    expect(wrapper.get('[data-testid="workspace-active-restart"]').classes()).toContain('min-h-10')
+  })
+
+  it('reconciles start and stop actions through the active workspace snapshot', async () => {
+    getWorkspace
+      .mockResolvedValueOnce(detail([]))
+      .mockResolvedValueOnce(detail([fakeSession({ id: 'sess-new' })]))
+      .mockResolvedValueOnce(detail([fakeSession({ id: 'sess-new', status: 'STOPPED' })]))
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-testid="workspace-new-agent"]').trigger('click')
+    await flush()
+
+    expect(startSession).toHaveBeenCalledWith('ws-1', 'CLAUDE', expect.any(Function))
+    expect(wrapper.get('[data-testid="workspace-active-session-label"]').text()).toBe('sess-new')
+
+    await wrapper.get('[data-testid="workspace-active-stop"]').trigger('click')
+    await flush()
+
+    expect(stopSession).toHaveBeenCalledWith('ws-1', 'sess-new')
+    expect(wrapper.get('[data-testid="workspace-empty-state"]').text()).toContain('Session stopped')
   })
 
   it('renders attached repositories, marks the primary, and shows split guidance', async () => {

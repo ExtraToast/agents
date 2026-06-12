@@ -109,7 +109,7 @@ export async function restartSession(
   sessionId: string,
   expectedGeneration?: number,
 ): Promise<RestartSessionResponse> {
-  const body = expectedGeneration === undefined ? {} : { expectedGeneration }
+  const body: { expectedGeneration?: number } = expectedGeneration === undefined ? {} : { expectedGeneration }
   return getApi().post<RestartSessionResponse>(`/workspaces/${workspaceId}/sessions/${sessionId}/restart`, body)
 }
 
