@@ -3,6 +3,7 @@ package com.jorisjonkers.personalstack.agentgateway.config
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.boot.context.properties.bind.Binder
+import org.springframework.boot.context.properties.source.ConfigurationPropertySource
 import org.springframework.boot.context.properties.source.ConfigurationPropertySources
 import org.springframework.core.env.SystemEnvironmentPropertySource
 
@@ -26,14 +27,15 @@ class GatewayPropertiesBindingTest {
             )
 
         assertThat(props.runner.setupId).isEqualTo("gpu")
-        assertThat(props.runner.setupVersion).isEqualTo(7)
+        assertThat(props.runner.setupVersion).isEqualTo(7L)
         assertThat(props.runner.setupHash).isEqualTo("abc123")
-        assertThat(props.runner.generation).isEqualTo(42)
+        assertThat(props.runner.generation).isEqualTo(42L)
     }
 
     private fun bindEnvironment(properties: Map<String, Any>): GatewayProperties {
         val source = SystemEnvironmentPropertySource("test-env", properties)
-        return Binder(ConfigurationPropertySources.from(source))
+        val sources: Iterable<ConfigurationPropertySource> = ConfigurationPropertySources.from(source)
+        return Binder(sources)
             .bind("agent-gateway", GatewayProperties::class.java)
             .get()
     }
