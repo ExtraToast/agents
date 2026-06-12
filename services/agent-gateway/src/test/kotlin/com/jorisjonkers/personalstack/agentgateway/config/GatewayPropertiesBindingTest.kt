@@ -3,7 +3,6 @@ package com.jorisjonkers.personalstack.agentgateway.config
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.boot.context.properties.bind.Binder
-import org.springframework.boot.context.properties.source.ConfigurationPropertySource
 import org.springframework.boot.context.properties.source.ConfigurationPropertySources
 import org.springframework.core.env.SystemEnvironmentPropertySource
 
@@ -34,7 +33,9 @@ class GatewayPropertiesBindingTest {
 
     private fun bindEnvironment(properties: Map<String, Any>): GatewayProperties {
         val source = SystemEnvironmentPropertySource("test-env", properties)
-        val sources: Iterable<ConfigurationPropertySource> = ConfigurationPropertySources.from(source)
+        // from(...) is a platform-typed Iterable with nullable elements; drop the
+        // nulls so the Binder(Iterable<ConfigurationPropertySource>) overload resolves.
+        val sources = ConfigurationPropertySources.from(source).filterNotNull()
         return Binder(sources)
             .bind("agent-gateway", GatewayProperties::class.java)
             .get()
