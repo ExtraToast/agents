@@ -377,25 +377,28 @@ class AgentSessionManagerTest {
     ) {
         val stable = "11111111-1111-1111-1111-111111111111"
         val mgr = manager(tmp)
+        try {
+            val session =
+                mgr.spawn(
+                    AgentKind.SHELL,
+                    stableSessionId = stable,
+                    epoch = 2,
+                    continuation =
+                        AgentContinuation(
+                            reason = "restart",
+                            previousEpoch = 1,
+                            fromSetupLabel = "Default runner token=ghp_1234567890123456",
+                            toSetupLabel = "GPU runner",
+                        ),
+                )
 
-        val session =
-            mgr.spawn(
-                AgentKind.SHELL,
-                stableSessionId = stable,
-                epoch = 2,
-                continuation =
-                    AgentContinuation(
-                        reason = "restart",
-                        previousEpoch = 1,
-                        fromSetupLabel = "Default runner token=ghp_1234567890123456",
-                        toSetupLabel = "GPU runner",
-                    ),
-            )
-
-        val text = Files.readString(session.logFile)
-        assertThat(text).contains("setup transition")
-        assertThat(text).contains("fromSetup=\"Default runner token=[redacted]\"")
-        assertThat(text).contains("toSetup=\"GPU runner\"")
-        assertThat(text).doesNotContain("ghp_1234567890123456")
+            val text = Files.readString(session.logFile)
+            assertThat(text).contains("setup transition")
+            assertThat(text).contains("fromSetup=\"Default runner token=[redacted]\"")
+            assertThat(text).contains("toSetup=\"GPU runner\"")
+            assertThat(text).doesNotContain("ghp_1234567890123456")
+        } finally {
+            mgr.shutdown()
+        }
     }
 }
