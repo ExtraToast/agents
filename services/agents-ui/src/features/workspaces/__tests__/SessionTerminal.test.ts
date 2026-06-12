@@ -106,6 +106,7 @@ describe('sessionTerminal', () => {
     Object.values(term).forEach((m) => m.mockClear())
     Object.values(socket).forEach((m) => m.mockClear())
     Object.values(clipboard).forEach((m) => m.mockClear())
+    term.hasSelection.mockReturnValue(false)
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
       value: clipboard,

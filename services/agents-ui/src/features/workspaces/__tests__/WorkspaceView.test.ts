@@ -174,6 +174,7 @@ async function mountView() {
   await router.push('/workspaces/ws-1')
   await router.isReady()
   const wrapper = mount(WorkspaceView, {
+    attachTo: document.body,
     global: {
       plugins: [router],
     },

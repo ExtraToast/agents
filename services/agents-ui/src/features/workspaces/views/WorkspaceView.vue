@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { RestartSessionState } from '../stores/workspaces'
 import type { AgentKind } from '../types'
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Modal, useToast } from '@/lib/vueWebCommons'
 import AgentKindPicker from '../components/AgentKindPicker.vue'
@@ -111,12 +111,26 @@ watch(workspaceId, (id) => {
 }, { immediate: true })
 
 watch(activeRestartState, async (state) => {
-  if (state !== 'confirm-pending') return
+  if (state !== 'confirm-pending') {
+    if (state !== 'idle') await focusConsoleSurface()
+    return
+  }
   await nextTick()
   restartConfirmPanel.value?.focus()
 })
 
-onBeforeUnmount(() => {
+watch(
+  () => store.activeSessionId,
+  async (id, previousId) => {
+    if (id && id !== previousId) await focusConsoleSurface()
+  },
+)
+
+onMounted(() => {
+  statuses.useWorkspace(workspaceId.value)
+})
+
+onUnmounted(() => {
   statuses.useWorkspace(null)
 })
 

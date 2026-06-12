@@ -118,15 +118,21 @@ onMounted(() => {
   term.attachCustomKeyEventHandler?.((event) => {
     if (event.type !== 'keydown' || !isCopyShortcut(event)) return true
 
-    if (selectedText()) {
+    if (term?.hasSelection?.()) {
       event.preventDefault()
       void copySelection(false)
       return false
     }
 
-    event.preventDefault()
-    socket?.sendKey(KEY_CTRL_C)
-    return false
+    // No selection: Ctrl+C is an interrupt — send it explicitly rather than
+    // copying. Cmd+C with no selection falls through to the terminal.
+    if (event.ctrlKey) {
+      event.preventDefault()
+      socket?.sendKey('\x03')
+      return false
+    }
+
+    return true
   })
 
   resizeObserver = new ResizeObserver(() => fitAndReportSize())
