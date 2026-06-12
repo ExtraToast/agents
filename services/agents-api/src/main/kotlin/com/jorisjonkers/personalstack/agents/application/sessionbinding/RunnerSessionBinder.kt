@@ -3,7 +3,7 @@ package com.jorisjonkers.personalstack.agents.application.sessionbinding
 import com.jorisjonkers.personalstack.agents.application.exception.AgentRunnerUnavailableException
 import com.jorisjonkers.personalstack.agents.application.sessionstatus.SessionStatusPublisher
 import com.jorisjonkers.personalstack.agents.application.setup.AgentSetupSelectionService
-import com.jorisjonkers.personalstack.agents.application.setup.AgentSetupValidationRequest
+import com.jorisjonkers.personalstack.agents.application.setup.AgentSetupValidationInput
 import com.jorisjonkers.personalstack.agents.application.setup.AgentSetupValidationService
 import com.jorisjonkers.personalstack.agents.domain.model.AgentSetupCatalogEntry
 import com.jorisjonkers.personalstack.agents.domain.model.AgentSetupId
@@ -343,7 +343,7 @@ class RunnerSessionBinder(
                     )
                 val result =
                     setupValidation.validate(
-                        AgentSetupValidationRequest(
+                        AgentSetupValidationInput(
                             workspace = workspace,
                             targetId = entry.definition.id,
                             targetVersion = entry.definition.version,
@@ -392,7 +392,7 @@ class RunnerSessionBinder(
         entry: AgentSetupCatalogEntry,
     ): RunnerSetupTarget {
         setupValidation.requireValid(
-            AgentSetupValidationRequest(
+            AgentSetupValidationInput(
                 workspace = workspace,
                 targetId = entry.definition.id,
                 targetVersion = entry.definition.version,

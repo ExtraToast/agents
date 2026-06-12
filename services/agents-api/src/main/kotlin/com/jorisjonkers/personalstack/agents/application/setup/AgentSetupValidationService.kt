@@ -34,7 +34,7 @@ class AgentSetupValidationService(
     private val projectRepositories: ProjectRepositoryRepository,
     private val workspaceRepositories: WorkspaceRepositoryRepository,
 ) {
-    fun validate(request: AgentSetupValidationRequest): AgentSetupValidationResult {
+    fun validate(request: AgentSetupValidationInput): AgentSetupValidationResult {
         val ref = AgentSetupRef(request.targetId, request.targetVersion)
         val issues = mutableListOf<AgentSetupValidationIssue>()
         val warnings = mutableListOf<AgentSetupValidationIssue>()
@@ -53,7 +53,7 @@ class AgentSetupValidationService(
         )
     }
 
-    fun requireValid(request: AgentSetupValidationRequest): AgentSetupValidationResult {
+    fun requireValid(request: AgentSetupValidationInput): AgentSetupValidationResult {
         val result = validate(request)
         if (!result.valid) throw AgentSetupValidationException(result)
         return result
@@ -91,7 +91,7 @@ class AgentSetupValidationService(
     @Suppress("LongMethod", "CyclomaticComplexMethod")
     private fun validateCompatibility(
         target: AgentSetupCatalogEntry,
-        request: AgentSetupValidationRequest,
+        request: AgentSetupValidationInput,
         issues: MutableList<AgentSetupValidationIssue>,
     ) {
         val config = target.definition.connectorConfig
@@ -132,7 +132,7 @@ class AgentSetupValidationService(
 
     private fun validateRepositories(
         target: AgentSetupCatalogEntry,
-        request: AgentSetupValidationRequest,
+        request: AgentSetupValidationInput,
         issues: MutableList<AgentSetupValidationIssue>,
     ) {
         val repositoryIds = request.repositoryIds.ifEmpty { repositoryIds(request.workspace) }
@@ -228,7 +228,7 @@ class AgentSetupValidationService(
     }
 
     private fun validateStaleSource(
-        request: AgentSetupValidationRequest,
+        request: AgentSetupValidationInput,
         warnings: MutableList<AgentSetupValidationIssue>,
     ) {
         val sourceId = request.session?.currentSetupId ?: request.workspace.currentRunnerSetupId
@@ -283,7 +283,7 @@ class AgentSetupValidationService(
             .filter { it.isNotBlank() }
 }
 
-data class AgentSetupValidationRequest(
+data class AgentSetupValidationInput(
     val workspace: Workspace,
     val targetId: AgentSetupId,
     val targetVersion: AgentSetupVersion,

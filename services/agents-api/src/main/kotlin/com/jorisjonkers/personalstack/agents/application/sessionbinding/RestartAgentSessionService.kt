@@ -1,6 +1,6 @@
 package com.jorisjonkers.personalstack.agents.application.sessionbinding
 
-import com.jorisjonkers.personalstack.agents.application.setup.AgentSetupValidationRequest
+import com.jorisjonkers.personalstack.agents.application.setup.AgentSetupValidationInput
 import com.jorisjonkers.personalstack.agents.application.setup.AgentSetupValidationService
 import com.jorisjonkers.personalstack.agents.domain.model.AgentSetupId
 import com.jorisjonkers.personalstack.agents.domain.model.AgentSetupVersion
@@ -50,7 +50,7 @@ class RestartAgentSessionService(
         val targetSetupId = request.targetSetupId ?: session.currentSetupId
         val targetSetupVersion = request.targetSetupVersion ?: session.currentSetupVersion
         setupValidation.requireValid(
-            AgentSetupValidationRequest(
+            AgentSetupValidationInput(
                 workspace = workspace,
                 targetId = targetSetupId,
                 targetVersion = targetSetupVersion,

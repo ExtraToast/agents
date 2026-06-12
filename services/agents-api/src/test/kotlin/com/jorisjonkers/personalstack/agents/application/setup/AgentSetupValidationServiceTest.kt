@@ -252,8 +252,8 @@ class AgentSetupValidationServiceTest {
         targetVersion: AgentSetupVersion = AgentSetupVersion.initial(),
         workspace: Workspace = workspace(),
         agentKind: WorkspaceAgentKind? = null,
-    ): AgentSetupValidationRequest =
-        AgentSetupValidationRequest(
+    ): AgentSetupValidationInput =
+        AgentSetupValidationInput(
             workspace = workspace,
             targetId = targetId,
             targetVersion = targetVersion,

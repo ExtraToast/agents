@@ -1,7 +1,7 @@
 package com.jorisjonkers.personalstack.agents.infrastructure.web
 
 import com.jorisjonkers.personalstack.agents.application.setup.AgentSetupDiffService
-import com.jorisjonkers.personalstack.agents.application.setup.AgentSetupValidationRequest
+import com.jorisjonkers.personalstack.agents.application.setup.AgentSetupValidationInput
 import com.jorisjonkers.personalstack.agents.application.setup.AgentSetupValidationService
 import com.jorisjonkers.personalstack.agents.domain.model.AgentSetupCatalogEntry
 import com.jorisjonkers.personalstack.agents.domain.model.AgentSetupId
@@ -109,7 +109,7 @@ class AgentSetupController(
                     validation =
                         AgentSetupValidationResponse.of(
                             validation.validate(
-                                AgentSetupValidationRequest(
+                                AgentSetupValidationInput(
                                     workspace = workspace,
                                     targetId = entry.definition.id,
                                     targetVersion = entry.definition.version,
@@ -158,7 +158,7 @@ class AgentSetupController(
         val targetVersion = AgentSetupVersion(targetSetupVersion)
         val result =
             validation.validate(
-                AgentSetupValidationRequest(
+                AgentSetupValidationInput(
                     workspace = workspace,
                     targetId = targetId,
                     targetVersion = targetVersion,

@@ -1,7 +1,7 @@
 package com.jorisjonkers.personalstack.agents.infrastructure.web
 
 import com.jorisjonkers.personalstack.agents.application.setup.AgentSetupDiffService
-import com.jorisjonkers.personalstack.agents.application.setup.AgentSetupValidationRequest
+import com.jorisjonkers.personalstack.agents.application.setup.AgentSetupValidationInput
 import com.jorisjonkers.personalstack.agents.application.setup.AgentSetupValidationService
 import com.jorisjonkers.personalstack.agents.domain.model.AgentSetupAvailability
 import com.jorisjonkers.personalstack.agents.domain.model.AgentSetupCatalogEntry
@@ -149,7 +149,7 @@ class AgentSetupControllerTest {
         every { sessions.findById(sessionId) } returns session
         every { setups.findSelectable() } returns listOf(target)
         every { validation.validate(any()) } answers {
-            val request = firstArg<AgentSetupValidationRequest>()
+            val request = firstArg<AgentSetupValidationInput>()
             AgentSetupValidationResult(
                 target = AgentSetupRef(request.targetId, request.targetVersion),
                 valid = true,
@@ -165,7 +165,7 @@ class AgentSetupControllerTest {
 
         verify {
             validation.validate(
-                AgentSetupValidationRequest(
+                AgentSetupValidationInput(
                     workspace = workspace,
                     targetId = target.definition.id,
                     targetVersion = target.definition.version,

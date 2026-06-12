@@ -34,7 +34,7 @@ class RestartAgentSessionServiceTest {
     init {
         every { setupValidation.requireValid(any()) } answers {
             val request =
-                firstArg<com.jorisjonkers.personalstack.agents.application.setup.AgentSetupValidationRequest>()
+                firstArg<com.jorisjonkers.personalstack.agents.application.setup.AgentSetupValidationInput>()
             AgentSetupValidationResult(
                 target = AgentSetupRef(request.targetId, request.targetVersion),
                 valid = true,

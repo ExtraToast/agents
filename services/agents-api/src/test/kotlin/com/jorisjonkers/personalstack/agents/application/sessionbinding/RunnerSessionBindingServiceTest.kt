@@ -24,6 +24,7 @@ import com.jorisjonkers.personalstack.agents.domain.port.WorkspaceAgentSessionRe
 import com.jorisjonkers.personalstack.agents.domain.port.WorkspaceRepository
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.registerInstanceFactory
 import io.mockk.slot
 import io.mockk.verify
 import org.assertj.core.api.Assertions.assertThat
@@ -55,6 +56,11 @@ class RunnerSessionBindingServiceTest {
         )
 
     init {
+        // AgentSetupId/Version are value classes whose constructors validate
+        // their input, so MockK's default any()-matcher dummy (an empty string)
+        // fails to construct. Give MockK valid instances to build signatures from.
+        registerInstanceFactory { AgentSetupId.default() }
+        registerInstanceFactory { AgentSetupVersion.initial() }
         every { setupSelection.requireSelectable(any(), any()) } returns setup
         every { setupSelection.defaultSelectable() } returns setup
         every { setupValidation.validate(any()) } returns validSetupResult()

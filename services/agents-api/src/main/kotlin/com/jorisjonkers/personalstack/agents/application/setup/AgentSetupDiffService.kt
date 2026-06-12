@@ -23,10 +23,11 @@ class AgentSetupDiffService {
         to: AgentSetupDefinition,
     ): List<AgentSetupDiffChange> =
         buildList {
+            // image is the headline change an operator restarts for, so surface it first.
+            compare("image", from.image, to.image)
             compare("displayName", from.displayName, to.displayName)
             compare("description", from.description, to.description)
             compare("namespace", from.namespace, to.namespace)
-            compare("image", from.image, to.image)
             compare("imagePullPolicy", from.imagePullPolicy, to.imagePullPolicy)
             compare("serviceAccount", from.serviceAccount, to.serviceAccount)
             compare("gatewayPort", from.gatewayPort, to.gatewayPort)

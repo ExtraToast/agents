@@ -52,7 +52,7 @@ class AgentSetupExceptionHandler {
 
     private fun AgentSetupValidationIssue.redactedFieldError(): FieldError =
         FieldError(
-            field = code.name,
+            field = "agentSetup.${code.name}",
             message = redactedMessage(),
             rejectedValue = null,
         )
