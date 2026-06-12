@@ -9,6 +9,14 @@ import '@xterm/xterm/css/xterm.css'
 const props = defineProps<{ sessionId: string; active?: boolean }>()
 
 const container = ref<HTMLDivElement | null>(null)
+const composeInput = ref<HTMLInputElement | null>(null)
+const composeText = ref('')
+
+// Phones don't reliably surface raw keystrokes to xterm's hidden textarea
+// (IME/autocorrect interfere and you can't see what you typed), so on coarse
+// pointers we offer a real input that sends a whole line to the PTY on submit.
+const isCoarsePointer
+  = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(pointer: coarse)').matches : false
 
 let term: Terminal | null = null
 let fitAddon: FitAddon | null = null
@@ -53,6 +61,16 @@ function sendTerminalKey(key: string): void {
   if (props.active) void revealAndFocus()
 }
 
+// Send the composed line (plus Enter) to the PTY, then keep the input focused
+// so the keyboard stays open for the next line. An empty submit sends a bare
+// Enter, which is handy for confirming agent prompts.
+function submitCompose(): void {
+  socket?.send(composeText.value, true)
+  composeText.value = ''
+  composeInput.value?.focus()
+  term?.scrollToBottom?.()
+}
+
 async function pasteClipboard(): Promise<void> {
   try {
     const text = await navigator.clipboard?.readText?.()
@@ -74,7 +92,8 @@ onMounted(() => {
     convertEol: false,
     cursorBlink: true,
     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
-    fontSize: 13,
+    // Bump the type size on touch screens so output stays legible on a phone.
+    fontSize: isCoarsePointer ? 15 : 13,
     // xterm keeps only 1000 scrollback lines by default, so a
     // long-running agent session scrolls its own history out of reach
     // within minutes. Hold far more — this is browser memory, not the
@@ -199,6 +218,23 @@ onBeforeUnmount(() => {
       data-testid="session-terminal"
       @click="revealAndFocus"
     />
+    <form class="terminal-compose border-t border-white/10 bg-[#11151c] px-2 py-1" @submit.prevent="submitCompose">
+      <input
+        ref="composeInput"
+        v-model="composeText"
+        type="text"
+        inputmode="text"
+        autocapitalize="off"
+        autocomplete="off"
+        autocorrect="off"
+        spellcheck="false"
+        enterkeyhint="send"
+        aria-label="Type a line to send to the terminal"
+        placeholder="Type a command, then Send…"
+        data-testid="terminal-compose-input"
+      >
+      <button type="submit" data-testid="terminal-compose-send">Send</button>
+    </form>
     <div class="terminal-touch-bar border-t border-white/10 bg-[#11151c] px-2 py-1">
       <button type="button" data-testid="terminal-touch-esc" @click="sendTerminalKey(KEY_ESCAPE)">Esc</button>
       <button type="button" data-testid="terminal-touch-ctrl-c" @click="sendTerminalKey(KEY_CTRL_C)">Ctrl-C</button>
@@ -235,8 +271,45 @@ onBeforeUnmount(() => {
   background: rgb(255 255 255 / 12%);
 }
 
+.terminal-compose {
+  display: none;
+  gap: 0.5rem;
+}
+
+.terminal-compose input {
+  background: rgb(255 255 255 / 8%);
+  border: 1px solid rgb(255 255 255 / 15%);
+  border-radius: 0.375rem;
+  color: rgb(241 245 249);
+  flex: 1 1 auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 1rem; /* >=16px keeps iOS from zooming the viewport on focus */
+  min-height: 2.75rem;
+  min-width: 0;
+  padding: 0.375rem 0.625rem;
+}
+
+.terminal-compose button {
+  background: var(--color-accent, rgb(59 130 246));
+  border-radius: 0.375rem;
+  color: rgb(255 255 255);
+  flex: 0 0 auto;
+  font-size: 0.875rem;
+  font-weight: 600;
+  min-height: 2.75rem;
+  padding: 0.375rem 1rem;
+}
+
+.terminal-compose button:active {
+  filter: brightness(1.1);
+}
+
 @media (pointer: coarse) {
   .terminal-touch-bar {
+    display: flex;
+  }
+
+  .terminal-compose {
     display: flex;
   }
 }
