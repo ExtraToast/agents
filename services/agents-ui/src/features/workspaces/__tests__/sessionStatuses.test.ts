@@ -137,6 +137,30 @@ describe('useSessionStatusesStore', () => {
     expect(statuses.lastTsBySessionId['sess-1']).toBe('2026-06-12T10:05:00Z')
   })
 
+  it('preserves REST setup metadata when applying status overlays', () => {
+    const workspaces = useWorkspacesStore()
+    workspaces.sessions = [
+      fakeSession({
+        currentSetup: { id: 'setup-current', version: 1 },
+        pendingSetup: { id: 'setup-next', version: 2 },
+        generation: 7,
+        epoch: 3,
+      }),
+    ]
+    const statuses = useSessionStatusesStore()
+    statuses.syncRestSessions()
+
+    statuses.applyStatus({ sessionId: 'sess-1', status: 'STOPPED', idle: false, ts: '2026-06-12T10:05:00Z' })
+
+    expect(statuses.mergedSessions[0]).toMatchObject({
+      status: 'STOPPED',
+      currentSetup: { id: 'setup-current', version: 1 },
+      pendingSetup: { id: 'setup-next', version: 2 },
+      generation: 7,
+      epoch: 3,
+    })
+  })
+
   it('removes sessions via remove deltas and rejects stale resurrection', () => {
     const workspaces = useWorkspacesStore()
     workspaces.sessions = [fakeSession()]

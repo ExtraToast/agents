@@ -1,15 +1,18 @@
-import type { AgentSession, Workspace, WorkspaceDetail, WorkspaceRepository } from '../types'
+import type { AgentSession, AgentSetupValidationProblem, Workspace, WorkspaceDetail, WorkspaceRepository } from '../types'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '@/lib/vueWebCommons'
 import {
+  agentSetupValidationProblemFromError,
   attachRepository,
   createWorkspace,
   destroyWorkspace,
   detachRepository,
   getTurns,
   getWorkspace,
+  listSetupOptions,
   listWorkspaces,
+  previewSetup,
   restartSession,
   startSession,
 } from '../services/workspaceService'
@@ -25,6 +28,9 @@ vi.mock('../services/workspaceService', () => ({
   detachRepository: vi.fn(),
   startSession: vi.fn(),
   restartSession: vi.fn(),
+  listSetupOptions: vi.fn(),
+  previewSetup: vi.fn(),
+  agentSetupValidationProblemFromError: vi.fn(),
   stopSession: vi.fn(),
   getTurns: vi.fn(),
   sendInput: vi.fn(),
@@ -39,6 +45,9 @@ const mocked = {
   detachRepository: vi.mocked(detachRepository),
   startSession: vi.mocked(startSession),
   restartSession: vi.mocked(restartSession),
+  listSetupOptions: vi.mocked(listSetupOptions),
+  previewSetup: vi.mocked(previewSetup),
+  agentSetupValidationProblemFromError: vi.mocked(agentSetupValidationProblemFromError),
   getTurns: vi.mocked(getTurns),
 }
 
@@ -67,10 +76,43 @@ function fakeSession(over: Partial<AgentSession> = {}): AgentSession {
     workspaceId: '11111111-1111-1111-1111-111111111111',
     kind: 'CLAUDE',
     gatewayAgentId: 'abc',
+    epoch: 1,
+    generation: 0,
     status: 'RUNNING',
+    currentSetup: { id: 'setup-current', version: 1 },
+    pendingSetup: null,
     createdAt: '2026-05-19T10:00:00Z',
     updatedAt: '2026-05-19T10:00:00Z',
     ...over,
+  }
+}
+
+function fakePreview(target = { id: 'setup-current', version: 1 }) {
+  return {
+    current: { id: 'setup-current', version: 1 },
+    target,
+    diff: {
+      from: { id: 'setup-current', version: 1 },
+      to: target,
+      hasChanges: target.id !== 'setup-current' || target.version !== 1,
+      changes: [],
+    },
+    validation: {
+      target,
+      valid: true,
+      issues: [],
+      warnings: [],
+    },
+  }
+}
+
+function validationProblem(): AgentSetupValidationProblem {
+  return {
+    type: 'https://jorisjonkers.dev/errors/agent-setup-validation',
+    title: 'Agent setup validation failed',
+    status: 422,
+    detail: 'Agent setup target is not valid for this workspace or session.',
+    errors: [{ field: 'TARGET_NOT_SELECTABLE', message: 'TARGET_NOT_SELECTABLE', rejectedValue: null }],
   }
 }
 
@@ -103,6 +145,11 @@ describe('useWorkspacesStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     Object.values(mocked).forEach((m) => m.mockReset())
+    mocked.agentSetupValidationProblemFromError.mockImplementation((err) => {
+      // eslint-disable-next-line ts/consistent-type-assertions -- narrow the commons ProblemDetail to the 422 subtype the helper guarantees
+      if (err instanceof ApiError && err.status === 422) return err.problem as AgentSetupValidationProblem
+      return null
+    })
     localStorage.clear()
   })
 
@@ -299,7 +346,7 @@ describe('useWorkspacesStore', () => {
     const restarted = await store.restartSession('sess-1', 3)
 
     expect(restarted).toEqual({ sessionId: 'sess-1', epoch: 2, generation: 4, status: 'RUNNING' })
-    expect(mocked.restartSession).toHaveBeenCalledWith(fakeWorkspace().id, 'sess-1', 3)
+    expect(mocked.restartSession).toHaveBeenCalledWith(fakeWorkspace().id, 'sess-1', { expectedGeneration: 3 })
     expect(mocked.getWorkspace).toHaveBeenCalledWith(fakeWorkspace().id)
     expect(store.activeSessionId).toBe('sess-1')
   })
@@ -317,7 +364,93 @@ describe('useWorkspacesStore', () => {
 
     await store.restartSession('sess-1')
 
-    expect(mocked.restartSession).toHaveBeenCalledWith(fakeWorkspace().id, 'sess-1', 3)
+    expect(mocked.restartSession).toHaveBeenCalledWith(fakeWorkspace().id, 'sess-1', {
+      expectedGeneration: 3,
+      expectedEpoch: 1,
+      expectedSetupId: 'setup-current',
+      expectedSetupVersion: 1,
+      targetSetupId: 'setup-current',
+      targetSetupVersion: 1,
+    })
+  })
+
+  it('loads setup options and defaults restart target to the pending setup', async () => {
+    mocked.listSetupOptions.mockResolvedValue({
+      current: { id: 'setup-current', version: 1 },
+      pending: { id: 'setup-next', version: 2 },
+      options: [],
+    })
+    const store = useWorkspacesStore()
+    store.activeWorkspace = fakeWorkspace()
+
+    const options = await store.loadSetupOptions('sess-1')
+
+    expect(options?.pending).toEqual({ id: 'setup-next', version: 2 })
+    expect(mocked.listSetupOptions).toHaveBeenCalledWith(fakeWorkspace().id, 'sess-1')
+    expect(store.selectedRestartTargetFor('sess-1')).toEqual({ id: 'setup-next', version: 2 })
+  })
+
+  it('loads setup preview before moving restart into confirmation', async () => {
+    const target = { id: 'setup-next', version: 2 }
+    mocked.previewSetup.mockResolvedValue(fakePreview(target))
+    const store = useWorkspacesStore()
+    store.activeWorkspace = fakeWorkspace()
+    store.sessions = [fakeSession({ id: 'sess-1' })]
+    store.selectRestartTarget('sess-1', target)
+
+    await store.requestRestartConfirmation('sess-1')
+
+    expect(mocked.previewSetup).toHaveBeenCalledWith(fakeWorkspace().id, 'sess-1', target)
+    expect(store.setupPreviewsBySessionId['sess-1']?.target).toEqual(target)
+    expect(store.restartStateFor('sess-1')).toBe('confirm-pending')
+  })
+
+  it('keeps setup validation problems from preview and does not confirm restart', async () => {
+    const problem = validationProblem()
+    const failure = new ApiError(problem)
+    mocked.previewSetup.mockRejectedValue(failure)
+    const store = useWorkspacesStore()
+    store.activeWorkspace = fakeWorkspace()
+    store.sessions = [fakeSession({ id: 'sess-1' })]
+
+    await store.requestRestartConfirmation('sess-1')
+
+    expect(store.setupValidationProblemsBySessionId['sess-1']).toEqual(problem)
+    expect(store.setupPreviewsBySessionId['sess-1']).toBeUndefined()
+    expect(store.restartStateFor('sess-1')).toBe('failed')
+  })
+
+  it('submits selected restart target with setup and epoch preconditions', async () => {
+    mocked.restartSession.mockResolvedValue({
+      sessionId: 'sess-1',
+      epoch: 2,
+      generation: 4,
+      status: 'RUNNING',
+      currentSetup: { id: 'setup-next', version: 2 },
+      pendingSetup: null,
+    })
+    mocked.getWorkspace.mockResolvedValue({
+      workspace: fakeWorkspace(),
+      sessions: [fakeSession({ id: 'sess-1', currentSetup: { id: 'setup-next', version: 2 } })],
+    })
+    const target = { id: 'setup-next', version: 2 }
+    const store = useWorkspacesStore()
+    store.activeWorkspace = fakeWorkspace()
+    store.activeSessionId = 'sess-1'
+    store.sessions = [fakeSession({ id: 'sess-1', epoch: 8, generation: 3, currentSetup: { id: 'setup-current', version: 1 } })]
+    store.selectRestartTarget('sess-1', target)
+
+    await store.restartSession('sess-1')
+
+    expect(mocked.restartSession).toHaveBeenCalledWith(fakeWorkspace().id, 'sess-1', {
+      expectedGeneration: 3,
+      expectedEpoch: 8,
+      expectedSetupId: 'setup-current',
+      expectedSetupVersion: 1,
+      targetSetupId: 'setup-next',
+      targetSetupVersion: 2,
+    })
+    expect(mocked.getWorkspace).toHaveBeenCalledWith(fakeWorkspace().id)
   })
 
   it('restartSession preserves the active session and leaves terminal history to websocket replay', async () => {
@@ -382,7 +515,8 @@ describe('useWorkspacesStore', () => {
     store.sessions = [fakeSession({ id: 'sess-1', generation: 3, status: 'RUNNING' })]
 
     expect(store.restartStateFor('sess-1')).toBe('idle')
-    store.requestRestartConfirmation('sess-1')
+    mocked.previewSetup.mockResolvedValue(fakePreview())
+    await store.requestRestartConfirmation('sess-1')
     expect(store.restartStateFor('sess-1')).toBe('confirm-pending')
     store.cancelRestartConfirmation('sess-1')
     expect(store.restartStateFor('sess-1')).toBe('idle')

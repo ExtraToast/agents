@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { SessionConsoleViewModel } from '../stores/sessionConsoleViewModels'
+import type { WorkspaceRunnerSetup } from '../types'
 import { computed, useSlots } from 'vue'
 import SessionStatusChip from './SessionStatusChip.vue'
 
@@ -17,12 +18,14 @@ interface Props {
   connectionState?: ConnectionState
   connectionError?: string | null
   restartLabel?: string | null
+  runnerSetup?: WorkspaceRunnerSetup | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
   connectionState: 'idle',
   connectionError: null,
   restartLabel: null,
+  runnerSetup: null,
 })
 
 const slots = useSlots()
@@ -55,13 +58,33 @@ const epochGeneration = computed(() => {
   const generation = props.session.generation ?? '-'
   return `Epoch ${epoch} / Gen ${generation}`
 })
+const sessionSetupLabel = computed(() => props.session?.setupLabel ?? 'No setup')
+const runnerSetupLabel = computed(() => {
+  const setup = props.runnerSetup
+  if (!setup) return 'No runner setup'
+  const current = `${setup.current.id}@v${setup.current.version}`
+  const pending = setup.pending ? ` -> ${setup.pending.id}@v${setup.pending.version}` : ''
+  return `${current}${pending} / Gen ${setup.generation} / ${runnerOperationLabel(setup.operation)}`
+})
 const connection = computed(() => connectionCopy[props.connectionState])
 const connectionLabel = computed(() => props.connectionError ?? connection.value.detail)
 const hasRestartProgress = computed(() => Boolean(props.restartLabel) || Boolean(slots['restart-progress']))
 const railLabel = computed(() => {
   if (!props.session) return 'No active session status'
-  return `${props.session.label}: ${props.session.affordance.ariaLabel}, ${props.session.kindLabel}, ${epochGeneration.value}, ${connectionLabel.value}`
+  return [
+    `${props.session.label}: ${props.session.affordance.ariaLabel}`,
+    props.session.kindLabel,
+    epochGeneration.value,
+    sessionSetupLabel.value,
+    connectionLabel.value,
+  ].join(', ')
 })
+
+function runnerOperationLabel(operation: WorkspaceRunnerSetup['operation']): string {
+  if (operation === 'RESTARTING') return 'Restarting setup'
+  if (operation === 'FAILED') return 'Setup failed'
+  return 'Idle'
+}
 
 function formatTimestamp(value: string | null): string {
   if (!value) return 'No status update'
@@ -103,6 +126,18 @@ function formatTimestamp(value: string | null): string {
         <dt class="text-[var(--color-text-muted)]">Epoch</dt>
         <dd class="truncate font-mono text-[var(--color-text-primary)]" data-testid="session-status-rail-epoch">
           {{ epochGeneration }}
+        </dd>
+      </div>
+      <div class="min-h-10 rounded border border-[var(--color-surface-border)] bg-white/5 px-2 py-1.5">
+        <dt class="text-[var(--color-text-muted)]">Session setup</dt>
+        <dd class="truncate font-mono text-[var(--color-text-primary)]" data-testid="session-status-rail-setup">
+          {{ sessionSetupLabel }}
+        </dd>
+      </div>
+      <div class="min-h-10 rounded border border-[var(--color-surface-border)] bg-white/5 px-2 py-1.5">
+        <dt class="text-[var(--color-text-muted)]">Runner setup</dt>
+        <dd class="truncate font-mono text-[var(--color-text-primary)]" data-testid="session-status-rail-runner-setup">
+          {{ runnerSetupLabel }}
         </dd>
       </div>
     </dl>

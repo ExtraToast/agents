@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import type { RestartSessionState } from '../stores/workspaces'
-import type { AgentKind } from '../types'
+import type { AgentKind, AgentSetupReference } from '../types'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Modal, useToast } from '@/lib/vueWebCommons'
 import AgentKindPicker from '../components/AgentKindPicker.vue'
+import SessionSetupDiff from '../components/SessionSetupDiff.vue'
+import SessionSetupPicker from '../components/SessionSetupPicker.vue'
 import SessionStatusRail from '../components/SessionStatusRail.vue'
 import SessionTabs from '../components/SessionTabs.vue'
 import SessionTerminal from '../components/SessionTerminal.vue'
@@ -35,9 +37,12 @@ const isSendingSplitCommand = ref(false)
 const isAttachingRepository = ref(false)
 const detachingRepositoryId = ref<string | null>(null)
 const repositoryActionError = ref<string | null>(null)
+const setupOptionsLoading = ref(false)
+const setupControlsError = ref<string | null>(null)
 const consoleSurface = ref<HTMLElement | null>(null)
 const restartConfirmPanel = ref<HTMLElement | null>(null)
 let loadSeq = 0
+let setupOptionsSeq = 0
 
 // Only sessions with a live PTY get a mounted terminal. A session
 // dropping out of this set (STOPPED/FAILED) unmounts its
@@ -66,6 +71,24 @@ const activeRailSession = computed(() => {
 const activeSessionIsLive = computed(() =>
   Boolean(activeSession.value && liveSessions.value.some((s) => s.id === activeSession.value?.id)),
 )
+const activeSetupOptions = computed(() => {
+  const session = activeSession.value
+  return session ? store.setupOptionsBySessionId[session.id] ?? null : null
+})
+const activeSetupPreview = computed(() => {
+  const session = activeSession.value
+  return session ? store.setupPreviewsBySessionId[session.id] ?? null : null
+})
+const activeSetupValidationProblem = computed(() => {
+  const session = activeSession.value
+  return session ? store.setupValidationProblemsBySessionId[session.id] ?? null : null
+})
+const activeRestartTarget = computed(() => {
+  const session = activeSession.value
+  return session ? store.selectedRestartTargetFor(session.id) : null
+})
+const restartFromSetupLabel = computed(() => setupReferenceLabel(activeSession.value?.currentSetup ?? null))
+const restartToSetupLabel = computed(() => setupReferenceLabel(activeRestartTarget.value))
 const agentKindLabels: Record<AgentKind, string> = {
   CLAUDE: 'Claude Code',
   CODEX: 'Codex',
@@ -88,6 +111,37 @@ const activeRestartState = computed<RestartSessionState>(() => {
   return session ? store.restartStateFor(session.id) : 'idle'
 })
 const activeRestartLabel = computed(() => restartLabels[activeRestartState.value])
+const restartSetupControlsVisible = computed(() =>
+  Boolean(activeSession.value && activeRestartState.value !== 'idle' && activeRestartState.value !== 'live'),
+)
+const restartTransitionCopy = computed(() => {
+  switch (activeRestartState.value) {
+    case 'in-progress':
+      return `Restart request is pending from ${restartFromSetupLabel.value} to ${restartToSetupLabel.value}.`
+    case 'reattaching':
+      return [
+        `Restart accepted from ${restartFromSetupLabel.value} to ${restartToSetupLabel.value};`,
+        'reattaching the terminal.',
+      ].join(' ')
+    case 'replaying-history':
+      return [
+        `Restart accepted from ${restartFromSetupLabel.value} to ${restartToSetupLabel.value};`,
+        'replaying terminal history.',
+      ].join(' ')
+    case 'failed':
+      return [
+        `Restart from ${restartFromSetupLabel.value} to ${restartToSetupLabel.value} failed.`,
+        'Review the setup target before retrying.',
+      ].join(' ')
+    case 'live':
+      return `Restart complete from ${restartFromSetupLabel.value} to ${restartToSetupLabel.value}.`
+    default:
+      return null
+  }
+})
+const showStartControls = computed(() =>
+  !['confirm-pending', 'in-progress', 'reattaching', 'replaying-history'].includes(activeRestartState.value),
+)
 const canRestartActive = computed(() => {
   if (!activeSession.value) return false
   return !['confirm-pending', 'in-progress', 'reattaching', 'replaying-history'].includes(activeRestartState.value)
@@ -124,6 +178,14 @@ watch(
   async (id, previousId) => {
     if (id && id !== previousId) await focusConsoleSurface()
   },
+)
+
+watch(
+  () => activeSession.value?.id ?? null,
+  (id) => {
+    if (id) void loadSetupOptionsForSession(id)
+  },
+  { immediate: true },
 )
 
 onMounted(() => {
@@ -165,10 +227,24 @@ async function onSelectSession(id: string): Promise<void> {
   await focusConsoleSurface()
 }
 
-function onRequestRestart(): void {
+async function onRequestRestart(): Promise<void> {
   const session = activeSession.value
   if (!session) return
-  store.requestRestartConfirmation(session.id)
+  setupControlsError.value = null
+  try {
+    if (!activeSetupOptions.value) {
+      await loadSetupOptionsForSession(session.id)
+      if (!activeSetupOptions.value) {
+        store.markRestartFailed(session.id)
+        return
+      }
+    }
+    await store.requestRestartConfirmation(session.id)
+  } catch (e) {
+    store.markRestartFailed(session.id)
+    setupControlsError.value = setupErrorMessage(e)
+    toast.errorFromCatch('Could not prepare restart', e)
+  }
 }
 
 function onCancelRestart(): void {
@@ -181,14 +257,61 @@ async function onConfirmRestart(): Promise<void> {
   const session = activeSession.value
   if (!session) return
   try {
-    await store.restartSession(session.id, session.generation)
+    const restarted = await store.restartSession(session.id, session.generation)
     statuses.syncRestSessions()
-    toast.success('Restart requested')
+    toast.success(restarted ? 'Restart requested' : 'Restart state refreshed')
   } catch (e) {
     toast.errorFromCatch('Could not restart session', e)
   } finally {
     await focusConsoleSurface()
   }
+}
+
+async function loadSetupOptionsForSession(sessionId: string): Promise<void> {
+  const seq = ++setupOptionsSeq
+  setupOptionsLoading.value = true
+  setupControlsError.value = null
+  try {
+    await store.loadSetupOptions(sessionId)
+    if (seq !== setupOptionsSeq || activeSession.value?.id !== sessionId) return
+    const target = store.selectedRestartTargetFor(sessionId)
+    if (target) await store.loadSetupPreview(sessionId, target)
+  } catch (e) {
+    if (activeSession.value?.id === sessionId) setupControlsError.value = setupErrorMessage(e)
+  } finally {
+    if (seq === setupOptionsSeq) setupOptionsLoading.value = false
+  }
+}
+
+async function onSelectRestartTarget(target: AgentSetupReference): Promise<void> {
+  const session = activeSession.value
+  if (!session) return
+  setupControlsError.value = null
+  store.selectRestartTarget(session.id, target)
+  try {
+    const preview = await store.loadSetupPreview(session.id, target)
+    if (preview) {
+      store.setRestartState(session.id, 'confirm-pending')
+    } else {
+      store.markRestartFailed(session.id)
+    }
+  } catch (e) {
+    setupControlsError.value = setupErrorMessage(e)
+    store.markRestartFailed(session.id)
+  }
+}
+
+function setupReferenceLabel(setup?: AgentSetupReference | null): string {
+  if (!setup) return 'No setup'
+  return `${setup.id}@v${setup.version}`
+}
+
+function setupErrorMessage(err: unknown): string {
+  const status = typeof err === 'object' && err !== null && 'status' in err ? Number(err.status) : null
+  if (status === 503) return 'Setup metadata is temporarily unavailable. Try again after the runner is ready.'
+  if (status === 409) return 'Setup metadata changed. Refreshing session state.'
+  if (status === 422) return 'Selected setup target is not valid for this session.'
+  return 'Could not load setup metadata.'
 }
 
 function onClearRestartState(): void {
@@ -440,6 +563,7 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
           :connection-state="statuses.connectionState"
           :connection-error="statuses.connectionError"
           :restart-label="activeRestartLabel"
+          :runner-setup="store.activeWorkspace.runnerSetup ?? null"
         />
         <section
           ref="restartConfirmPanel"
@@ -448,12 +572,32 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
           data-testid="workspace-lifecycle-controls"
         >
           <h2 class="text-sm font-semibold">Lifecycle</h2>
+          <div v-if="restartSetupControlsVisible" class="mt-3 space-y-3" data-testid="workspace-restart-setup-controls">
+            <SessionSetupPicker
+              :options="activeSetupOptions"
+              :selected="activeRestartTarget"
+              :loading="setupOptionsLoading"
+              :disabled="activeRestartState !== 'confirm-pending' && activeRestartState !== 'failed'"
+              :error="setupControlsError"
+              @select="onSelectRestartTarget"
+            />
+            <SessionSetupDiff
+              v-if="activeSetupPreview || activeSetupValidationProblem"
+              :preview="activeSetupPreview"
+              :problem="activeSetupValidationProblem"
+              :from="activeSession?.currentSetup ?? null"
+              :to="activeRestartTarget"
+            />
+          </div>
           <div
             v-if="activeRestartState === 'confirm-pending'"
             class="mt-3 space-y-3 rounded border border-amber-500/30 bg-amber-500/10 p-3 text-sm"
             data-testid="workspace-restart-confirmation"
           >
-            <p class="text-amber-100">Restart this session and reattach the terminal?</p>
+            <p class="text-amber-100" data-testid="workspace-restart-confirmation-copy">
+              Restart this session from {{ restartFromSetupLabel }} to {{ restartToSetupLabel }} and reattach the
+              terminal?
+            </p>
             <div class="flex flex-wrap gap-2">
               <button
                 type="button"
@@ -473,7 +617,25 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
               </button>
             </div>
           </div>
-          <div v-else class="mt-3 grid gap-2">
+          <div
+            v-if="activeRestartState !== 'confirm-pending' && restartTransitionCopy"
+            class="mt-3 space-y-3 rounded border border-[var(--color-surface-border)] bg-white/5 p-3 text-sm"
+            data-testid="workspace-restart-transition"
+          >
+            <p class="text-[var(--color-text-primary)]">
+              {{ restartTransitionCopy }}
+            </p>
+            <button
+              v-if="activeRestartState === 'failed' || activeRestartState === 'live'"
+              type="button"
+              class="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-[var(--color-surface-border)] px-3 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-border)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)]"
+              data-testid="workspace-restart-dismiss"
+              @click="onClearRestartState"
+            >
+              Dismiss restart status
+            </button>
+          </div>
+          <div v-if="showStartControls" class="mt-3 grid gap-2">
             <AgentKindPicker v-model="pickerKind" compact class="min-w-0" />
             <button
               type="button"
@@ -484,15 +646,6 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
               @click="onSpawn"
             >
               {{ spawnButtonLabel }}
-            </button>
-            <button
-              v-if="activeRestartState === 'failed' || activeRestartState === 'live'"
-              type="button"
-              class="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-[var(--color-surface-border)] px-3 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-border)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)]"
-              data-testid="workspace-restart-dismiss"
-              @click="onClearRestartState"
-            >
-              Dismiss restart status
             </button>
           </div>
         </section>

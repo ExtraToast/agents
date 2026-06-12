@@ -1,5 +1,16 @@
-import type { CreateWorkspaceInput } from '../services/workspaceService'
-import type { AgentKind, AgentSession, RestartSessionResponse, Turn, Workspace, WorkspaceDetailWorkspace } from '../types'
+import type { CreateWorkspaceInput, RestartSessionRequest } from '../services/workspaceService'
+import type {
+  AgentKind,
+  AgentSession,
+  AgentSetupReference,
+  AgentSetupValidationProblem,
+  RestartSessionResponse,
+  SetupPreview,
+  SetupTargetOptions,
+  Turn,
+  Workspace,
+  WorkspaceDetailWorkspace,
+} from '../types'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { ApiError } from '@/lib/vueWebCommons'
@@ -83,6 +94,10 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
   // is polling through the runner's not-ready 503 window).
   const startingSession = ref(false)
   const restartStates = ref<Record<string, RestartSessionState>>({})
+  const selectedRestartTargets = ref<Record<string, AgentSetupReference | null>>({})
+  const setupOptionsBySessionId = ref<Record<string, SetupTargetOptions>>({})
+  const setupPreviewsBySessionId = ref<Record<string, SetupPreview>>({})
+  const setupValidationProblemsBySessionId = ref<Record<string, AgentSetupValidationProblem>>({})
 
   function restartStateFor(sessionId: string): RestartSessionState {
     return restartStates.value[sessionId] ?? 'idle'
@@ -101,7 +116,42 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
     restartStates.value = next
   }
 
-  function requestRestartConfirmation(sessionId: string): void {
+  function selectedRestartTargetFor(sessionId: string): AgentSetupReference | null {
+    if (sessionId in selectedRestartTargets.value) return selectedRestartTargets.value[sessionId] ?? null
+    const session = sessions.value.find((s) => s.id === sessionId)
+    return session?.pendingSetup ?? session?.currentSetup ?? null
+  }
+
+  function selectRestartTarget(sessionId: string, target: AgentSetupReference | null): void {
+    selectedRestartTargets.value = {
+      ...selectedRestartTargets.value,
+      [sessionId]: target,
+    }
+    clearSetupPreviewError(sessionId)
+  }
+
+  function clearSetupPreview(sessionId: string): void {
+    const nextPreviews = { ...setupPreviewsBySessionId.value }
+    delete nextPreviews[sessionId]
+    setupPreviewsBySessionId.value = nextPreviews
+    clearSetupPreviewError(sessionId)
+  }
+
+  function clearSetupPreviewError(sessionId: string): void {
+    const nextProblems = { ...setupValidationProblemsBySessionId.value }
+    delete nextProblems[sessionId]
+    setupValidationProblemsBySessionId.value = nextProblems
+  }
+
+  async function requestRestartConfirmation(sessionId: string): Promise<void> {
+    const target = selectedRestartTargetFor(sessionId)
+    if (target) {
+      const preview = await loadSetupPreview(sessionId, target)
+      if (!preview) {
+        markRestartFailed(sessionId)
+        return
+      }
+    }
     setRestartState(sessionId, 'confirm-pending')
   }
 
@@ -207,20 +257,35 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
     const ws = activeWorkspace.value
     if (!ws) return null
     const previousActiveId = activeSessionId.value
-    const generation = expectedGeneration ?? sessions.value.find((s) => s.id === sessionId)?.generation
+    const session = sessions.value.find((s) => s.id === sessionId)
+    const generation = expectedGeneration ?? session?.generation
+    const target = selectedRestartTargetFor(sessionId)
+    const request: RestartSessionRequest = {}
+    if (generation !== undefined) request.expectedGeneration = generation
+    if (session?.epoch !== undefined) request.expectedEpoch = session.epoch
+    if (session?.currentSetup) {
+      request.expectedSetupId = session.currentSetup.id
+      request.expectedSetupVersion = session.currentSetup.version
+    }
+    if (target) {
+      request.targetSetupId = target.id
+      request.targetSetupVersion = target.version
+    }
     setRestartState(sessionId, 'in-progress')
     try {
-      const restarted = await workspaceService.restartSession(ws.id, sessionId, generation)
+      const restarted = await workspaceService.restartSession(ws.id, sessionId, request)
       if (!previousActiveId) {
         activeSessionId.value = restarted.sessionId
         writePreferredSession(ws.id, restarted.sessionId)
       }
       markRestartReattaching(sessionId)
+      clearSetupPreview(sessionId)
       await open(ws.id, { loadTurns: false })
       return restarted
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         markRestartReattaching(sessionId)
+        clearSetupPreview(sessionId)
         await open(ws.id, { loadTurns: false })
         return null
       }
@@ -233,6 +298,45 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
     const ws = activeWorkspace.value
     if (!ws) return
     turns.value = await workspaceService.getTurns(ws.id, sessionId)
+  }
+
+  async function loadSetupOptions(sessionId: string): Promise<SetupTargetOptions | null> {
+    const ws = activeWorkspace.value
+    if (!ws) return null
+    const options = await workspaceService.listSetupOptions(ws.id, sessionId)
+    setupOptionsBySessionId.value = {
+      ...setupOptionsBySessionId.value,
+      [sessionId]: options,
+    }
+    if (!(sessionId in selectedRestartTargets.value)) {
+      selectRestartTarget(sessionId, options.pending ?? options.current)
+    }
+    return options
+  }
+
+  async function loadSetupPreview(sessionId: string, target = selectedRestartTargetFor(sessionId)): Promise<SetupPreview | null> {
+    const ws = activeWorkspace.value
+    if (!ws || !target) return null
+    try {
+      const preview = await workspaceService.previewSetup(ws.id, sessionId, target)
+      setupPreviewsBySessionId.value = {
+        ...setupPreviewsBySessionId.value,
+        [sessionId]: preview,
+      }
+      clearSetupPreviewError(sessionId)
+      return preview
+    } catch (err) {
+      const problem = workspaceService.agentSetupValidationProblemFromError(err)
+      if (!problem) throw err
+      const nextPreviews = { ...setupPreviewsBySessionId.value }
+      delete nextPreviews[sessionId]
+      setupPreviewsBySessionId.value = nextPreviews
+      setupValidationProblemsBySessionId.value = {
+        ...setupValidationProblemsBySessionId.value,
+        [sessionId]: problem,
+      }
+      return null
+    }
   }
 
   async function attachRepository(repositoryId: string): Promise<void> {
@@ -295,6 +399,10 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
     error,
     startingSession,
     restartStates,
+    selectedRestartTargets,
+    setupOptionsBySessionId,
+    setupPreviewsBySessionId,
+    setupValidationProblemsBySessionId,
     loadAll,
     open,
     create,
@@ -303,9 +411,14 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
     endSession,
     restartSession,
     loadTurns,
+    loadSetupOptions,
+    loadSetupPreview,
     attachRepository,
     detachRepository,
     selectSession,
+    selectedRestartTargetFor,
+    selectRestartTarget,
+    clearSetupPreview,
     restartStateFor,
     setRestartState,
     clearRestartState,

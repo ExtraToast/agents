@@ -301,6 +301,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{workspaceId}/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get workspace runner setup metadata */
+        get: operations["workspaceSetup"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/setup-transitions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List setup transition history for a workspace */
+        get: operations["workspaceTransitionHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{workspaceId}/sessions/{sessionId}/turns": {
         parameters: {
             query?: never;
@@ -309,6 +343,74 @@ export interface paths {
             cookie?: never;
         };
         get: operations["turns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/sessions/{sessionId}/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get current, pending, and failed setup state for a session */
+        get: operations["sessionSetup"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/sessions/{sessionId}/setup-transitions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List setup transition history for a session */
+        get: operations["sessionTransitionHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/sessions/{sessionId}/setup-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preview setup diff and validation for a session restart target */
+        get: operations["setupPreview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/sessions/{sessionId}/setup-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List setup targets for a session with validation preview */
+        get: operations["sessionSetupOptions"];
         put?: never;
         post?: never;
         delete?: never;
@@ -429,6 +531,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agent-setups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List selectable agent setup catalog entries */
+        get: operations["catalog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agent-setups/{setupId}/versions/{version}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get an agent setup catalog entry */
+        get: operations["detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{workspaceId}/sessions/{sessionId}": {
         parameters: {
             query?: never;
@@ -517,6 +653,11 @@ export interface components {
              */
             githubLinkId?: string | null;
         };
+        AgentSetupReferenceResponse: {
+            id: string;
+            /** Format: int64 */
+            version: number;
+        };
         WorkspaceResponse: {
             /** Format: uuid */
             id: string;
@@ -533,10 +674,22 @@ export interface components {
             repositoryId?: string | null;
             /** Format: uuid */
             githubLinkId?: string | null;
+            runnerSetup: components["schemas"]["WorkspaceRunnerSetupResponse"];
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        WorkspaceRunnerSetupResponse: {
+            current: components["schemas"]["AgentSetupReferenceResponse"];
+            pending?: components["schemas"]["AgentSetupReferenceResponse"] | null;
+            /** Format: int64 */
+            generation: number;
+            operation: string;
+            /** Format: date-time */
+            operationStartedAt?: string | null;
+            /** Format: date-time */
+            operationUpdatedAt?: string | null;
         };
         StartAgentSessionRequest: {
             /** @enum {string} */
@@ -555,6 +708,17 @@ export interface components {
         RestartAgentSessionHttpRequest: {
             /** Format: int64 */
             expectedGeneration?: number | null;
+            /** Format: int64 */
+            expectedEpoch?: number | null;
+            expectedSetupId?: string | null;
+            /** Format: int64 */
+            expectedSetupVersion?: number | null;
+            expectedCurrentSetupId?: string | null;
+            /** Format: int64 */
+            expectedCurrentSetupVersion?: number | null;
+            targetSetupId?: string | null;
+            /** Format: int64 */
+            targetSetupVersion?: number | null;
         };
         RestartAgentSessionResponse: {
             /** Format: uuid */
@@ -564,6 +728,8 @@ export interface components {
             /** Format: int64 */
             generation: number;
             status: string;
+            currentSetup: components["schemas"]["AgentSetupReferenceResponse"];
+            pendingSetup?: components["schemas"]["AgentSetupReferenceResponse"] | null;
         };
         FieldError: {
             field: string;
@@ -748,6 +914,31 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        SetupTransitionHistoryResponse: {
+            events: components["schemas"]["SetupTransitionResponse"][];
+        };
+        SetupTransitionResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            workspaceId: string;
+            /** Format: uuid */
+            sessionId?: string | null;
+            from?: components["schemas"]["AgentSetupReferenceResponse"] | null;
+            to: components["schemas"]["AgentSetupReferenceResponse"];
+            /** @enum {string} */
+            status: "REQUESTED" | "STARTED" | "COMPLETED" | "FAILED" | "CANCELLED";
+            reason?: string | null;
+            message?: string | null;
+            /** Format: date-time */
+            requestedAt: string;
+            /** Format: date-time */
+            startedAt?: string | null;
+            /** Format: date-time */
+            completedAt?: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+        };
         TurnResponse: {
             /** Format: uuid */
             id: string;
@@ -757,6 +948,78 @@ export interface components {
             body: string;
             /** Format: date-time */
             createdAt: string;
+        };
+        FailedSessionSetupResponse: {
+            setup: components["schemas"]["AgentSetupReferenceResponse"];
+            reason?: string | null;
+            message?: string | null;
+            /** Format: date-time */
+            completedAt?: string | null;
+        };
+        SessionSetupStateResponse: {
+            current: components["schemas"]["AgentSetupReferenceResponse"];
+            pending?: components["schemas"]["AgentSetupReferenceResponse"] | null;
+            failed?: components["schemas"]["FailedSessionSetupResponse"] | null;
+        };
+        AgentSetupBindingResponse: {
+            kind: string;
+            namespace: string;
+            name: string;
+            key?: string | null;
+        };
+        AgentSetupDiffChangeResponse: {
+            field: string;
+            fromValue?: string | null;
+            toValue?: string | null;
+            redacted: boolean;
+        };
+        AgentSetupDiffResponse: {
+            from: components["schemas"]["AgentSetupReferenceResponse"];
+            to: components["schemas"]["AgentSetupReferenceResponse"];
+            hasChanges: boolean;
+            changes: components["schemas"]["AgentSetupDiffChangeResponse"][];
+        };
+        AgentSetupValidationIssueResponse: {
+            code: string;
+            message: string;
+            binding?: components["schemas"]["AgentSetupBindingResponse"] | null;
+        };
+        AgentSetupValidationResponse: {
+            target: components["schemas"]["AgentSetupReferenceResponse"];
+            valid: boolean;
+            issues: components["schemas"]["AgentSetupValidationIssueResponse"][];
+            warnings: components["schemas"]["AgentSetupValidationIssueResponse"][];
+        };
+        SetupPreviewResponse: {
+            current: components["schemas"]["AgentSetupReferenceResponse"];
+            target: components["schemas"]["AgentSetupReferenceResponse"];
+            diff?: components["schemas"]["AgentSetupDiffResponse"] | null;
+            validation: components["schemas"]["AgentSetupValidationResponse"];
+        };
+        AgentSetupCatalogEntryResponse: {
+            setup: components["schemas"]["AgentSetupReferenceResponse"];
+            displayName: string;
+            description?: string | null;
+            image: string;
+            cliTools: {
+                [key: string]: string;
+            };
+            toolProfiles: string[];
+            toolAllowlist: string[];
+            selectable: boolean;
+            defaultSelectable: boolean;
+            unavailableReason?: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        SetupTargetOptionResponse: {
+            setup: components["schemas"]["AgentSetupCatalogEntryResponse"];
+            validation: components["schemas"]["AgentSetupValidationResponse"];
+        };
+        SetupTargetOptionsResponse: {
+            current: components["schemas"]["AgentSetupReferenceResponse"];
+            pending?: components["schemas"]["AgentSetupReferenceResponse"] | null;
+            options: components["schemas"]["SetupTargetOptionResponse"][];
         };
         WorkspaceAgentSessionResponse: {
             /** Format: uuid */
@@ -774,6 +1037,8 @@ export interface components {
             gatewayBoundAt?: string | null;
             status: string;
             idle: boolean;
+            currentSetup: components["schemas"]["AgentSetupReferenceResponse"];
+            pendingSetup?: components["schemas"]["AgentSetupReferenceResponse"] | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -819,6 +1084,50 @@ export interface components {
             /** Format: uuid */
             githubLinkId?: string | null;
             repositories: components["schemas"]["WorkspaceRepositoryResponse"][];
+            runnerSetup: components["schemas"]["WorkspaceRunnerSetupResponse"];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        AgentSetupCatalogResponse: {
+            setups: components["schemas"]["AgentSetupCatalogEntryResponse"][];
+        };
+        AgentSetupDetailResponse: {
+            setup: components["schemas"]["AgentSetupReferenceResponse"];
+            displayName: string;
+            description?: string | null;
+            namespace: string;
+            image: string;
+            imagePullPolicy: string;
+            serviceAccount: string;
+            /** Format: int32 */
+            gatewayPort: number;
+            claudeCredentialsPvc: string;
+            codexCredentialsPvc: string;
+            githubDeployKeySecret: string;
+            cliTools: {
+                [key: string]: string;
+            };
+            knowledgeBaseUrl: string;
+            knowledgeBearerSecret: string;
+            knowledgeBearerSecretKey: string;
+            mcpServersConfigMap: string;
+            defaultMcpProfile: string;
+            connectorConfig: {
+                [key: string]: string;
+            };
+            toolProfiles: string[];
+            toolAllowlist: string[];
+            dockerSocketEnabled: boolean;
+            dockerSocketPath: string;
+            dockerSocketSupplementalGroups: number[];
+            nodeSelector: {
+                [key: string]: string;
+            };
+            selectable: boolean;
+            defaultSelectable: boolean;
+            unavailableReason?: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -964,6 +1273,15 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["RestartAgentSessionResponse"];
+                };
+            };
+            /** @description Invalid setup request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProblemDetail"];
                 };
             };
             /** @description Service Unavailable */
@@ -1433,6 +1751,50 @@ export interface operations {
             };
         };
     };
+    workspaceSetup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["WorkspaceRunnerSetupResponse"];
+                };
+            };
+        };
+    };
+    workspaceTransitionHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SetupTransitionHistoryResponse"];
+                };
+            };
+        };
+    };
     turns: {
         parameters: {
             query?: never;
@@ -1452,6 +1814,110 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["TurnResponse"][];
+                };
+            };
+        };
+    };
+    sessionSetup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SessionSetupStateResponse"];
+                };
+            };
+        };
+    };
+    sessionTransitionHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SetupTransitionHistoryResponse"];
+                };
+            };
+        };
+    };
+    setupPreview: {
+        parameters: {
+            query: {
+                targetSetupId: string;
+                targetSetupVersion: number;
+            };
+            header?: never;
+            path: {
+                workspaceId: string;
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Preview */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SetupPreviewResponse"];
+                };
+            };
+            /** @description Validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    sessionSetupOptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SetupTargetOptionsResponse"];
                 };
             };
         };
@@ -1699,6 +2165,49 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    catalog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AgentSetupCatalogResponse"];
+                };
+            };
+        };
+    };
+    detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                setupId: string;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AgentSetupDetailResponse"];
+                };
             };
         };
     };

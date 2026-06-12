@@ -23,6 +23,9 @@ function fakeSession(over: Partial<RailSession> = {}): RailSession {
     isLive: true,
     canAttachTerminal: true,
     canStop: true,
+    currentSetup: { id: 'setup-current', version: 1 },
+    pendingSetup: null,
+    setupLabel: 'setup-current@v1',
     lastStatusUpdate: '2026-06-12T10:05:00Z',
     epoch: 2,
     generation: 4,
@@ -52,6 +55,7 @@ describe('sessionStatusRail', () => {
     expect(wrapper.get('[data-testid="session-status-chip-text"]').text()).toBe('Running')
     expect(wrapper.get('[data-testid="session-status-rail-updated"]').text()).toBe('2026-06-12 10:05 UTC')
     expect(wrapper.get('[data-testid="session-status-rail-epoch"]').text()).toBe('Epoch 2 / Gen 4')
+    expect(wrapper.get('[data-testid="session-status-rail-setup"]').text()).toBe('setup-current@v1')
     expect(wrapper.get('[data-testid="session-status-rail-connection"]').attributes('data-state')).toBe('open')
     expect(wrapper.get('[data-testid="session-status-rail-connection"]').text()).toContain('Connected')
   })
@@ -68,6 +72,31 @@ describe('sessionStatusRail', () => {
     expect(wrapper.get('[data-testid="session-status-rail-connection"]').text()).toContain('Stream idle')
     expect(wrapper.get('[data-testid="session-status-rail-updated"]').text()).toBe('No status update')
     expect(wrapper.get('[data-testid="session-status-rail-epoch"]').text()).toBe('Epoch - / Gen -')
+  })
+
+  it('renders workspace runner setup metadata and pending setup transitions', () => {
+    const wrapper = mount(SessionStatusRail, {
+      props: {
+        session: fakeSession({
+          pendingSetup: { id: 'setup-next', version: 2 },
+          setupLabel: 'setup-current@v1 -> setup-next@v2',
+        }),
+        runnerSetup: {
+          current: { id: 'setup-current', version: 1 },
+          pending: { id: 'setup-next', version: 2 },
+          generation: 8,
+          operation: 'FAILED',
+          operationStartedAt: '2026-06-12T10:00:00Z',
+          operationUpdatedAt: '2026-06-12T10:03:00Z',
+        },
+      },
+    })
+
+    expect(wrapper.get('[data-testid="session-status-rail-setup"]').text()).toBe('setup-current@v1 -> setup-next@v2')
+    expect(wrapper.get('[data-testid="session-status-rail-runner-setup"]').text()).toContain('setup-current@v1')
+    expect(wrapper.get('[data-testid="session-status-rail-runner-setup"]').text()).toContain('setup-next@v2')
+    expect(wrapper.get('[data-testid="session-status-rail-runner-setup"]').text()).toContain('Gen 8')
+    expect(wrapper.get('[data-testid="session-status-rail-runner-setup"]').text()).toContain('Setup failed')
   })
 
   it('renders restart progress through the named slot', () => {

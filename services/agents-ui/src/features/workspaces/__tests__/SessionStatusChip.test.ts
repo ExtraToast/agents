@@ -16,6 +16,9 @@ function fakeSession(over: Partial<SessionConsoleViewModel> = {}): SessionConsol
     isLive: true,
     canAttachTerminal: true,
     canStop: true,
+    currentSetup: null,
+    pendingSetup: null,
+    setupLabel: 'No setup',
     affordance: {
       text: 'Running',
       ariaLabel: 'Session is running',
