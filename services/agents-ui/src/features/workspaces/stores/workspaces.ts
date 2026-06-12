@@ -1,5 +1,5 @@
 import type { CreateWorkspaceInput } from '../services/workspaceService'
-import type { AgentKind, AgentSession, Turn, Workspace, WorkspaceDetailWorkspace } from '../types'
+import type { AgentKind, AgentSession, RestartSessionResponse, Turn, Workspace, WorkspaceDetailWorkspace } from '../types'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import * as workspaceService from '../services/workspaceService'
@@ -149,6 +149,16 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
     await open(ws.id)
   }
 
+  async function restartSession(sessionId: string, expectedGeneration?: number): Promise<RestartSessionResponse | null> {
+    const ws = activeWorkspace.value
+    if (!ws) return null
+    const restarted = await workspaceService.restartSession(ws.id, sessionId, expectedGeneration)
+    activeSessionId.value = restarted.sessionId
+    writePreferredSession(ws.id, restarted.sessionId)
+    await open(ws.id)
+    return restarted
+  }
+
   async function loadTurns(sessionId: string): Promise<void> {
     const ws = activeWorkspace.value
     if (!ws) return
@@ -220,6 +230,7 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
     destroy,
     newSession,
     endSession,
+    restartSession,
     loadTurns,
     attachRepository,
     detachRepository,

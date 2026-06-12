@@ -19,6 +19,7 @@ const term = {
     onResizeCb = cb
   }),
   focus: vi.fn(),
+  clear: vi.fn(),
   reset: vi.fn(),
   dispose: vi.fn(),
 }
@@ -31,6 +32,7 @@ vi.mock('@xterm/xterm', () => ({
     onData = term.onData
     onResize = term.onResize
     focus = term.focus
+    clear = term.clear
     reset = term.reset
     dispose = term.dispose
     constructor(opts: Record<string, unknown>) {
@@ -56,9 +58,15 @@ const socket = {
 }
 let capturedOnOutput: ((text: string) => void) | undefined
 let capturedOnReopen: (() => void) | undefined
+let capturedOnControl: ((epoch: number, snapshot: boolean) => void) | undefined
 vi.mock('../services/sessionSocket', () => ({
-  attachSessionSocket: vi.fn((opts: { onOutput: (t: string) => void; onReopen?: () => void }) => {
+  attachSessionSocket: vi.fn((opts: {
+    onOutput: (t: string) => void
+    onControl?: (epoch: number, snapshot: boolean) => void
+    onReopen?: () => void
+  }) => {
     capturedOnOutput = opts.onOutput
+    capturedOnControl = opts.onControl
     capturedOnReopen = opts.onReopen
     return socket
   }),
@@ -70,6 +78,7 @@ describe('sessionTerminal', () => {
     Object.values(socket).forEach((m) => m.mockClear())
     vi.mocked(attachSessionSocket).mockClear()
     capturedOnOutput = undefined
+    capturedOnControl = undefined
     capturedOnReopen = undefined
     onDataCb = undefined
     onResizeCb = undefined
@@ -158,10 +167,26 @@ describe('sessionTerminal', () => {
     expect(socket.setReconnect).toHaveBeenLastCalledWith(false)
   })
 
-  it('resets the terminal on reconnect so the attach snapshot repaints cleanly', () => {
+  it('does not reset the terminal unconditionally on reconnect', () => {
     mountTerminal({ active: true })
-    capturedOnReopen?.()
-    expect(term.reset).toHaveBeenCalled()
+    expect(capturedOnReopen).toBeUndefined()
+    expect(term.reset).not.toHaveBeenCalled()
+  })
+
+  it('clears the terminal when attach control declares a snapshot', () => {
+    mountTerminal({ active: true })
+    capturedOnControl?.(4, true)
+    expect(term.clear).toHaveBeenCalledTimes(1)
+  })
+
+  it('appends output normally when attach control declares a resume', () => {
+    mountTerminal({ active: true })
+    capturedOnControl?.(4, false)
+    capturedOnOutput?.('gap')
+    capturedOnOutput?.('live')
+    expect(term.clear).not.toHaveBeenCalled()
+    expect(term.write).toHaveBeenNthCalledWith(1, 'gap')
+    expect(term.write).toHaveBeenNthCalledWith(2, 'live')
   })
 
   it('retains a deep scrollback so a long session keeps its history', () => {

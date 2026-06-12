@@ -9,6 +9,7 @@ import {
   getTurns,
   getWorkspace,
   listWorkspaces,
+  restartSession,
   startSession,
 } from '../services/workspaceService'
 
@@ -22,6 +23,7 @@ vi.mock('../services/workspaceService', () => ({
   attachRepository: vi.fn(),
   detachRepository: vi.fn(),
   startSession: vi.fn(),
+  restartSession: vi.fn(),
   stopSession: vi.fn(),
   getTurns: vi.fn(),
   sendInput: vi.fn(),
@@ -35,6 +37,7 @@ const mocked = {
   attachRepository: vi.mocked(attachRepository),
   detachRepository: vi.mocked(detachRepository),
   startSession: vi.mocked(startSession),
+  restartSession: vi.mocked(restartSession),
   getTurns: vi.mocked(getTurns),
 }
 
@@ -157,6 +160,24 @@ describe('useWorkspacesStore', () => {
     expect(freshStore.activeSessionId).toBe('sess-b')
   })
 
+  it('open keeps a preferred retained session when no live session is available', async () => {
+    localStorage.setItem(
+      'agents-ui:workspace-active-session',
+      JSON.stringify({ '11111111-1111-1111-1111-111111111111': 'failed' }),
+    )
+    mocked.getWorkspace.mockResolvedValue({
+      workspace: fakeWorkspace(),
+      sessions: [fakeSession({ id: 'stopped', status: 'STOPPED' }), fakeSession({ id: 'failed', status: 'FAILED' })],
+    })
+    mocked.getTurns.mockResolvedValue([])
+
+    const store = useWorkspacesStore()
+    await store.open('11111111-1111-1111-1111-111111111111')
+
+    expect(store.activeSessionId).toBe('failed')
+    expect(mocked.getTurns).toHaveBeenCalledWith('11111111-1111-1111-1111-111111111111', 'failed')
+  })
+
   it('create unshifts the new workspace', async () => {
     const ws = fakeWorkspace({ id: 'new', name: 'fresh' })
     mocked.createWorkspace.mockResolvedValue(ws)
@@ -254,5 +275,23 @@ describe('useWorkspacesStore', () => {
     const id = await store.newSession('CODEX')
     expect(id).toBe('sess-2')
     expect(mocked.startSession).toHaveBeenCalledWith(fakeWorkspace().id, 'CODEX', expect.any(Function))
+  })
+
+  it('restartSession calls the restart route helper and refreshes the active workspace', async () => {
+    mocked.restartSession.mockResolvedValue({ sessionId: 'sess-1', epoch: 2, generation: 4, status: 'RUNNING' })
+    mocked.getWorkspace.mockResolvedValue({
+      workspace: fakeWorkspace(),
+      sessions: [fakeSession({ id: 'sess-1', status: 'RUNNING' })],
+    })
+    mocked.getTurns.mockResolvedValue([])
+    const store = useWorkspacesStore()
+    store.activeWorkspace = fakeWorkspace()
+
+    const restarted = await store.restartSession('sess-1', 3)
+
+    expect(restarted).toEqual({ sessionId: 'sess-1', epoch: 2, generation: 4, status: 'RUNNING' })
+    expect(mocked.restartSession).toHaveBeenCalledWith(fakeWorkspace().id, 'sess-1', 3)
+    expect(mocked.getWorkspace).toHaveBeenCalledWith(fakeWorkspace().id)
+    expect(store.activeSessionId).toBe('sess-1')
   })
 })

@@ -1,20 +1,22 @@
 /**
  * Thin wrapper around the browser WebSocket for the
  * `/api/v1/ws/sessions/{id}/attach` endpoint. The agents-api
- * handler speaks two envelope shapes:
+ * handler speaks these envelope shapes:
  *
  *   inbound  -> `{ "input": "...", "enter": true }`
  *   inbound  -> `{ "resize": { "cols": <int>, "rows": <int> } }`
- *   outbound -> `{ "output": "...bytes-as-utf8..." }`
+ *   outbound -> `{ "epoch": 1, "snapshot": true }`
+ *   outbound -> `{ "output": "...bytes-as-utf8...", "off": 123 }`
+ *   outbound -> `{ "cursor": { "off": 123 } }`
  *
  * The socket self-heals. A backgrounded tab's WS is idle-closed by the
  * proxy/container after a while; without reconnection the terminal
  * silently rots — output stops and `send` drops keystrokes because the
  * socket is no longer OPEN. So an unexpected close schedules a
  * capped-backoff reconnect, keystrokes typed across the gap are queued
- * and flushed on reopen, and `onReopen` fires so the caller can clear
- * the screen before the gateway's fresh attach-snapshot repaints it
- * (otherwise the snapshot would append under the stale buffer).
+ * and flushed on reopen. Reconnects resume from the last acknowledged
+ * epoch/offset when the gateway has provided both values; otherwise the
+ * query is omitted so the gateway returns a snapshot.
  *
  * Reconnection is gated by [setReconnect] so an inactive tab does not
  * hold its runner alive against the idle reaper: only the visible
@@ -26,6 +28,7 @@
 export interface SessionSocketOptions {
   sessionId: string
   onOutput: (text: string) => void
+  onControl?: (epoch: number, snapshot: boolean) => void
   /** Fired when a *reconnect* (not the first connect) opens. */
   onReopen?: () => void
   onClose?: (code: number, reason: string) => void
@@ -55,16 +58,24 @@ export function attachSessionSocket(opts: SessionSocketOptions): SessionSocket {
   // on-site keystrokes local instead of detouring through Frankfurt).
   // Other hosts (e.g. localhost in dev) are left unchanged.
   const wsHost = window.location.host.replace(/^agents\./, 'agents-ws.')
-  const url = `${proto}//${wsHost}/api/v1/ws/sessions/${opts.sessionId}/attach`
+  const baseUrl = `${proto}//${wsHost}/api/v1/ws/sessions/${opts.sessionId}/attach`
 
   let ws: WebSocket | null = null
   let closedByCaller = false
   let reconnectEnabled = true
   let attempts = 0
   let everOpened = false
+  let lastEpoch: number | null = null
+  let lastOff: number | null = null
   let timer: ReturnType<typeof setTimeout> | null = null
   let heartbeatTimer: ReturnType<typeof setInterval> | null = null
   const queue: string[] = []
+
+  function connectUrl(): string {
+    if (lastEpoch === null || lastOff === null) return baseUrl
+    const params = new URLSearchParams({ epoch: String(lastEpoch), offset: String(lastOff) })
+    return `${baseUrl}?${params}`
+  }
 
   function clearTimer(): void {
     if (timer !== null) {
@@ -114,12 +125,53 @@ export function attachSessionSocket(opts: SessionSocketOptions): SessionSocket {
     timer = setTimeout(connect, delay)
   }
 
+  function isNonNegativeNumber(value: unknown): value is number {
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0
+  }
+
+  function updateCursor(epoch: unknown, off: unknown): void {
+    if (isNonNegativeNumber(epoch)) {
+      if (lastEpoch !== epoch) lastOff = null
+      lastEpoch = epoch
+    }
+    if (isNonNegativeNumber(off) && lastEpoch !== null) lastOff = off
+  }
+
+  function handleMessage(data: string): void {
+    try {
+      const payload: unknown = JSON.parse(data)
+      if (!payload || typeof payload !== 'object') return
+      const frame = payload as Record<string, unknown> // eslint-disable-line ts/consistent-type-assertions
+
+      if (isNonNegativeNumber(frame.epoch) && typeof frame.snapshot === 'boolean') {
+        if (lastEpoch !== frame.epoch || frame.snapshot) lastOff = null
+        lastEpoch = frame.epoch
+        opts.onControl?.(frame.epoch, frame.snapshot)
+      }
+
+      if ('cursor' in frame && frame.cursor && typeof frame.cursor === 'object') {
+        const cursor = frame.cursor as Record<string, unknown> // eslint-disable-line ts/consistent-type-assertions
+        updateCursor(cursor.epoch, cursor.off ?? cursor.offset)
+      }
+
+      if ('output' in frame) {
+        const output = frame.output
+        if (typeof output === 'string') {
+          opts.onOutput(output)
+          updateCursor(frame.epoch, frame.off ?? frame.offset)
+        }
+      }
+    } catch {
+      // ignore non-JSON frames
+    }
+  }
+
   function connect(): void {
     clearTimer()
     if (closedByCaller) return
     if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return
 
-    ws = new WebSocket(url)
+    ws = new WebSocket(connectUrl())
     ws.onopen = () => {
       attempts = 0
       if (everOpened) opts.onReopen?.()
@@ -127,17 +179,7 @@ export function attachSessionSocket(opts: SessionSocketOptions): SessionSocket {
       flushQueue()
       startHeartbeat()
     }
-    ws.onmessage = (ev) => {
-      try {
-        const payload: unknown = JSON.parse(ev.data)
-        if (payload && typeof payload === 'object' && 'output' in payload) {
-          const output = (payload as { output: unknown }).output // eslint-disable-line ts/consistent-type-assertions
-          if (typeof output === 'string') opts.onOutput(output)
-        }
-      } catch {
-        // ignore non-JSON frames
-      }
-    }
+    ws.onmessage = (ev) => handleMessage(ev.data)
     ws.onclose = (ev) => {
       clearHeartbeat()
       opts.onClose?.(ev.code, ev.reason)

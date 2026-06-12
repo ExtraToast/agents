@@ -60,6 +60,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{workspaceId}/sessions/{sessionId}/restart": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["restart"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{workspaceId}/sessions/{sessionId}/input": {
         parameters: {
             query?: never;
@@ -536,6 +552,19 @@ export interface components {
             bytes: number;
             name: string;
         };
+        RestartAgentSessionHttpRequest: {
+            /** Format: int64 */
+            expectedGeneration?: number | null;
+        };
+        RestartAgentSessionResponse: {
+            /** Format: uuid */
+            sessionId: string;
+            /** Format: int64 */
+            epoch: number;
+            /** Format: int64 */
+            generation: number;
+            status: string;
+        };
         SendUserInputRequest: {
             text: string;
             enter: boolean;
@@ -865,6 +894,33 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["StagedInputResponse"];
+                };
+            };
+        };
+    };
+    restart: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RestartAgentSessionHttpRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RestartAgentSessionResponse"];
                 };
             };
         };
