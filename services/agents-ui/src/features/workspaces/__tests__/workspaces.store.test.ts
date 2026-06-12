@@ -1,6 +1,7 @@
 import type { AgentSession, Workspace, WorkspaceDetail, WorkspaceRepository } from '../types'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ApiError } from '@/lib/vueWebCommons'
 import {
   attachRepository,
   createWorkspace,
@@ -88,6 +89,14 @@ function fakeRepository(over: Partial<WorkspaceRepository> = {}): WorkspaceRepos
     attachedAt: '2026-05-20T10:00:00Z',
     ...over,
   }
+}
+
+function apiError(status: number): ApiError {
+  return new ApiError({
+    type: 'about:blank',
+    title: 'x',
+    status,
+  })
 }
 
 describe('useWorkspacesStore', () => {
@@ -293,5 +302,115 @@ describe('useWorkspacesStore', () => {
     expect(mocked.restartSession).toHaveBeenCalledWith(fakeWorkspace().id, 'sess-1', 3)
     expect(mocked.getWorkspace).toHaveBeenCalledWith(fakeWorkspace().id)
     expect(store.activeSessionId).toBe('sess-1')
+  })
+
+  it('restartSession uses the current session generation when no override is provided', async () => {
+    mocked.restartSession.mockResolvedValue({ sessionId: 'sess-1', epoch: 2, generation: 4, status: 'RUNNING' })
+    mocked.getWorkspace.mockResolvedValue({
+      workspace: fakeWorkspace(),
+      sessions: [fakeSession({ id: 'sess-1', generation: 4, status: 'RUNNING' })],
+    })
+    const store = useWorkspacesStore()
+    store.activeWorkspace = fakeWorkspace()
+    store.activeSessionId = 'sess-1'
+    store.sessions = [fakeSession({ id: 'sess-1', generation: 3, status: 'RUNNING' })]
+
+    await store.restartSession('sess-1')
+
+    expect(mocked.restartSession).toHaveBeenCalledWith(fakeWorkspace().id, 'sess-1', 3)
+  })
+
+  it('restartSession preserves the active session and leaves terminal history to websocket replay', async () => {
+    mocked.restartSession.mockResolvedValue({ sessionId: 'sess-1', epoch: 2, generation: 4, status: 'RUNNING' })
+    mocked.getWorkspace.mockResolvedValue({
+      workspace: fakeWorkspace(),
+      sessions: [
+        fakeSession({ id: 'sess-1', generation: 4, status: 'RUNNING' }),
+        fakeSession({ id: 'sess-2', status: 'RUNNING' }),
+      ],
+    })
+    const store = useWorkspacesStore()
+    store.activeWorkspace = fakeWorkspace()
+    store.activeSessionId = 'sess-2'
+    store.sessions = [fakeSession({ id: 'sess-1', generation: 3 }), fakeSession({ id: 'sess-2' })]
+    store.turns = [{ id: 'turn-1', sessionId: 'sess-2', role: 'AGENT', body: 'existing', createdAt: '2026-05-19T10:00:00Z' }]
+
+    await store.restartSession('sess-1')
+
+    expect(store.activeSessionId).toBe('sess-2')
+    expect(mocked.getTurns).not.toHaveBeenCalled()
+    expect(store.turns).toEqual([
+      { id: 'turn-1', sessionId: 'sess-2', role: 'AGENT', body: 'existing', createdAt: '2026-05-19T10:00:00Z' },
+    ])
+  })
+
+  it('restartSession refreshes the workspace snapshot on generation conflict', async () => {
+    mocked.restartSession.mockRejectedValue(apiError(409))
+    mocked.getWorkspace.mockResolvedValue({
+      workspace: fakeWorkspace(),
+      sessions: [fakeSession({ id: 'sess-1', generation: 4, status: 'RUNNING' })],
+    })
+    const store = useWorkspacesStore()
+    store.activeWorkspace = fakeWorkspace()
+    store.activeSessionId = 'sess-1'
+    store.sessions = [fakeSession({ id: 'sess-1', generation: 3, status: 'RUNNING' })]
+
+    const restarted = await store.restartSession('sess-1')
+
+    expect(restarted).toBeNull()
+    expect(mocked.getWorkspace).toHaveBeenCalledWith(fakeWorkspace().id)
+    expect(store.sessions[0]?.generation).toBe(4)
+    expect(store.restartStateFor('sess-1')).toBe('reattaching')
+    expect(mocked.getTurns).not.toHaveBeenCalled()
+  })
+
+  it('models restart confirmation and terminal replay states', async () => {
+    let resolveRestart: (value: { sessionId: string; epoch: number; generation: number; status: 'RUNNING' }) => void = () => {}
+    mocked.restartSession.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveRestart = resolve
+        }),
+    )
+    mocked.getWorkspace.mockResolvedValue({
+      workspace: fakeWorkspace(),
+      sessions: [fakeSession({ id: 'sess-1', generation: 4, status: 'RUNNING' })],
+    })
+    const store = useWorkspacesStore()
+    store.activeWorkspace = fakeWorkspace()
+    store.activeSessionId = 'sess-1'
+    store.sessions = [fakeSession({ id: 'sess-1', generation: 3, status: 'RUNNING' })]
+
+    expect(store.restartStateFor('sess-1')).toBe('idle')
+    store.requestRestartConfirmation('sess-1')
+    expect(store.restartStateFor('sess-1')).toBe('confirm-pending')
+    store.cancelRestartConfirmation('sess-1')
+    expect(store.restartStateFor('sess-1')).toBe('idle')
+
+    const pending = store.restartSession('sess-1')
+    expect(store.restartStateFor('sess-1')).toBe('in-progress')
+    resolveRestart!({ sessionId: 'sess-1', epoch: 2, generation: 4, status: 'RUNNING' })
+    await pending
+
+    expect(store.restartStateFor('sess-1')).toBe('reattaching')
+    store.markRestartReplayingHistory('sess-1')
+    expect(store.restartStateFor('sess-1')).toBe('replaying-history')
+    store.markRestartLive('sess-1')
+    expect(store.restartStateFor('sess-1')).toBe('live')
+  })
+
+  it('marks restart failed and keeps the active session when restart fails', async () => {
+    const failure = apiError(500)
+    mocked.restartSession.mockRejectedValue(failure)
+    const store = useWorkspacesStore()
+    store.activeWorkspace = fakeWorkspace()
+    store.activeSessionId = 'sess-2'
+    store.sessions = [fakeSession({ id: 'sess-1', generation: 3 }), fakeSession({ id: 'sess-2' })]
+
+    await expect(store.restartSession('sess-1')).rejects.toBe(failure)
+
+    expect(store.activeSessionId).toBe('sess-2')
+    expect(store.restartStateFor('sess-1')).toBe('failed')
+    expect(mocked.getWorkspace).not.toHaveBeenCalled()
   })
 })

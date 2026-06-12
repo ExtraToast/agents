@@ -4,11 +4,14 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import App from '../App.vue'
 
 describe('app', () => {
-  it('renders without crashing', () => {
+  it('renders without crashing', async () => {
     const router = createRouter({
       history: createMemoryHistory(),
       routes: [{ path: '/', name: 'home', component: { template: '<div />' } }],
     })
+    await router.push('/')
+    await router.isReady()
+
     const wrapper = mount(App, {
       global: {
         plugins: [router],

@@ -1,21 +1,38 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { TabPanel, Tabs } from '@/lib/vueWebCommons'
 import ChatTab from '../components/ChatTab.vue'
 import ScratchTab from '../components/ScratchTab.vue'
 import WorkspaceTab from '../components/WorkspaceTab.vue'
 
-const active = ref<'chat' | 'scratch' | 'workspace'>('chat')
+type SessionTab = 'workspace' | 'scratch' | 'chat'
+
+const validTabs: SessionTab[] = ['workspace', 'scratch', 'chat']
+const route = useRoute()
+const router = useRouter()
+
+function normalizedTab(value: unknown): SessionTab {
+  return validTabs.find((tab) => tab === value) ?? 'workspace'
+}
+
+const active = computed<SessionTab>({
+  get: () => normalizedTab(route.query.tab),
+  set: (value) => {
+    const { new: _omit, ...rest } = route.query
+    void router.push({ path: '/sessions', query: { ...rest, tab: value } })
+  },
+})
 </script>
 
 <template>
-  <div class="max-w-6xl mx-auto p-6">
+  <div class="max-w-6xl p-6">
     <header class="mb-6">
       <h1 class="text-2xl font-bold">Sessions</h1>
       <p class="mt-1 text-sm text-[var(--color-text-muted)]">
-        Three flavours: <strong>Chat</strong> is pure LLM Q&A (no Pod), <strong>Scratch</strong> spawns a Pod with a
-        shell but no git repo, and <strong>Workspace</strong> clones a project's repository so the agent can edit +
-        push.
+        Three flavours: <strong>Workspace</strong> clones a project's repository so the agent can edit +
+        push, <strong>Scratch</strong> spawns a Pod with a shell but no git repo, and <strong>Chat</strong> is pure LLM
+        Q&A (no Pod).
       </p>
     </header>
 
@@ -24,17 +41,17 @@ const active = ref<'chat' | 'scratch' | 'workspace'>('chat')
         <button
           type="button"
           role="tab"
-          :aria-selected="current === 'chat'"
+          :aria-selected="current === 'workspace'"
           class="rounded-t px-4 py-2 text-sm transition-colors"
           :class="[
-            current === 'chat'
+            current === 'workspace'
               ? 'bg-[var(--color-surface-elevated)] text-white border-b-2 border-[var(--color-accent)]'
               : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]',
           ]"
-          data-testid="sessions-tab-chat"
-          @click="activate('chat')"
+          data-testid="sessions-tab-workspace"
+          @click="activate('workspace')"
         >
-          Chat
+          Workspace
         </button>
         <button
           type="button"
@@ -54,28 +71,28 @@ const active = ref<'chat' | 'scratch' | 'workspace'>('chat')
         <button
           type="button"
           role="tab"
-          :aria-selected="current === 'workspace'"
+          :aria-selected="current === 'chat'"
           class="rounded-t px-4 py-2 text-sm transition-colors"
           :class="[
-            current === 'workspace'
+            current === 'chat'
               ? 'bg-[var(--color-surface-elevated)] text-white border-b-2 border-[var(--color-accent)]'
               : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]',
           ]"
-          data-testid="sessions-tab-workspace"
-          @click="activate('workspace')"
+          data-testid="sessions-tab-chat"
+          @click="activate('chat')"
         >
-          Workspace
+          Chat
         </button>
       </template>
 
-      <TabPanel value="chat" :keep-alive="true">
-        <ChatTab />
+      <TabPanel value="workspace">
+        <WorkspaceTab />
       </TabPanel>
       <TabPanel value="scratch">
         <ScratchTab />
       </TabPanel>
-      <TabPanel value="workspace">
-        <WorkspaceTab />
+      <TabPanel value="chat" :keep-alive="true">
+        <ChatTab />
       </TabPanel>
     </Tabs>
   </div>

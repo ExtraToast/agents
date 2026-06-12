@@ -2,6 +2,7 @@ import type { AgentSession } from '../types'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { nextTick } from 'vue'
 import SessionTabs from '../components/SessionTabs.vue'
 import { useSessionLabelsStore } from '../stores/sessionLabels'
 
@@ -35,12 +36,13 @@ describe('sessionTabs', () => {
   })
 
   it('right-click opens an inline editor; Enter commits and persists the label', async () => {
+    const session = fakeSession()
     const wrapper = mount(SessionTabs, {
-      props: { sessions: [fakeSession()], activeId: null },
+      props: { sessions: [session], activeId: null },
     })
     expect(wrapper.find('[data-testid="session-tab-rename"]').exists()).toBe(false)
 
-    await wrapper.find('button').trigger('contextmenu')
+    await wrapper.get(`[data-testid="session-tab-${session.id}"]`).trigger('contextmenu')
     const input = wrapper.find('[data-testid="session-tab-rename"]')
     expect(input.exists()).toBe(true)
 
@@ -55,10 +57,11 @@ describe('sessionTabs', () => {
   it('escape cancels the edit without changing the label', async () => {
     const labels = useSessionLabelsStore()
     labels.rename('aaaaaaaa-1111-2222-3333-444444444444', 'original')
+    const session = fakeSession()
     const wrapper = mount(SessionTabs, {
-      props: { sessions: [fakeSession()], activeId: null },
+      props: { sessions: [session], activeId: null },
     })
-    await wrapper.find('button').trigger('contextmenu')
+    await wrapper.get(`[data-testid="session-tab-${session.id}"]`).trigger('contextmenu')
     const input = wrapper.find('[data-testid="session-tab-rename"]')
     await input.setValue('discarded')
     await input.trigger('keydown.esc')
@@ -68,15 +71,79 @@ describe('sessionTabs', () => {
   })
 
   it('does not emit select while typing in the rename input', async () => {
+    const session = fakeSession()
     const wrapper = mount(SessionTabs, {
-      props: { sessions: [fakeSession()], activeId: null },
+      props: { sessions: [session], activeId: null },
     })
-    await wrapper.find('button').trigger('contextmenu')
+    await wrapper.get(`[data-testid="session-tab-${session.id}"]`).trigger('contextmenu')
     await wrapper.find('[data-testid="session-tab-rename"]').trigger('click')
     expect(wrapper.emitted('select')).toBeUndefined()
   })
 
-  it('renders vertical session controls without nesting the stop action in the selector', async () => {
+  it('renders accessible tab semantics with selected state and controlled panel ids', () => {
+    const sessions = [
+      fakeSession({ id: 'sess-a', kind: 'CLAUDE', status: 'RUNNING' }),
+      fakeSession({ id: 'sess-b', kind: 'CODEX', status: 'STOPPED' }),
+    ]
+    const wrapper = mount(SessionTabs, {
+      props: { sessions, activeId: 'sess-b', orientation: 'vertical' },
+    })
+
+    const tabs = wrapper.findAll('[role="tab"]')
+    expect(wrapper.get('[data-testid="session-tabs-list"]').attributes('role')).toBe('tablist')
+    expect(wrapper.get('[data-testid="session-tabs-list"]').attributes('aria-orientation')).toBe('vertical')
+    expect(tabs).toHaveLength(2)
+    expect(tabs.every((tab) => tab.element.tagName === 'DIV')).toBe(true)
+    expect(wrapper.get('[data-testid="session-tab-sess-a"]').attributes()).toMatchObject({
+      'role': 'tab',
+      'aria-selected': 'false',
+      'aria-controls': 'session-panel-sess-a',
+      'tabindex': '-1',
+    })
+    expect(wrapper.get('[data-testid="session-tab-sess-b"]').attributes()).toMatchObject({
+      'role': 'tab',
+      'aria-selected': 'true',
+      'aria-controls': 'session-panel-sess-b',
+      'tabindex': '0',
+    })
+  })
+
+  it('supports roving tabindex with arrow, Home, and End keyboard navigation', async () => {
+    const sessions = [
+      fakeSession({ id: 'sess-a' }),
+      fakeSession({ id: 'sess-b' }),
+      fakeSession({ id: 'sess-c' }),
+    ]
+    const wrapper = mount(SessionTabs, {
+      attachTo: document.body,
+      props: { sessions, activeId: 'sess-a' },
+    })
+
+    await wrapper.get('[data-testid="session-tab-sess-a"]').trigger('keydown', { key: 'ArrowRight' })
+    await nextTick()
+    expect(wrapper.emitted('select')).toEqual([['sess-b']])
+    expect(wrapper.get('[data-testid="session-tab-sess-a"]').attributes('tabindex')).toBe('-1')
+    expect(wrapper.get('[data-testid="session-tab-sess-b"]').attributes('tabindex')).toBe('0')
+    expect(document.activeElement).toBe(wrapper.get('[data-testid="session-tab-sess-b"]').element)
+
+    await wrapper.get('[data-testid="session-tab-sess-b"]').trigger('keydown', { key: 'End' })
+    await nextTick()
+    expect(wrapper.emitted('select')).toEqual([['sess-b'], ['sess-c']])
+    expect(wrapper.get('[data-testid="session-tab-sess-c"]').attributes('tabindex')).toBe('0')
+
+    await wrapper.get('[data-testid="session-tab-sess-c"]').trigger('keydown', { key: 'Home' })
+    await nextTick()
+    expect(wrapper.emitted('select')).toEqual([['sess-b'], ['sess-c'], ['sess-a']])
+    expect(wrapper.get('[data-testid="session-tab-sess-a"]').attributes('tabindex')).toBe('0')
+
+    await wrapper.get('[data-testid="session-tab-sess-a"]').trigger('keydown', { key: 'ArrowLeft' })
+    await nextTick()
+    expect(wrapper.emitted('select')).toEqual([['sess-b'], ['sess-c'], ['sess-a'], ['sess-c']])
+    expect(wrapper.get('[data-testid="session-tab-sess-c"]').attributes('tabindex')).toBe('0')
+    wrapper.unmount()
+  })
+
+  it('keeps the stop action inside the tab and isolates its click from selection', async () => {
     const session = fakeSession()
     const wrapper = mount(SessionTabs, {
       props: { sessions: [session], activeId: session.id, orientation: 'vertical' },
@@ -85,9 +152,25 @@ describe('sessionTabs', () => {
     await wrapper.get(`[data-testid="session-tab-${session.id}"]`).trigger('click')
     await wrapper.get(`[data-testid="session-tab-stop-${session.id}"]`).trigger('click')
 
+    const tab = wrapper.get(`[data-testid="session-tab-${session.id}"]`)
     expect(wrapper.get('[data-testid="session-tabs"]').attributes('aria-label')).toBe('Agent sessions')
+    expect(tab.find(`[data-testid="session-tab-stop-${session.id}"]`).exists()).toBe(true)
     expect(wrapper.emitted('select')).toEqual([[session.id]])
     expect(wrapper.emitted('stop')).toEqual([[session.id]])
+  })
+
+  it('shows a click rename affordance and opens the inline editor from it', async () => {
+    const session = fakeSession()
+    const wrapper = mount(SessionTabs, {
+      props: { sessions: [session], activeId: null },
+    })
+
+    const rename = wrapper.get(`button[aria-label="Rename session ${session.id.slice(0, 8)}"]`)
+    expect(rename.isVisible()).toBe(true)
+    await rename.trigger('click')
+
+    expect(wrapper.find('[data-testid="session-tab-rename"]').exists()).toBe(true)
+    expect(wrapper.emitted('select')).toBeUndefined()
   })
 
   it('keeps horizontal session tabs scrollable with stable tab widths', () => {
@@ -113,5 +196,16 @@ describe('sessionTabs', () => {
     expect(wrapper.find('[data-testid="session-tab-sess-failed"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="session-tab-stop-sess-stopped"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="session-tab-stop-sess-failed"]').exists()).toBe(false)
+  })
+
+  it('renders kind and status metadata with a non-color status label', () => {
+    const wrapper = mount(SessionTabs, {
+      props: { sessions: [fakeSession({ id: 'sess-starting', kind: 'SHELL', status: 'STARTING' })], activeId: null },
+    })
+    const tab = wrapper.get('[data-testid="session-tab-sess-starting"]')
+
+    expect(tab.text()).toContain('SHELL')
+    expect(tab.text()).toContain('STARTING')
+    expect(tab.get('[aria-label="Status: STARTING"]').text()).toBe('STARTING')
   })
 })

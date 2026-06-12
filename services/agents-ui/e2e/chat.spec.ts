@@ -1,20 +1,37 @@
 import { expect, test } from '@playwright/test'
+import { installAuthenticatedAppMocks } from './mocks'
 
-test('chat page renders', async ({ page }) => {
-  await page.goto('/chat')
-  await expect(page.locator('h1')).toContainText('Agent')
-})
+test('root redirects authenticated users to sessions', async ({ page }) => {
+  await installAuthenticatedAppMocks(page)
 
-test('chat page redirects unauthenticated users', async ({ page }) => {
-  await page.goto('/chat')
-  // Unauthenticated users should be redirected away from /chat
-  const url = page.url()
-  expect(url).toContain('/login')
-})
-
-test('chat page URL is /chat', async ({ page }) => {
   await page.goto('/')
-  // Root should redirect to /chat
-  await page.waitForURL('**/chat**')
-  expect(page.url()).toContain('/chat')
+
+  await page.waitForURL('**/sessions')
+  await expect(page.getByRole('heading', { name: 'Sessions' })).toBeVisible()
+  await expect(page.getByTestId('workspace-tab')).toBeVisible()
+})
+
+test('sessions route redirects unauthenticated users to login', async ({ page }) => {
+  await installAuthenticatedAppMocks(page, { authenticated: false })
+
+  await page.goto('/sessions')
+
+  await page.waitForURL(/\/login\?redirect=/)
+})
+
+test('chat sessions can open and stream an answer from the sessions view', async ({ page }) => {
+  await installAuthenticatedAppMocks(page)
+
+  await page.goto('/sessions?tab=chat')
+
+  await expect(page.getByTestId('chat-tab')).toBeVisible()
+  await expect(page.getByTestId('chat-session-chat-1')).toContainText('Planning brief')
+  await expect(page.getByTestId('chat-detail-chat-1')).toBeVisible()
+  await expect(page.getByText('Use the sessions workspace.')).toBeVisible()
+
+  await page.getByTestId('chat-input').fill('Summarize the workspace')
+  await page.getByTestId('chat-send-submit').click()
+
+  await expect(page.getByText('Summarize the workspace')).toBeVisible()
+  await expect(page.getByText('Mock streamed answer')).toBeVisible()
 })

@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useWorkspacesStore } from '@/features/workspaces'
 import { Card, Modal, SubmitButton, useMutationState, useToast } from '@/lib/vueWebCommons'
 import CreateWorkspaceWizard from './CreateWorkspaceWizard.vue'
 
 const store = useWorkspacesStore()
 const toast = useToast()
+const route = useRoute()
+const router = useRouter()
 const showWizard = ref(false)
 const destroy = useMutationState<void>()
 const deletingId = ref<string | null>(null)
@@ -15,6 +18,20 @@ const repoBackedWorkspaces = computed(() => store.workspaces.filter((w) => w.kin
 onMounted(() => {
   void store.loadAll()
 })
+
+watch(
+  () => route.query.new,
+  (value) => {
+    if (value !== '1') {
+      return
+    }
+    showWizard.value = true
+    const query = { ...route.query }
+    delete query.new
+    void router.replace({ path: route.path, query })
+  },
+  { immediate: true },
+)
 
 async function onDestroy(id: string, name: string): Promise<void> {
   // See ProjectView for the rationale on using window.confirm.

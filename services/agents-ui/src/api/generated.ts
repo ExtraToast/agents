@@ -565,6 +565,33 @@ export interface components {
             generation: number;
             status: string;
         };
+        FieldError: {
+            field: string;
+            message: string;
+            rejectedValue?: null;
+        };
+        ProblemDetail: {
+            /** Format: uri */
+            type: string;
+            title: string;
+            /** Format: int32 */
+            status: number;
+            detail?: string | null;
+            /** Format: uri */
+            instance?: string | null;
+            errors: components["schemas"]["FieldError"][];
+            traceId?: string | null;
+            exception?: string | null;
+            /** Format: int32 */
+            kubernetesCode?: number | null;
+            kubernetesReason?: string | null;
+            constraint?: string | null;
+            column?: string | null;
+            referencedTable?: string | null;
+            runnerStatus?: string | null;
+            /** Format: int32 */
+            retryAfterSeconds?: number | null;
+        };
         SendUserInputRequest: {
             text: string;
             enter: boolean;
@@ -739,7 +766,14 @@ export interface components {
             /** @enum {string} */
             kind: "CLAUDE" | "CODEX" | "SHELL";
             gatewayAgentId?: string | null;
+            /** Format: int64 */
+            epoch: number;
+            /** Format: int64 */
+            generation: number;
+            /** Format: date-time */
+            gatewayBoundAt?: string | null;
             status: string;
+            idle: boolean;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -914,13 +948,31 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
-            200: {
+            /** @description Accepted */
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "*/*": components["schemas"]["RestartAgentSessionResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RestartAgentSessionResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProblemDetail"];
                 };
             };
         };

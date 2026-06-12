@@ -14,6 +14,9 @@ const send = useMutationState<void>()
 const create = useMutationState<void>()
 const archive = useMutationState<void>()
 const deletingId = ref<string | null>(null)
+const copyingId = ref<string | null>(null)
+const copiedId = ref<string | null>(null)
+const copyErrorById = ref<Record<string, string>>({})
 
 const active = computed(() => {
   const id = store.activeSessionId
@@ -110,6 +113,23 @@ async function onArchive(id: string, title: string): Promise<void> {
   }
 }
 
+async function onCopyMessage(m: ChatMessage): Promise<void> {
+  if (!m.body || copyingId.value) {
+    return
+  }
+  copyingId.value = m.id
+  copiedId.value = null
+  delete copyErrorById.value[m.id]
+  try {
+    await navigator.clipboard.writeText(m.body)
+    copiedId.value = m.id
+  } catch {
+    copyErrorById.value[m.id] = 'Could not copy message.'
+  } finally {
+    copyingId.value = null
+  }
+}
+
 function messageClass(m: ChatMessage): string {
   if (m.failed) {
     return 'border border-red-300 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-950/30 dark:text-red-100'
@@ -124,6 +144,13 @@ function messageTestId(m: ChatMessage): string {
   if (m.streaming) return 'chat-message-streaming'
   if (m.failed) return 'chat-message-failed'
   return `chat-message-${m.id}`
+}
+
+function copyLabel(m: ChatMessage): string {
+  if (copyingId.value === m.id) return 'Copying...'
+  if (copyErrorById.value[m.id]) return 'Copy failed'
+  if (copiedId.value === m.id) return 'Copied'
+  return 'Copy'
 }
 </script>
 
@@ -195,8 +222,27 @@ function messageTestId(m: ChatMessage): string {
             :data-testid="messageTestId(m)"
           >
             <p class="text-xs text-[var(--color-text-muted)] mb-1">{{ m.role === 'USER' ? 'You' : 'Agent' }}</p>
-            <p class="whitespace-pre-wrap">
-              {{ m.body }}<span v-if="m.streaming" class="ml-0.5 animate-pulse" aria-hidden="true">...</span>
+            <div class="flex items-start justify-between gap-3">
+              <p class="min-w-0 flex-1 whitespace-pre-wrap select-text" :data-testid="`chat-message-text-${m.id}`">
+                {{ m.body }}<span v-if="m.streaming" class="ml-0.5 animate-pulse" aria-hidden="true">...</span>
+              </p>
+              <button
+                type="button"
+                class="select-none rounded border px-2 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                :class="
+                  copyErrorById[m.id]
+                    ? 'border-red-300 text-red-900 hover:bg-red-100 dark:border-red-700 dark:text-red-100 dark:hover:bg-red-950/50'
+                    : 'border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-text-primary)]'
+                "
+                :disabled="!m.body || copyingId !== null"
+                :data-testid="`chat-copy-${m.id}`"
+                @click="onCopyMessage(m)"
+              >
+                {{ copyLabel(m) }}
+              </button>
+            </div>
+            <p v-if="copyErrorById[m.id]" class="mt-1 text-xs font-medium text-red-700 dark:text-red-200">
+              {{ copyErrorById[m.id] }}
             </p>
             <div v-if="m.failed" class="mt-2 flex items-center gap-2">
               <p class="text-xs font-medium">Answer failed.</p>

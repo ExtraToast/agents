@@ -92,7 +92,7 @@ describe('sessionSocket', () => {
     expect(out).toEqual(['hello'])
   })
 
-  it('fires control callbacks and resumes reconnects from the last epoch offset', () => {
+  it('fires legacy control callbacks and resumes reconnects from the last epoch offset', () => {
     const control = vi.fn()
     sock = attachSessionSocket({ sessionId: 's1', onOutput: () => {}, onControl: control })
     latest().open()
@@ -110,10 +110,57 @@ describe('sessionSocket', () => {
     expect(latest().url).toContain('offset=12')
   })
 
-  it('updates the reconnect cursor from cursor frames and ignores empty cursor frames', () => {
+  it('resumes same-epoch durable reconnects without clearing the terminal', () => {
+    const control = vi.fn()
+    sock = attachSessionSocket({ sessionId: 's1', onOutput: () => {}, onControl: control })
+    latest().open()
+    latest().message(JSON.stringify({ control: 'SNAPSHOT', epoch: 3 }))
+    latest().message(JSON.stringify({ cursor: 4 }))
+    latest().serverClose()
+    vi.advanceTimersByTime(600)
+
+    expect(latest().url).toContain('epoch=3')
+    expect(latest().url).toContain('offset=4')
+
+    latest().open()
+    latest().message(JSON.stringify({ control: 'RESUME', epoch: 3 }))
+    latest().message(JSON.stringify({ output: 'tail', off: 8 }))
+    latest().serverClose()
+    vi.advanceTimersByTime(600)
+
+    expect(control).toHaveBeenNthCalledWith(1, 3, true)
+    expect(control).toHaveBeenNthCalledWith(2, 3, false)
+    expect(latest().url).toContain('epoch=3')
+    expect(latest().url).toContain('offset=8')
+  })
+
+  it('clears only for durable snapshot reset or epoch transition', () => {
+    const control = vi.fn()
+    sock = attachSessionSocket({ sessionId: 's1', onOutput: () => {}, onControl: control })
+    latest().open()
+    latest().message(JSON.stringify({ control: 'SNAPSHOT', epoch: 1 }))
+    latest().message(JSON.stringify({ cursor: 10 }))
+    latest().message(JSON.stringify({ control: 'RESUME', epoch: 1 }))
+    latest().message(JSON.stringify({ control: 'RESUME', epoch: 2 }))
+    latest().message(JSON.stringify({ reset: true }))
+
+    expect(control.mock.calls).toEqual([
+      [1, true],
+      [1, false],
+      [2, true],
+      [2, true],
+    ])
+
+    latest().serverClose()
+    vi.advanceTimersByTime(600)
+    expect(latest().url).not.toContain('?')
+  })
+
+  it('updates the reconnect cursor from numeric and legacy object cursor frames', () => {
     sock = attachSessionSocket({ sessionId: 's1', onOutput: () => {} })
     latest().open()
     latest().message(JSON.stringify({ epoch: 3, snapshot: true }))
+    latest().message(JSON.stringify({ cursor: 7 }))
     latest().message(JSON.stringify({ cursor: { off: 9 } }))
     latest().message(JSON.stringify({ cursor: {} }))
 
@@ -122,6 +169,36 @@ describe('sessionSocket', () => {
 
     expect(latest().url).toContain('epoch=3')
     expect(latest().url).toContain('offset=9')
+  })
+
+  it('advances stale reconnect offsets when a trim frame moves the transcript window', () => {
+    sock = attachSessionSocket({ sessionId: 's1', onOutput: () => {} })
+    latest().open()
+    latest().message(JSON.stringify({ control: 'SNAPSHOT', epoch: 5 }))
+    latest().message(JSON.stringify({ cursor: 2 }))
+    latest().message(JSON.stringify({ trim: 6 }))
+
+    latest().serverClose()
+    vi.advanceTimersByTime(600)
+
+    expect(latest().url).toContain('epoch=5')
+    expect(latest().url).toContain('offset=6')
+  })
+
+  it('exposes replay complete and records its cursor for the next reconnect', () => {
+    const replayComplete = vi.fn()
+    sock = attachSessionSocket({ sessionId: 's1', onOutput: () => {}, onReplayComplete: replayComplete })
+    latest().open()
+    latest().message(JSON.stringify({ control: 'SNAPSHOT', epoch: 4 }))
+    latest().message(JSON.stringify({ output: 'abc', off: 3 }))
+    latest().message(JSON.stringify({ control: 'REPLAY_COMPLETE', cursor: 3 }))
+
+    expect(replayComplete).toHaveBeenCalledWith(3)
+
+    latest().serverClose()
+    vi.advanceTimersByTime(600)
+    expect(latest().url).toContain('epoch=4')
+    expect(latest().url).toContain('offset=3')
   })
 
   it('omits the reconnect cursor after a stale epoch snapshot until a new offset arrives', () => {
@@ -161,6 +238,23 @@ describe('sessionSocket', () => {
     expect(reopened).not.toHaveBeenCalled()
     latest().open() // reconnect established
     expect(reopened).toHaveBeenCalledTimes(1)
+  })
+
+  it('preserves queued input across a reconnect snapshot', () => {
+    sock = attachSessionSocket({ sessionId: 's1', onOutput: () => {} })
+    latest().open()
+    latest().message(JSON.stringify({ control: 'SNAPSHOT', epoch: 1 }))
+    latest().message(JSON.stringify({ cursor: 0 }))
+    latest().serverClose()
+    sock.send('queued', false)
+    vi.advanceTimersByTime(600)
+
+    expect(latest().sent).toEqual([])
+
+    latest().open()
+    latest().message(JSON.stringify({ control: 'SNAPSHOT', epoch: 1 }))
+    latest().message(JSON.stringify({ reset: true }))
+    expect(latest().sent).toEqual([JSON.stringify({ input: 'queued', enter: false })])
   })
 
   it('does not reconnect while reconnect is disabled', () => {

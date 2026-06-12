@@ -2,3 +2,19 @@
 @import '@extratoast/vue-web-commons/theme.css';
 
 @source "../node_modules/@extratoast/vue-web-commons/dist/**/*.{js,vue,ts}";
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  min-height: 100svh;
+}
+
+@supports (min-height: 100dvh) {
+  body {
+    min-height: 100dvh;
+  }
+}
