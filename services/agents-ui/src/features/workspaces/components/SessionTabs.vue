@@ -37,6 +37,13 @@ function tabPanelId(s: AgentSession): string {
   return `session-panel-${s.id}`
 }
 
+function setupLabel(s: AgentSession): string | null {
+  const current = s.currentSetup ? `${s.currentSetup.id}@v${s.currentSetup.version}` : null
+  const pending = s.pendingSetup ? `${s.pendingSetup.id}@v${s.pendingSetup.version}` : null
+  if (pending) return current ? `${current} -> ${pending}` : pending
+  return current
+}
+
 function isSelected(s: AgentSession): boolean {
   return props.activeId === s.id
 }
@@ -216,6 +223,14 @@ function sessionShellClasses(s: AgentSession): string[] {
             />
           </template>
           <span v-else class="min-w-0 flex-1 truncate font-mono" :title="s.id">{{ tabLabel(s) }}</span>
+          <span
+            v-if="setupLabel(s)"
+            class="min-w-0 max-w-28 shrink truncate rounded border border-[var(--color-surface-border)] px-1.5 py-0.5 font-mono text-xs text-[var(--color-text-muted)]"
+            :title="setupLabel(s) ?? undefined"
+            :data-testid="`session-tab-setup-${s.id}`"
+          >
+            {{ setupLabel(s) }}
+          </span>
           <span
             class="shrink-0 rounded border border-[var(--color-surface-border)] px-1.5 py-0.5 text-xs"
             :class="s.status === 'RUNNING' ? 'text-green-400' : 'text-[var(--color-text-muted)]'"

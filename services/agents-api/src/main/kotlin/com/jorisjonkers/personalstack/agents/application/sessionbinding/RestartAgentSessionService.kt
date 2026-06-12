@@ -1,5 +1,9 @@
 package com.jorisjonkers.personalstack.agents.application.sessionbinding
 
+import com.jorisjonkers.personalstack.agents.application.setup.AgentSetupValidationRequest
+import com.jorisjonkers.personalstack.agents.application.setup.AgentSetupValidationService
+import com.jorisjonkers.personalstack.agents.domain.model.AgentSetupId
+import com.jorisjonkers.personalstack.agents.domain.model.AgentSetupVersion
 import com.jorisjonkers.personalstack.agents.domain.model.WorkspaceAgentSession
 import com.jorisjonkers.personalstack.agents.domain.model.WorkspaceAgentSessionId
 import com.jorisjonkers.personalstack.agents.domain.model.WorkspaceAgentSessionStatus
@@ -15,11 +19,13 @@ class RestartAgentSessionService(
     private val workspaces: WorkspaceRepository,
     private val sessions: WorkspaceAgentSessionRepository,
     private val binding: RunnerSessionBindingService,
+    private val setupValidation: AgentSetupValidationService,
     private val clock: Clock = Clock.systemUTC(),
 ) {
     fun restart(request: RestartAgentSessionInput): RunnerSessionBindingResult {
-        workspaces.findById(request.workspaceId)
-            ?: throw NoSuchElementException("workspace not found: ${request.workspaceId.value}")
+        val workspace =
+            workspaces.findById(request.workspaceId)
+                ?: throw NoSuchElementException("workspace not found: ${request.workspaceId.value}")
         val session =
             sessions.findById(request.sessionId)
                 ?: throw NoSuchElementException("session not found: ${request.sessionId.value}")
@@ -37,12 +43,27 @@ class RestartAgentSessionService(
         if (expectedGeneration != session.generation) {
             return RunnerSessionBindingResult.Conflict(current = session)
         }
+        require((request.targetSetupId == null) == (request.targetSetupVersion == null)) {
+            "target setup id and version must be supplied together"
+        }
+        val targetSetupId = request.targetSetupId ?: session.currentSetupId
+        val targetSetupVersion = request.targetSetupVersion ?: session.currentSetupVersion
+        setupValidation.requireValid(
+            AgentSetupValidationRequest(
+                workspace = workspace,
+                targetId = targetSetupId,
+                targetVersion = targetSetupVersion,
+                session = session,
+            ),
+        )
         return binding.restart(
             RestartRunnerSessionBindingInput(
                 workspaceId = request.workspaceId,
                 sessionId = request.sessionId,
                 expectedGeneration = expectedGeneration,
                 reason = request.reason,
+                targetSetupId = targetSetupId,
+                targetSetupVersion = targetSetupVersion,
             ),
         )
     }
@@ -69,4 +90,6 @@ data class RestartAgentSessionInput(
     val sessionId: WorkspaceAgentSessionId,
     val expectedGeneration: Long? = null,
     val reason: String? = "restart",
+    val targetSetupId: AgentSetupId? = null,
+    val targetSetupVersion: AgentSetupVersion? = null,
 )

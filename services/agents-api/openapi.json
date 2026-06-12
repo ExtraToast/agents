@@ -982,6 +982,277 @@
         }
       }
     },
+    "/api/v1/agent-setups" : {
+      "get" : {
+        "tags" : [ "agent-setup-controller" ],
+        "operationId" : "catalog",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AgentSetupCatalogResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agent-setups/{setupId}/versions/{version}" : {
+      "get" : {
+        "tags" : [ "agent-setup-controller" ],
+        "operationId" : "detail",
+        "parameters" : [ {
+          "name" : "setupId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "version",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AgentSetupDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/setup" : {
+      "get" : {
+        "tags" : [ "agent-setup-controller" ],
+        "operationId" : "workspaceSetup",
+        "parameters" : [ {
+          "name" : "workspaceId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WorkspaceRunnerSetupResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/sessions/{sessionId}/setup" : {
+      "get" : {
+        "tags" : [ "agent-setup-controller" ],
+        "operationId" : "sessionSetup",
+        "parameters" : [ {
+          "name" : "workspaceId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "sessionId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SessionSetupStateResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/sessions/{sessionId}/setup-options" : {
+      "get" : {
+        "tags" : [ "agent-setup-controller" ],
+        "operationId" : "sessionSetupOptions",
+        "parameters" : [ {
+          "name" : "workspaceId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "sessionId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SetupTargetOptionsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/sessions/{sessionId}/setup-preview" : {
+      "get" : {
+        "tags" : [ "agent-setup-controller" ],
+        "operationId" : "setupPreview",
+        "parameters" : [ {
+          "name" : "workspaceId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "sessionId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "targetSetupId",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "targetSetupVersion",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Preview",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SetupPreviewResponse"
+                }
+              }
+            }
+          },
+          "422" : {
+            "description" : "Validation failed",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/setup-transitions" : {
+      "get" : {
+        "tags" : [ "agent-setup-controller" ],
+        "operationId" : "workspaceTransitionHistory",
+        "parameters" : [ {
+          "name" : "workspaceId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SetupTransitionHistoryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/sessions/{sessionId}/setup-transitions" : {
+      "get" : {
+        "tags" : [ "agent-setup-controller" ],
+        "operationId" : "sessionTransitionHistory",
+        "parameters" : [ {
+          "name" : "workspaceId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "sessionId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SetupTransitionHistoryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/projects/{id}" : {
       "get" : {
         "tags" : [ "project-controller" ],
@@ -1337,6 +1608,9 @@
             "type" : [ "string", "null" ],
             "format" : "uuid"
           },
+          "runnerSetup" : {
+            "$ref" : "#/components/schemas/WorkspaceRunnerSetupResponse"
+          },
           "createdAt" : {
             "type" : "string",
             "format" : "date-time"
@@ -1346,7 +1620,7 @@
             "format" : "date-time"
           }
         },
-        "required" : [ "createdAt", "id", "kind", "name", "status", "updatedAt" ]
+        "required" : [ "createdAt", "id", "kind", "name", "runnerSetup", "status", "updatedAt" ]
       },
       "StartAgentSessionRequest" : {
         "type" : "object",
@@ -1392,6 +1666,31 @@
           "expectedGeneration" : {
             "type" : [ "integer", "null" ],
             "format" : "int64"
+          },
+          "expectedEpoch" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          },
+          "expectedSetupId" : {
+            "type" : [ "string", "null" ]
+          },
+          "expectedSetupVersion" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          },
+          "expectedCurrentSetupId" : {
+            "type" : [ "string", "null" ]
+          },
+          "expectedCurrentSetupVersion" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          },
+          "targetSetupId" : {
+            "type" : [ "string", "null" ]
+          },
+          "targetSetupVersion" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
           }
         }
       },
@@ -1412,9 +1711,503 @@
           },
           "status" : {
             "type" : "string"
+          },
+          "currentSetup" : {
+            "$ref" : "#/components/schemas/AgentSetupReferenceResponse"
+          },
+          "pendingSetup" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/AgentSetupReferenceResponse"
+            }, {
+              "type" : "null"
+            } ]
           }
         },
-        "required" : [ "epoch", "generation", "sessionId", "status" ]
+        "required" : [ "currentSetup", "epoch", "generation", "sessionId", "status" ]
+      },
+      "AgentSetupReferenceResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "id", "version" ]
+      },
+      "AgentSetupCatalogResponse" : {
+        "type" : "object",
+        "properties" : {
+          "setups" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AgentSetupCatalogEntryResponse"
+            }
+          }
+        },
+        "required" : [ "setups" ]
+      },
+      "AgentSetupCatalogEntryResponse" : {
+        "type" : "object",
+        "properties" : {
+          "setup" : {
+            "$ref" : "#/components/schemas/AgentSetupReferenceResponse"
+          },
+          "displayName" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : [ "string", "null" ]
+          },
+          "image" : {
+            "type" : "string"
+          },
+          "cliTools" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            }
+          },
+          "toolProfiles" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "toolAllowlist" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "selectable" : {
+            "type" : "boolean"
+          },
+          "defaultSelectable" : {
+            "type" : "boolean"
+          },
+          "unavailableReason" : {
+            "type" : [ "string", "null" ]
+          },
+          "updatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "cliTools", "defaultSelectable", "displayName", "image", "selectable", "setup", "toolAllowlist", "toolProfiles", "updatedAt" ]
+      },
+      "AgentSetupDetailResponse" : {
+        "type" : "object",
+        "properties" : {
+          "setup" : {
+            "$ref" : "#/components/schemas/AgentSetupReferenceResponse"
+          },
+          "displayName" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : [ "string", "null" ]
+          },
+          "namespace" : {
+            "type" : "string"
+          },
+          "image" : {
+            "type" : "string"
+          },
+          "imagePullPolicy" : {
+            "type" : "string"
+          },
+          "serviceAccount" : {
+            "type" : "string"
+          },
+          "gatewayPort" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "claudeCredentialsPvc" : {
+            "type" : "string"
+          },
+          "codexCredentialsPvc" : {
+            "type" : "string"
+          },
+          "githubDeployKeySecret" : {
+            "type" : "string"
+          },
+          "cliTools" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            }
+          },
+          "knowledgeBaseUrl" : {
+            "type" : "string"
+          },
+          "knowledgeBearerSecret" : {
+            "type" : "string"
+          },
+          "knowledgeBearerSecretKey" : {
+            "type" : "string"
+          },
+          "mcpServersConfigMap" : {
+            "type" : "string"
+          },
+          "defaultMcpProfile" : {
+            "type" : "string"
+          },
+          "connectorConfig" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            }
+          },
+          "toolProfiles" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "toolAllowlist" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "dockerSocketEnabled" : {
+            "type" : "boolean"
+          },
+          "dockerSocketPath" : {
+            "type" : "string"
+          },
+          "dockerSocketSupplementalGroups" : {
+            "type" : "array",
+            "items" : {
+              "type" : "integer",
+              "format" : "int64"
+            }
+          },
+          "nodeSelector" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            }
+          },
+          "selectable" : {
+            "type" : "boolean"
+          },
+          "defaultSelectable" : {
+            "type" : "boolean"
+          },
+          "unavailableReason" : {
+            "type" : [ "string", "null" ]
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "updatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "claudeCredentialsPvc", "cliTools", "codexCredentialsPvc", "connectorConfig", "createdAt", "defaultMcpProfile", "defaultSelectable", "displayName", "dockerSocketEnabled", "dockerSocketPath", "dockerSocketSupplementalGroups", "gatewayPort", "githubDeployKeySecret", "image", "imagePullPolicy", "knowledgeBaseUrl", "knowledgeBearerSecret", "knowledgeBearerSecretKey", "mcpServersConfigMap", "namespace", "nodeSelector", "selectable", "serviceAccount", "setup", "toolAllowlist", "toolProfiles", "updatedAt" ]
+      },
+      "AgentSetupDiffResponse" : {
+        "type" : "object",
+        "properties" : {
+          "from" : {
+            "$ref" : "#/components/schemas/AgentSetupReferenceResponse"
+          },
+          "to" : {
+            "$ref" : "#/components/schemas/AgentSetupReferenceResponse"
+          },
+          "hasChanges" : {
+            "type" : "boolean"
+          },
+          "changes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AgentSetupDiffChangeResponse"
+            }
+          }
+        },
+        "required" : [ "changes", "from", "hasChanges", "to" ]
+      },
+      "AgentSetupDiffChangeResponse" : {
+        "type" : "object",
+        "properties" : {
+          "field" : {
+            "type" : "string"
+          },
+          "fromValue" : {
+            "type" : [ "string", "null" ]
+          },
+          "toValue" : {
+            "type" : [ "string", "null" ]
+          },
+          "redacted" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "field", "redacted" ]
+      },
+      "AgentSetupValidationResponse" : {
+        "type" : "object",
+        "properties" : {
+          "target" : {
+            "$ref" : "#/components/schemas/AgentSetupReferenceResponse"
+          },
+          "valid" : {
+            "type" : "boolean"
+          },
+          "issues" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AgentSetupValidationIssueResponse"
+            }
+          },
+          "warnings" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AgentSetupValidationIssueResponse"
+            }
+          }
+        },
+        "required" : [ "issues", "target", "valid", "warnings" ]
+      },
+      "AgentSetupValidationIssueResponse" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "binding" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/AgentSetupBindingResponse"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "code", "message" ]
+      },
+      "AgentSetupBindingResponse" : {
+        "type" : "object",
+        "properties" : {
+          "kind" : {
+            "type" : "string"
+          },
+          "namespace" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "key" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "kind", "name", "namespace" ]
+      },
+      "WorkspaceRunnerSetupResponse" : {
+        "type" : "object",
+        "properties" : {
+          "current" : {
+            "$ref" : "#/components/schemas/AgentSetupReferenceResponse"
+          },
+          "pending" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/AgentSetupReferenceResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "generation" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "operation" : {
+            "type" : "string"
+          },
+          "operationStartedAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "operationUpdatedAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "current", "generation", "operation" ]
+      },
+      "SessionSetupStateResponse" : {
+        "type" : "object",
+        "properties" : {
+          "current" : {
+            "$ref" : "#/components/schemas/AgentSetupReferenceResponse"
+          },
+          "pending" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/AgentSetupReferenceResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "failed" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/FailedSessionSetupResponse"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "current" ]
+      },
+      "FailedSessionSetupResponse" : {
+        "type" : "object",
+        "properties" : {
+          "setup" : {
+            "$ref" : "#/components/schemas/AgentSetupReferenceResponse"
+          },
+          "reason" : {
+            "type" : [ "string", "null" ]
+          },
+          "message" : {
+            "type" : [ "string", "null" ]
+          },
+          "completedAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "setup" ]
+      },
+      "SetupTargetOptionsResponse" : {
+        "type" : "object",
+        "properties" : {
+          "current" : {
+            "$ref" : "#/components/schemas/AgentSetupReferenceResponse"
+          },
+          "pending" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/AgentSetupReferenceResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "options" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SetupTargetOptionResponse"
+            }
+          }
+        },
+        "required" : [ "current", "options" ]
+      },
+      "SetupTargetOptionResponse" : {
+        "type" : "object",
+        "properties" : {
+          "setup" : {
+            "$ref" : "#/components/schemas/AgentSetupCatalogEntryResponse"
+          },
+          "validation" : {
+            "$ref" : "#/components/schemas/AgentSetupValidationResponse"
+          }
+        },
+        "required" : [ "setup", "validation" ]
+      },
+      "SetupPreviewResponse" : {
+        "type" : "object",
+        "properties" : {
+          "current" : {
+            "$ref" : "#/components/schemas/AgentSetupReferenceResponse"
+          },
+          "target" : {
+            "$ref" : "#/components/schemas/AgentSetupReferenceResponse"
+          },
+          "diff" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/AgentSetupDiffResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "validation" : {
+            "$ref" : "#/components/schemas/AgentSetupValidationResponse"
+          }
+        },
+        "required" : [ "current", "target", "validation" ]
+      },
+      "SetupTransitionHistoryResponse" : {
+        "type" : "object",
+        "properties" : {
+          "events" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SetupTransitionResponse"
+            }
+          }
+        },
+        "required" : [ "events" ]
+      },
+      "SetupTransitionResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "workspaceId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "sessionId" : {
+            "type" : [ "string", "null" ],
+            "format" : "uuid"
+          },
+          "from" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/AgentSetupReferenceResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "to" : {
+            "$ref" : "#/components/schemas/AgentSetupReferenceResponse"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "REQUESTED", "STARTED", "COMPLETED", "FAILED", "CANCELLED" ]
+          },
+          "reason" : {
+            "type" : [ "string", "null" ]
+          },
+          "message" : {
+            "type" : [ "string", "null" ]
+          },
+          "requestedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "startedAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "completedAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "updatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "id", "requestedAt", "status", "to", "updatedAt", "workspaceId" ]
       },
       "FieldError" : {
         "type" : "object",
@@ -1983,6 +2776,16 @@
           "idle" : {
             "type" : "boolean"
           },
+          "currentSetup" : {
+            "$ref" : "#/components/schemas/AgentSetupReferenceResponse"
+          },
+          "pendingSetup" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/AgentSetupReferenceResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "createdAt" : {
             "type" : "string",
             "format" : "date-time"
@@ -1992,7 +2795,7 @@
             "format" : "date-time"
           }
         },
-        "required" : [ "createdAt", "epoch", "generation", "id", "idle", "kind", "status", "updatedAt", "workspaceId" ]
+        "required" : [ "createdAt", "currentSetup", "epoch", "generation", "id", "idle", "kind", "status", "updatedAt", "workspaceId" ]
       },
       "WorkspaceDetailResponse" : {
         "type" : "object",
@@ -2106,6 +2909,9 @@
               "$ref" : "#/components/schemas/WorkspaceRepositoryResponse"
             }
           },
+          "runnerSetup" : {
+            "$ref" : "#/components/schemas/WorkspaceRunnerSetupResponse"
+          },
           "createdAt" : {
             "type" : "string",
             "format" : "date-time"
@@ -2115,7 +2921,7 @@
             "format" : "date-time"
           }
         },
-        "required" : [ "createdAt", "id", "kind", "name", "repositories", "status", "updatedAt" ]
+        "required" : [ "createdAt", "id", "kind", "name", "repositories", "runnerSetup", "status", "updatedAt" ]
       }
     },
     "securitySchemes" : {

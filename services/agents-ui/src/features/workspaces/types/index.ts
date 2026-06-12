@@ -1,3 +1,6 @@
+import type { components } from '@/api/generated'
+import type { FieldError as ApiFieldError, ProblemDetail as ApiProblemDetail } from '@/lib/vueWebCommons'
+
 export type WorkspaceStatus = 'PENDING' | 'STARTING' | 'READY' | 'IDLE' | 'FAILED' | 'DESTROYED'
 
 /**
@@ -14,6 +17,19 @@ export type WorkspaceStatus = 'PENDING' | 'STARTING' | 'READY' | 'IDLE' | 'FAILE
  *   `chat_sessions` separately.
  */
 export type WorkspaceKind = 'REPO_BACKED' | 'SCRATCH' | 'CHAT'
+
+export type AgentSetupReference = components['schemas']['AgentSetupReferenceResponse']
+
+export type WorkspaceRunnerSetupOperation = 'IDLE' | 'RESTARTING' | 'FAILED'
+
+export interface WorkspaceRunnerSetup {
+  current: AgentSetupReference
+  pending?: AgentSetupReference | null
+  generation: number
+  operation: WorkspaceRunnerSetupOperation
+  operationStartedAt?: string | null
+  operationUpdatedAt?: string | null
+}
 
 export interface Workspace {
   id: string
@@ -32,6 +48,7 @@ export interface Workspace {
    * callers should use `repositoryId`.
    */
   githubLinkId: string | null
+  runnerSetup?: WorkspaceRunnerSetup
   createdAt: string
   updatedAt: string
 }
@@ -77,8 +94,45 @@ export interface AgentSession {
   gatewayBoundAt?: string | null
   status: AgentSessionStatus
   idle?: boolean
+  currentSetup?: AgentSetupReference
+  pendingSetup?: AgentSetupReference | null
   createdAt: string
   updatedAt: string
+}
+
+export type AgentSetupCatalogEntry = components['schemas']['AgentSetupCatalogEntryResponse']
+
+export type AgentSetupBinding = components['schemas']['AgentSetupBindingResponse']
+export type AgentSetupValidationIssue = components['schemas']['AgentSetupValidationIssueResponse']
+export type AgentSetupValidation = components['schemas']['AgentSetupValidationResponse']
+
+export type SetupTargetOption = components['schemas']['SetupTargetOptionResponse']
+export type SetupTargetOptions = components['schemas']['SetupTargetOptionsResponse']
+
+export type AgentSetupDiffChange = components['schemas']['AgentSetupDiffChangeResponse']
+export type AgentSetupDiff = components['schemas']['AgentSetupDiffResponse']
+export type SetupPreview = components['schemas']['SetupPreviewResponse']
+export type SessionSetupState = components['schemas']['SessionSetupStateResponse']
+export type FailedSessionSetup = components['schemas']['FailedSessionSetupResponse']
+
+export type SetupTransitionStatus = 'REQUESTED' | 'STARTED' | 'COMPLETED' | 'FAILED' | 'CANCELLED'
+
+export type SetupTransition = components['schemas']['SetupTransitionResponse']
+export type SetupTransitionHistory = components['schemas']['SetupTransitionHistoryResponse']
+
+// Re-export the shared-commons problem types: ApiError (the consumer of
+// these) is typed against vue-web-commons' ProblemDetail, whose optional
+// fields are `string` rather than the generated `string | null`, so basing
+// our types on the commons shape keeps them assignable to ApiError.
+export type FieldError = ApiFieldError
+export type ProblemDetail = ApiProblemDetail
+
+export interface AgentSetupValidationProblem extends ProblemDetail {
+  type: 'https://jorisjonkers.dev/errors/agent-setup-validation'
+  status: 422
+  // A validation problem always carries a human-readable detail.
+  detail: string
+  errors: FieldError[]
 }
 
 export type TurnRole = 'USER' | 'AGENT' | 'SYSTEM'
@@ -102,6 +156,8 @@ export interface RestartSessionResponse {
   epoch: number
   generation: number
   status: AgentSessionStatus
+  currentSetup?: AgentSetupReference
+  pendingSetup?: AgentSetupReference | null
 }
 
 export interface WorkspaceDetail {

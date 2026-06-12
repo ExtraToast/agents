@@ -1,4 +1,18 @@
-import type { AgentKind, RestartSessionResponse, StagedInput, Turn, Workspace, WorkspaceDetail } from '../types'
+import type {
+  AgentKind,
+  AgentSetupReference,
+  AgentSetupValidationProblem,
+  RestartSessionResponse,
+  SessionSetupState,
+  SetupPreview,
+  SetupTargetOptions,
+  SetupTransitionHistory,
+  StagedInput,
+  Turn,
+  Workspace,
+  WorkspaceDetail,
+} from '../types'
+import type { components } from '@/api/generated'
 import { ApiError, useApiWithAuth } from '@/lib/vueWebCommons'
 
 function getApi(): ReturnType<typeof useApiWithAuth> {
@@ -11,6 +25,7 @@ function getApi(): ReturnType<typeof useApiWithAuth> {
 // surfacing the transient 503 to the user.
 const SESSION_START_BUDGET_MS = 180_000
 const DEFAULT_RETRY_AFTER_S = 5
+const AGENT_SETUP_VALIDATION_TYPE = 'https://jorisjonkers.dev/errors/agent-setup-validation'
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => {
@@ -24,6 +39,34 @@ export async function listWorkspaces(): Promise<Workspace[]> {
 
 export async function getWorkspace(id: string): Promise<WorkspaceDetail> {
   return getApi().get<WorkspaceDetail>(`/workspaces/${id}`)
+}
+
+export async function getSessionSetup(workspaceId: string, sessionId: string): Promise<SessionSetupState> {
+  return getApi().get<SessionSetupState>(`/workspaces/${workspaceId}/sessions/${sessionId}/setup`)
+}
+
+export async function listSetupOptions(workspaceId: string, sessionId: string): Promise<SetupTargetOptions> {
+  return getApi().get<SetupTargetOptions>(`/workspaces/${workspaceId}/sessions/${sessionId}/setup-options`)
+}
+
+export async function previewSetup(
+  workspaceId: string,
+  sessionId: string,
+  target: AgentSetupReference,
+): Promise<SetupPreview> {
+  const params = new URLSearchParams({
+    targetSetupId: target.id,
+    targetSetupVersion: String(target.version),
+  })
+  return getApi().get<SetupPreview>(`/workspaces/${workspaceId}/sessions/${sessionId}/setup-preview?${params}`)
+}
+
+export async function listWorkspaceSetupTransitions(workspaceId: string): Promise<SetupTransitionHistory> {
+  return getApi().get<SetupTransitionHistory>(`/workspaces/${workspaceId}/setup-transitions`)
+}
+
+export async function listSessionSetupTransitions(workspaceId: string, sessionId: string): Promise<SetupTransitionHistory> {
+  return getApi().get<SetupTransitionHistory>(`/workspaces/${workspaceId}/sessions/${sessionId}/setup-transitions`)
 }
 
 export type WorkspaceKind = 'REPO_BACKED' | 'SCRATCH' | 'CHAT'
@@ -107,10 +150,34 @@ export async function stopSession(workspaceId: string, sessionId: string): Promi
 export async function restartSession(
   workspaceId: string,
   sessionId: string,
-  expectedGeneration?: number,
+  input?: RestartSessionRequest | number,
 ): Promise<RestartSessionResponse> {
-  const body: { expectedGeneration?: number } = expectedGeneration === undefined ? {} : { expectedGeneration }
+  const body = typeof input === 'number' ? { expectedGeneration: input } : compactRestartSessionRequest(input)
   return getApi().post<RestartSessionResponse>(`/workspaces/${workspaceId}/sessions/${sessionId}/restart`, body)
+}
+
+export type RestartSessionRequest = components['schemas']['RestartAgentSessionHttpRequest']
+
+function compactRestartSessionRequest(input: RestartSessionRequest | undefined): RestartSessionRequest {
+  if (!input) return {}
+  const body: RestartSessionRequest = {}
+  if (input.expectedGeneration !== undefined) body.expectedGeneration = input.expectedGeneration
+  if (input.expectedEpoch !== undefined) body.expectedEpoch = input.expectedEpoch
+  if (input.expectedSetupId !== undefined) body.expectedSetupId = input.expectedSetupId
+  if (input.expectedSetupVersion !== undefined) body.expectedSetupVersion = input.expectedSetupVersion
+  if (input.expectedCurrentSetupId !== undefined) body.expectedCurrentSetupId = input.expectedCurrentSetupId
+  if (input.expectedCurrentSetupVersion !== undefined) body.expectedCurrentSetupVersion = input.expectedCurrentSetupVersion
+  if (input.targetSetupId !== undefined) body.targetSetupId = input.targetSetupId
+  if (input.targetSetupVersion !== undefined) body.targetSetupVersion = input.targetSetupVersion
+  return body
+}
+
+export function agentSetupValidationProblemFromError(err: unknown): AgentSetupValidationProblem | null {
+  if (!(err instanceof ApiError)) return null
+  if (err.status !== 422) return null
+  const problem = err.problem
+  if (problem.type !== AGENT_SETUP_VALIDATION_TYPE) return null
+  return problem as AgentSetupValidationProblem // eslint-disable-line ts/consistent-type-assertions
 }
 
 export async function getTurns(workspaceId: string, sessionId: string): Promise<Turn[]> {

@@ -35,6 +35,8 @@ function fakeSession(over: Partial<AgentSession> = {}): AgentSession {
     idle: false,
     createdAt: '2026-06-12T10:00:00Z',
     updatedAt: '2026-06-12T10:00:00Z',
+    currentSetup: { id: 'setup-current', version: 1 },
+    pendingSetup: null,
     ...over,
   }
 }
@@ -65,6 +67,9 @@ describe('useSessionConsoleViewModelsStore', () => {
       isLive: true,
       canAttachTerminal: true,
       canStop: true,
+      currentSetup: { id: 'setup-current', version: 1 },
+      pendingSetup: null,
+      setupLabel: 'setup-current@v1',
     })
     expect(viewModels.activeSession?.id).toBe('sess-123456')
   })
@@ -106,5 +111,22 @@ describe('useSessionConsoleViewModelsStore', () => {
     expect(session?.status).toBe('FAILED')
     expect(session?.canAttachTerminal).toBe(false)
     expect(session?.affordance.ariaLabel).toBe('Session failed')
+  })
+
+  it('labels pending setup transitions for console surfaces', () => {
+    const workspaces = useWorkspacesStore()
+    workspaces.sessions = [
+      fakeSession({
+        id: 'pending',
+        currentSetup: { id: 'setup-current', version: 1 },
+        pendingSetup: { id: 'setup-next', version: 2 },
+      }),
+    ]
+    useSessionStatusesStore().syncRestSessions()
+
+    const session = useSessionConsoleViewModelsStore().sessions[0]
+
+    expect(session?.setupLabel).toBe('setup-current@v1 -> setup-next@v2')
+    expect(session?.pendingSetup).toEqual({ id: 'setup-next', version: 2 })
   })
 })

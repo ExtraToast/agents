@@ -1,4 +1,4 @@
-import type { AgentKind, AgentSession, AgentSessionStatus } from '../types'
+import type { AgentKind, AgentSession, AgentSessionStatus, AgentSetupReference } from '../types'
 import { defineStore } from 'pinia'
 import { computed } from 'vue'
 import { useSessionLabelsStore } from './sessionLabels'
@@ -29,6 +29,9 @@ export interface SessionConsoleViewModel {
   isLive: boolean
   canAttachTerminal: boolean
   canStop: boolean
+  currentSetup: AgentSetupReference | null
+  pendingSetup: AgentSetupReference | null
+  setupLabel: string
   affordance: SessionStatusAffordance
 }
 
@@ -36,6 +39,11 @@ const KIND_LABELS: Record<AgentKind, string> = {
   CLAUDE: 'Claude Code',
   CODEX: 'Codex',
   SHELL: 'Shell',
+}
+
+export function setupReferenceLabel(setup?: AgentSetupReference | null): string {
+  if (!setup) return 'No setup'
+  return `${setup.id}@v${setup.version}`
 }
 
 function statusAffordance(session: AgentSession): SessionStatusAffordance {
@@ -109,6 +117,11 @@ export const useSessionConsoleViewModelsStore = defineStore('sessionConsoleViewM
         isLive,
         canAttachTerminal: isLive,
         canStop: session.status === 'RUNNING',
+        currentSetup: session.currentSetup ?? null,
+        pendingSetup: session.pendingSetup ?? null,
+        setupLabel: session.pendingSetup
+          ? `${setupReferenceLabel(session.currentSetup)} -> ${setupReferenceLabel(session.pendingSetup)}`
+          : setupReferenceLabel(session.currentSetup),
         affordance: statusAffordance(session),
       }
     }),

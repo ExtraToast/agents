@@ -104,6 +104,29 @@ describe('sessionStatusStream', () => {
     expect(keepalive).toHaveBeenCalledWith({ ts: '2026-06-12T12:02:00Z' })
   })
 
+  it('does not add setup metadata from status events', () => {
+    const status = vi.fn()
+    stream = openSessionStatusStream({ onStatus: status })
+
+    latest().emit(
+      'status',
+      JSON.stringify({
+        sessionId: 'sess-1',
+        status: 'RUNNING',
+        idle: false,
+        ts: '2026-06-12T12:00:00Z',
+        currentSetup: { id: 'setup-current', version: 1 },
+      }),
+    )
+
+    expect(status).toHaveBeenCalledWith({
+      sessionId: 'sess-1',
+      status: 'RUNNING',
+      idle: false,
+      ts: '2026-06-12T12:00:00Z',
+    })
+  })
+
   it('routes malformed named events without throwing', () => {
     const status = vi.fn()
     const malformed = vi.fn()

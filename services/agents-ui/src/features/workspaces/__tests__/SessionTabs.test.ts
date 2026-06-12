@@ -208,4 +208,23 @@ describe('sessionTabs', () => {
     expect(tab.text()).toContain('STARTING')
     expect(tab.get('[aria-label="Status: STARTING"]').text()).toBe('STARTING')
   })
+
+  it('renders current and pending setup metadata on session tabs', () => {
+    const wrapper = mount(SessionTabs, {
+      props: {
+        sessions: [
+          fakeSession({
+            id: 'sess-setup',
+            currentSetup: { id: 'setup-current', version: 1 },
+            pendingSetup: { id: 'setup-next', version: 2 },
+          }),
+        ],
+        activeId: 'sess-setup',
+      },
+    })
+
+    expect(wrapper.get('[data-testid="session-tab-setup-sess-setup"]').text()).toBe(
+      'setup-current@v1 -> setup-next@v2',
+    )
+  })
 })
