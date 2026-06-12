@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AppShellNavItem } from '@/lib/vueWebCommons'
-import { AppShell as CommonsAppShell, agentsThemeOptions } from '@/lib/vueWebCommons'
+import { agentsThemeOptions, AppShell as CommonsAppShell } from '@/lib/vueWebCommons'
 
 const navItems: AppShellNavItem[] = [
   { label: 'Sessions', to: '/sessions', testid: 'nav-sessions' },
