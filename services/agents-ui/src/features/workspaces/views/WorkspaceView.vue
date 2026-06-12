@@ -28,6 +28,28 @@ const toast = useToast()
 const workspaceId = computed(() => String(route.params.id))
 const pickerKind = ref<AgentKind>('CLAUDE')
 const isSessionListCollapsed = ref(false)
+// On phones the terminal is the priority surface: the session list and the
+// control sidebar fold away by default so the terminal is effectively
+// full-screen, and the console height tracks the visual viewport so the prompt
+// stays visible above the on-screen keyboard. Desktop (lg+) keeps everything.
+const mobileQuery
+  = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(max-width: 1023px)') : null
+const isMobile = ref(mobileQuery?.matches ?? false)
+const showSidebar = ref(true)
+const viewportHeight = ref<number | null>(null)
+const consoleStyle = computed<Record<string, string>>(() =>
+  isMobile.value && viewportHeight.value != null ? { height: `${viewportHeight.value}px` } : {},
+)
+
+function syncViewport(): void {
+  if (typeof window === 'undefined') return
+  viewportHeight.value = window.visualViewport?.height ?? window.innerHeight
+}
+
+function syncIsMobile(event?: MediaQueryListEvent): void {
+  isMobile.value = event?.matches ?? mobileQuery?.matches ?? false
+}
+
 const showStageInput = ref(false)
 const showRepositoryPicker = ref(false)
 const stageName = ref('source.txt')
@@ -190,10 +212,22 @@ watch(
 
 onMounted(() => {
   statuses.useWorkspace(workspaceId.value)
+  syncIsMobile()
+  if (isMobile.value) {
+    isSessionListCollapsed.value = true
+    showSidebar.value = false
+  }
+  syncViewport()
+  mobileQuery?.addEventListener('change', syncIsMobile)
+  window.visualViewport?.addEventListener('resize', syncViewport)
+  window.visualViewport?.addEventListener('scroll', syncViewport)
 })
 
 onUnmounted(() => {
   statuses.useWorkspace(null)
+  mobileQuery?.removeEventListener('change', syncIsMobile)
+  window.visualViewport?.removeEventListener('resize', syncViewport)
+  window.visualViewport?.removeEventListener('scroll', syncViewport)
 })
 
 async function openWorkspace(id: string): Promise<void> {
@@ -393,6 +427,7 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
 <template>
   <div
     class="relative flex h-dvh min-h-[100svh] flex-col overflow-hidden bg-[var(--color-surface-dark)] pt-[env(safe-area-inset-top)] text-[var(--color-text-primary)]"
+    :style="consoleStyle"
     data-testid="workspace-console"
   >
     <header
@@ -427,6 +462,16 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
         >
           {{ isSessionListCollapsed ? 'Show sessions' : 'Hide sessions' }}
         </button>
+        <button
+          type="button"
+          class="inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--color-surface-border)] bg-[var(--color-surface-elevated)] px-3 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-border)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface-dark)] lg:hidden"
+          :aria-expanded="showSidebar"
+          aria-controls="workspace-sidebar"
+          data-testid="workspace-sidebar-toggle"
+          @click="showSidebar = !showSidebar"
+        >
+          {{ showSidebar ? 'Hide controls' : 'Controls' }}
+        </button>
         <p
           class="rounded border border-[var(--color-surface-border)] px-3 py-2 text-xs text-[var(--color-text-muted)]"
           data-testid="workspace-status-summary"
@@ -437,7 +482,7 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
     </header>
 
     <main
-      class="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto pb-[env(safe-area-inset-bottom)] lg:grid-cols-[auto_minmax(0,1fr)_22rem] lg:overflow-hidden"
+      class="flex min-h-0 flex-1 flex-col overflow-hidden pb-[env(safe-area-inset-bottom)] lg:grid lg:grid-cols-[auto_minmax(0,1fr)_22rem] lg:overflow-hidden"
       data-testid="workspace-console-main"
     >
       <aside
@@ -479,7 +524,7 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
         </div>
       </aside>
 
-      <section class="flex min-h-[min(42rem,72svh)] min-w-0 flex-col overflow-hidden p-3 sm:p-4 lg:min-h-0">
+      <section class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-3 sm:p-4">
         <div
           ref="consoleSurface"
           tabindex="-1"
@@ -554,7 +599,8 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
       <aside
         v-if="store.activeWorkspace"
         id="workspace-sidebar"
-        class="flex min-h-0 flex-col gap-3 overflow-y-auto border-t border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-3 lg:border-l lg:border-t-0"
+        class="min-h-0 max-h-[50svh] flex-col gap-3 overflow-y-auto border-t border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-3 lg:flex lg:max-h-none lg:border-l lg:border-t-0"
+        :class="showSidebar ? 'flex' : 'hidden lg:flex'"
         data-testid="workspace-sidebar"
         aria-label="Workspace controls"
       >
