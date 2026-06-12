@@ -1416,6 +1416,80 @@
         },
         "required" : [ "epoch", "generation", "sessionId", "status" ]
       },
+      "FieldError" : {
+        "type" : "object",
+        "properties" : {
+          "field" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "rejectedValue" : {
+            "type" : "null"
+          }
+        },
+        "required" : [ "field", "message" ]
+      },
+      "ProblemDetail" : {
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "type" : "string",
+            "format" : "uri"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "detail" : {
+            "type" : [ "string", "null" ]
+          },
+          "instance" : {
+            "type" : [ "string", "null" ],
+            "format" : "uri"
+          },
+          "errors" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/FieldError"
+            }
+          },
+          "traceId" : {
+            "type" : [ "string", "null" ]
+          },
+          "exception" : {
+            "type" : [ "string", "null" ]
+          },
+          "kubernetesCode" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "kubernetesReason" : {
+            "type" : [ "string", "null" ]
+          },
+          "constraint" : {
+            "type" : [ "string", "null" ]
+          },
+          "column" : {
+            "type" : [ "string", "null" ]
+          },
+          "referencedTable" : {
+            "type" : [ "string", "null" ]
+          },
+          "runnerStatus" : {
+            "type" : [ "string", "null" ]
+          },
+          "retryAfterSeconds" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          }
+        },
+        "required" : [ "errors", "status", "title", "type" ]
+      },
       "SendUserInputRequest" : {
         "type" : "object",
         "properties" : {
@@ -1445,40 +1519,6 @@
           }
         },
         "required" : [ "base", "body", "repoDir", "title" ]
-      },
-      "ProblemDetail" : {
-        "type" : "object",
-        "properties" : {
-          "type" : {
-            "type" : "string",
-            "format" : "uri"
-          },
-          "title" : {
-            "type" : "string"
-          },
-          "status" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "detail" : {
-            "type" : "string"
-          },
-          "instance" : {
-            "type" : [ "string", "null" ],
-            "format" : "uri"
-          },
-          "traceId" : {
-            "type" : [ "string", "null" ]
-          },
-          "runnerStatus" : {
-            "type" : [ "string", "null" ]
-          },
-          "retryAfterSeconds" : {
-            "type" : [ "integer", "null" ],
-            "format" : "int32"
-          }
-        },
-        "required" : [ "detail", "status", "title", "type" ]
       },
       "AttachWorkspaceRepositoryRequest" : {
         "type" : "object",

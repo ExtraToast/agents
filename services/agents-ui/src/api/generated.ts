@@ -565,6 +565,33 @@ export interface components {
             generation: number;
             status: string;
         };
+        FieldError: {
+            field: string;
+            message: string;
+            rejectedValue?: null;
+        };
+        ProblemDetail: {
+            /** Format: uri */
+            type: string;
+            title: string;
+            /** Format: int32 */
+            status: number;
+            detail?: string | null;
+            /** Format: uri */
+            instance?: string | null;
+            errors: components["schemas"]["FieldError"][];
+            traceId?: string | null;
+            exception?: string | null;
+            /** Format: int32 */
+            kubernetesCode?: number | null;
+            kubernetesReason?: string | null;
+            constraint?: string | null;
+            column?: string | null;
+            referencedTable?: string | null;
+            runnerStatus?: string | null;
+            /** Format: int32 */
+            retryAfterSeconds?: number | null;
+        };
         SendUserInputRequest: {
             text: string;
             enter: boolean;
@@ -574,20 +601,6 @@ export interface components {
             title: string;
             body: string;
             base: string;
-        };
-        ProblemDetail: {
-            /** Format: uri */
-            type: string;
-            title: string;
-            /** Format: int32 */
-            status: number;
-            detail: string;
-            /** Format: uri */
-            instance?: string | null;
-            traceId?: string | null;
-            runnerStatus?: string | null;
-            /** Format: int32 */
-            retryAfterSeconds?: number | null;
         };
         AttachWorkspaceRepositoryRequest: {
             /** Format: uuid */
