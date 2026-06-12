@@ -46,7 +46,7 @@ class AgentAttachHandler(
             sessions.get(agentId) ?: run {
                 session.close(CloseStatus.BAD_DATA.withReason("unknown agent"))
                 return
-        }
+            }
         log.info("ws attach to agent {} (tmux={})", agentId, agent.tmuxSession)
 
         val stableSessionId = agent.stableSessionId
@@ -104,7 +104,7 @@ class AgentAttachHandler(
         val mode = query["mode"]?.uppercase()
         val canResume = requestedCursor != null && requestedCursor in metadata.logicalStart..metadata.logicalEnd
         val resume = (mode == "RESUME" || mode == null) && canResume
-        val replayStart = if (resume) requestedCursor!! else metadata.logicalStart
+        val replayStart = if (resume) requestedCursor else metadata.logicalStart
         val control = if (resume) "RESUME" else "SNAPSHOT"
 
         sendJson(
