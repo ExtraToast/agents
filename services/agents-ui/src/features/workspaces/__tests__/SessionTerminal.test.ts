@@ -399,6 +399,17 @@ describe('sessionTerminal', () => {
     expect(term.focus).toHaveBeenCalled()
   })
 
+  it('sends the composed line plus enter and clears the input', async () => {
+    const wrapper = mountTerminal({ active: true })
+    const input = wrapper.get<HTMLInputElement>('[data-testid="terminal-compose-input"]')
+
+    await input.setValue('ls -la')
+    await wrapper.get('form').trigger('submit')
+
+    expect(socket.send).toHaveBeenCalledWith('ls -la', true)
+    expect(input.element.value).toBe('')
+  })
+
   it('pastes clipboard text through sendKey from the touch bar', async () => {
     const wrapper = mountTerminal({ active: true })
     clipboard.readText.mockResolvedValue('from clipboard')
