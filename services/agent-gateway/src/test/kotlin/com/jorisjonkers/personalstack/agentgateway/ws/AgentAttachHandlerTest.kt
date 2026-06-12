@@ -16,7 +16,6 @@ import com.jorisjonkers.personalstack.agentgateway.tmux.AgentSessionManager
 import com.jorisjonkers.personalstack.agentgateway.tmux.TranscriptMetadata
 import com.jorisjonkers.personalstack.agentgateway.tmux.TranscriptStore
 import io.mockk.every
-import io.mockk.firstArg
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
@@ -136,18 +135,14 @@ class AgentAttachHandlerTest {
         assertThat(sent[outputIndex].payload).contains("\"off\":5")
         assertThat(sent[replayCompleteIndex].payload).contains("\"cursor\":5")
         verify(exactly = 0) { sessions.captureWithEscapes("abc") }
-        assertThat(telemetry.attachAttempts)
-            .singleElement()
-            .satisfies {
-                assertThat(it.mode).isEqualTo(GatewayModeLabel.SNAPSHOT)
-                assertThat(it.outcome).isEqualTo(GatewayOutcomeLabel.SUCCESS)
-            }
-        assertThat(telemetry.replayEvents)
-            .singleElement()
-            .satisfies {
-                assertThat(it.bytes).isEqualTo(5)
-                assertThat(it.outcome).isEqualTo(GatewayOutcomeLabel.SUCCESS)
-            }
+        telemetry.attachAttempts.single().let {
+            assertThat(it.mode).isEqualTo(GatewayModeLabel.SNAPSHOT)
+            assertThat(it.outcome).isEqualTo(GatewayOutcomeLabel.SUCCESS)
+        }
+        telemetry.replayEvents.single().let {
+            assertThat(it.bytes).isEqualTo(5)
+            assertThat(it.outcome).isEqualTo(GatewayOutcomeLabel.SUCCESS)
+        }
         assertThat(telemetry.replayFailures).isEmpty()
 
         durableHandler.afterConnectionClosed(ws, org.springframework.web.socket.CloseStatus.NORMAL)
@@ -301,12 +296,10 @@ class AgentAttachHandlerTest {
         durableHandler.afterConnectionEstablished(ws)
 
         assertThat(sent[0].payload).contains("\"control\":\"SNAPSHOT\"")
-        assertThat(telemetry.attachAttempts)
-            .singleElement()
-            .satisfies {
-                assertThat(it.mode).isEqualTo(GatewayModeLabel.RESUME)
-                assertThat(it.outcome).isEqualTo(GatewayOutcomeLabel.SUCCESS)
-            }
+        telemetry.attachAttempts.single().let {
+            assertThat(it.mode).isEqualTo(GatewayModeLabel.RESUME)
+            assertThat(it.outcome).isEqualTo(GatewayOutcomeLabel.SUCCESS)
+        }
         assertThat(telemetry.attachFailures).isEmpty()
 
         durableHandler.afterConnectionClosed(ws, org.springframework.web.socket.CloseStatus.NORMAL)
@@ -361,18 +354,14 @@ class AgentAttachHandlerTest {
 
         assertThat(sent[0].payload).contains("\"control\":\"SNAPSHOT\"")
         assertThat(sent.any { it.payload.contains("\"reset\":true") }).isTrue
-        assertThat(telemetry.attachAttempts)
-            .singleElement()
-            .satisfies {
-                assertThat(it.mode).isEqualTo(GatewayModeLabel.RESUME)
-                assertThat(it.outcome).isEqualTo(GatewayOutcomeLabel.SUCCESS)
-            }
-        assertThat(telemetry.attachFailures)
-            .singleElement()
-            .satisfies {
-                assertThat(it.reason).isEqualTo(GatewayFailureReasonLabel.INVALID_REQUEST)
-                assertThat(it.mode).isEqualTo(GatewayModeLabel.RESUME)
-            }
+        telemetry.attachAttempts.single().let {
+            assertThat(it.mode).isEqualTo(GatewayModeLabel.RESUME)
+            assertThat(it.outcome).isEqualTo(GatewayOutcomeLabel.SUCCESS)
+        }
+        telemetry.attachFailures.single().let {
+            assertThat(it.reason).isEqualTo(GatewayFailureReasonLabel.INVALID_REQUEST)
+            assertThat(it.mode).isEqualTo(GatewayModeLabel.RESUME)
+        }
 
         durableHandler.afterConnectionClosed(ws, org.springframework.web.socket.CloseStatus.NORMAL)
     }
@@ -398,21 +387,15 @@ class AgentAttachHandlerTest {
         assertThat(sent.any { it.payload.contains("\"control\":\"REPLAY_COMPLETE\"") }).isTrue
         assertThat(sent.none { it.payload.contains("storage unavailable") || it.payload.contains("failure") }).isTrue
         verify(exactly = 0) { ws.close(any<CloseStatus>()) }
-        assertThat(telemetry.attachAttempts)
-            .singleElement()
-            .satisfies {
-                assertThat(it.mode).isEqualTo(GatewayModeLabel.SNAPSHOT)
-                assertThat(it.outcome).isEqualTo(GatewayOutcomeLabel.SUCCESS)
-            }
-        assertThat(telemetry.replayEvents)
-            .singleElement()
-            .satisfies {
-                assertThat(it.bytes).isEqualTo(0)
-                assertThat(it.outcome).isEqualTo(GatewayOutcomeLabel.FAILURE)
-            }
-        assertThat(telemetry.replayFailures)
-            .singleElement()
-            .satisfies { assertThat(it.outcome).isEqualTo(GatewayOutcomeLabel.FAILURE) }
+        telemetry.attachAttempts.single().let {
+            assertThat(it.mode).isEqualTo(GatewayModeLabel.SNAPSHOT)
+            assertThat(it.outcome).isEqualTo(GatewayOutcomeLabel.SUCCESS)
+        }
+        telemetry.replayEvents.single().let {
+            assertThat(it.bytes).isEqualTo(0)
+            assertThat(it.outcome).isEqualTo(GatewayOutcomeLabel.FAILURE)
+        }
+        telemetry.replayFailures.single().let { assertThat(it.outcome).isEqualTo(GatewayOutcomeLabel.FAILURE) }
 
         durableHandler.afterConnectionClosed(ws, CloseStatus.NORMAL)
     }
@@ -431,15 +414,11 @@ class AgentAttachHandlerTest {
 
         durableHandler.afterConnectionEstablished(ws)
 
-        assertThat(telemetry.attachAttempts)
-            .singleElement()
-            .satisfies {
-                assertThat(it.outcome).isEqualTo(GatewayOutcomeLabel.FAILURE)
-                assertThat(it.mode).isEqualTo(GatewayModeLabel.SNAPSHOT)
-            }
-        assertThat(telemetry.attachFailures)
-            .singleElement()
-            .satisfies { assertThat(it.outcome).isEqualTo(GatewayOutcomeLabel.FAILURE) }
+        telemetry.attachAttempts.single().let {
+            assertThat(it.outcome).isEqualTo(GatewayOutcomeLabel.FAILURE)
+            assertThat(it.mode).isEqualTo(GatewayModeLabel.SNAPSHOT)
+        }
+        telemetry.attachFailures.single().let { assertThat(it.outcome).isEqualTo(GatewayOutcomeLabel.FAILURE) }
         verify { ws.close(any<CloseStatus>()) }
     }
 
@@ -467,19 +446,13 @@ class AgentAttachHandlerTest {
         durableHandler.afterConnectionEstablished(ws)
 
         assertThat(sent.none { it.payload.contains("\"control\":\"REPLAY_COMPLETE\"") }).isTrue
-        assertThat(telemetry.attachAttempts)
-            .singleElement()
-            .satisfies {
-                assertThat(it.mode).isEqualTo(GatewayModeLabel.RESUME)
-                assertThat(it.outcome).isEqualTo(GatewayOutcomeLabel.FAILURE)
-                assertThat(it.reason).isEqualTo(GatewayFailureReasonLabel.IO_ERROR)
-            }
-        assertThat(telemetry.attachFailures)
-            .singleElement()
-            .satisfies { assertThat(it.reason).isEqualTo(GatewayFailureReasonLabel.IO_ERROR) }
-        assertThat(telemetry.replayFailures)
-            .singleElement()
-            .satisfies { assertThat(it.reason).isEqualTo(GatewayFailureReasonLabel.IO_ERROR) }
+        telemetry.attachAttempts.single().let {
+            assertThat(it.mode).isEqualTo(GatewayModeLabel.RESUME)
+            assertThat(it.outcome).isEqualTo(GatewayOutcomeLabel.FAILURE)
+            assertThat(it.reason).isEqualTo(GatewayFailureReasonLabel.IO_ERROR)
+        }
+        telemetry.attachFailures.single().let { assertThat(it.reason).isEqualTo(GatewayFailureReasonLabel.IO_ERROR) }
+        telemetry.replayFailures.single().let { assertThat(it.reason).isEqualTo(GatewayFailureReasonLabel.IO_ERROR) }
 
         durableHandler.afterConnectionClosed(ws, CloseStatus.NORMAL)
     }
