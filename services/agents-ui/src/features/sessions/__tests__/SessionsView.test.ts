@@ -55,7 +55,7 @@ vi.mock('@/lib/vueWebCommons', async () => {
           h('div', { 'data-testid': 'tabs' }, [
             h(
               'div',
-              { role: 'tablist', 'aria-label': props.ariaLabel },
+              { 'role': 'tablist', 'aria-label': props.ariaLabel },
               slots.tabs?.({ active: active.value, activate: (value: string) => emit('update:modelValue', value) }),
             ),
             slots.default?.(),
@@ -73,7 +73,7 @@ vi.mock('@/lib/vueWebCommons', async () => {
         return () => {
           const selected = active?.value === props.value
           if (!props.keepAlive && !selected) return null
-          return h('section', { 'data-testid': `tab-panel-${props.value}`, hidden: !selected }, slots.default?.())
+          return h('section', { 'data-testid': `tab-panel-${props.value}`, 'hidden': !selected }, slots.default?.())
         }
       },
     }),

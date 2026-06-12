@@ -1,7 +1,7 @@
-import type { AgentSession } from '../types'
 import type { SessionRemoveEvent, SessionStatusEvent, SessionStatusStream } from '../services/sessionStatusStream'
-import { computed, ref } from 'vue'
+import type { AgentSession } from '../types'
 import { defineStore } from 'pinia'
+import { computed, ref } from 'vue'
 import { openSessionStatusStream } from '../services/sessionStatusStream'
 import { useWorkspacesStore } from './workspaces'
 

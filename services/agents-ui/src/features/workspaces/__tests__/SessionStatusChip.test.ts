@@ -28,7 +28,7 @@ function fakeSession(over: Partial<SessionConsoleViewModel> = {}): SessionConsol
   }
 }
 
-describe('SessionStatusChip', () => {
+describe('sessionStatusChip', () => {
   it('renders the derived status text, icon, shape, and accessible label', () => {
     const wrapper = mount(SessionStatusChip, {
       props: { session: fakeSession() },

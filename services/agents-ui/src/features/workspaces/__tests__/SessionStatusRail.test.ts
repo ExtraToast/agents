@@ -38,7 +38,7 @@ function fakeSession(over: Partial<RailSession> = {}): RailSession {
   }
 }
 
-describe('SessionStatusRail', () => {
+describe('sessionStatusRail', () => {
   it('presents status, kind, update time, epoch generation, and connection state', () => {
     const wrapper = mount(SessionStatusRail, {
       props: { session: fakeSession(), connectionState: 'open' },

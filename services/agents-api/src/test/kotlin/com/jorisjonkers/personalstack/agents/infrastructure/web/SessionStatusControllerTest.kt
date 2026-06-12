@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.request
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
+import org.springframework.test.web.servlet.setup.StandaloneMockMvcBuilder
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
 
 class SessionStatusControllerTest {
@@ -28,7 +29,7 @@ class SessionStatusControllerTest {
             MockMvcBuilders
                 .standaloneSetup(SessionStatusController(broadcaster))
                 .setControllerAdvice(GlobalExceptionHandler())
-                .addFilters(XUserIdFilter())
+                .addFilters<StandaloneMockMvcBuilder>(XUserIdFilter())
                 .build()
     }
 

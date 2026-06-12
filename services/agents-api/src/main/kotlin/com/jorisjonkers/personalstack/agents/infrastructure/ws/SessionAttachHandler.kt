@@ -140,6 +140,7 @@ class SessionAttachHandler(
         return null
     }
 
+    @Suppress("LongMethod") // attach handshake and bridge registration must stay ordered
     override fun afterConnectionEstablished(clientSession: WebSocketSession) {
         val resolved = resolveAttach(clientSession) ?: return
         val upstreamHandler =

@@ -1,8 +1,8 @@
 import type { AgentSession } from '../types'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { nextTick } from 'vue'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { nextTick } from 'vue'
 import SessionTabs from '../components/SessionTabs.vue'
 import { useSessionLabelsStore } from '../stores/sessionLabels'
 
@@ -95,16 +95,16 @@ describe('sessionTabs', () => {
     expect(tabs).toHaveLength(2)
     expect(tabs.every((tab) => tab.element.tagName === 'DIV')).toBe(true)
     expect(wrapper.get('[data-testid="session-tab-sess-a"]').attributes()).toMatchObject({
-      role: 'tab',
+      'role': 'tab',
       'aria-selected': 'false',
       'aria-controls': 'session-panel-sess-a',
-      tabindex: '-1',
+      'tabindex': '-1',
     })
     expect(wrapper.get('[data-testid="session-tab-sess-b"]').attributes()).toMatchObject({
-      role: 'tab',
+      'role': 'tab',
       'aria-selected': 'true',
       'aria-controls': 'session-panel-sess-b',
-      tabindex: '0',
+      'tabindex': '0',
     })
   })
 

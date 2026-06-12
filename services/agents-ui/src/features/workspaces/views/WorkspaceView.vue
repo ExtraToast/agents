@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { AgentKind } from '../types'
 import type { RestartSessionState } from '../stores/workspaces'
+import type { AgentKind } from '../types'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Modal, useToast } from '@/lib/vueWebCommons'
@@ -75,13 +75,13 @@ const spawnButtonLabel = computed(() =>
   store.startingSession ? 'Starting runner…' : `Start ${agentKindLabels[pickerKind.value]}`,
 )
 const restartLabels: Record<RestartSessionState, string | null> = {
-  idle: null,
+  'idle': null,
   'confirm-pending': 'Confirm restart',
   'in-progress': 'Restart request in progress',
-  reattaching: 'Reattaching terminal',
+  'reattaching': 'Reattaching terminal',
   'replaying-history': 'Replaying terminal history',
-  live: 'Restart complete',
-  failed: 'Restart failed',
+  'live': 'Restart complete',
+  'failed': 'Restart failed',
 }
 const activeRestartState = computed<RestartSessionState>(() => {
   const session = activeSession.value

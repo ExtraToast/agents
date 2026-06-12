@@ -34,10 +34,10 @@ const shapeClass: Record<SessionStatusShape, string> = {
 }
 
 const iconGlyph: Record<SessionStatusAffordance['icon'], string> = {
-  loader: '...',
-  pause: 'II',
-  play: '>',
-  square: '[]',
+  'loader': '...',
+  'pause': 'II',
+  'play': '>',
+  'square': '[]',
   'triangle-alert': '!',
 }
 

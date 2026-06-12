@@ -81,7 +81,7 @@ async function mountChat(messages: ChatMessage[]) {
   return wrapper
 }
 
-describe('ChatTab copy controls', () => {
+describe('chatTab copy controls', () => {
   const writeText = vi.fn()
 
   beforeEach(() => {

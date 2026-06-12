@@ -1,6 +1,6 @@
 import type { AgentKind, AgentSession, AgentSessionStatus } from '../types'
-import { computed } from 'vue'
 import { defineStore } from 'pinia'
+import { computed } from 'vue'
 import { useSessionLabelsStore } from './sessionLabels'
 import { useSessionStatusesStore } from './sessionStatuses'
 import { useWorkspacesStore } from './workspaces'
