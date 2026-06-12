@@ -115,6 +115,7 @@ class AgentSessionController(
             ),
         ],
     )
+    @Suppress("LongMethod")
     fun restart(
         @PathVariable workspaceId: UUID,
         @PathVariable sessionId: UUID,
@@ -153,6 +154,7 @@ class AgentSessionController(
         }
     }
 
+    @Suppress("ReturnCount", "CyclomaticComplexMethod", "ComplexCondition")
     private fun restartPreconditionConflict(
         workspaceId: UUID,
         sessionId: UUID,

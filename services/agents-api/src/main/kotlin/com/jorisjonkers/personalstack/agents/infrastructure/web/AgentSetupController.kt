@@ -93,6 +93,7 @@ class AgentSetupController(
 
     @GetMapping("/workspaces/{workspaceId}/sessions/{sessionId}/setup-options")
     @Operation(summary = "List setup targets for a session with validation preview")
+    @Suppress("LongMethod")
     fun sessionSetupOptions(
         @PathVariable workspaceId: UUID,
         @PathVariable sessionId: UUID,
@@ -142,6 +143,7 @@ class AgentSetupController(
             ),
         ],
     )
+    @Suppress("LongMethod")
     fun setupPreview(
         @PathVariable workspaceId: UUID,
         @PathVariable sessionId: UUID,

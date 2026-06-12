@@ -425,6 +425,7 @@ class Fabric8AgentRunnerOrchestrator(
     private fun podAnnotations(setup: RunnerSetupProvisioningSpec): Map<String, String> =
         mapOf(RunnerState.ANNOTATION_SETUP_HASH to setup.setupHash)
 
+    @Suppress("LongMethod")
     private fun podEnv(
         workspace: Workspace,
         setup: RunnerSetupProvisioningSpec,

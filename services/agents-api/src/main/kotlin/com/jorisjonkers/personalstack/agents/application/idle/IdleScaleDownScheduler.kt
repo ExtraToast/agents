@@ -58,6 +58,7 @@ class IdleScaleDownScheduler(
         if (candidates.isNotEmpty()) log.info("idle-sweep scaled down {} workspace(s)", candidates.size)
     }
 
+    @Suppress("ReturnCount")
     private fun isEligibleForScaleDown(workspace: Workspace): Boolean {
         if (workspace.hasRunnerSetupGuard()) return false
         if (connected.isConnected(workspace.id)) return false

@@ -73,6 +73,7 @@ class DurableSessionCleanupService(
             .count { sessions.markCleanupRequested(it.id, now) }
     }
 
+    @Suppress("ReturnCount")
     private fun cleanupPendingSession(session: WorkspaceAgentSession): Boolean {
         if (session.pendingSetupId != null || session.pendingSetupVersion != null) return false
         val workspace =

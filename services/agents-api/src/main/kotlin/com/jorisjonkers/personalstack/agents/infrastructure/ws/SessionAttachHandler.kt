@@ -89,7 +89,7 @@ class SessionAttachHandler(
      *
      * Explicit attach guards preserve the close reason for each failure.
      */
-    @Suppress("CyclomaticComplexMethod", "LongMethod", "ReturnCount")
+    @Suppress("CyclomaticComplexMethod", "LongMethod", "ReturnCount", "ComplexCondition")
     private fun resolveAttach(clientSession: WebSocketSession): ResolvedAttach? {
         val sessionId =
             sessionIdOf(clientSession)

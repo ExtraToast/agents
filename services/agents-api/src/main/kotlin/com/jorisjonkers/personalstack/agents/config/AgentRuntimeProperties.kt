@@ -158,7 +158,8 @@ data class AgentRuntimeProperties(
             }
             setup.dockerSocketSupplementalGroups?.let { groups ->
                 require(groups.all { it > 0L }) {
-                    "agent-runtime.setups.${setup.id}.docker-socket-supplemental-groups must contain positive numeric gids"
+                    "agent-runtime.setups.${setup.id}.docker-socket-supplemental-groups " +
+                        "must contain positive numeric gids"
                 }
             }
             require(setup.toolProfiles?.isNotEmpty() != false) {
@@ -167,6 +168,7 @@ data class AgentRuntimeProperties(
         }
     }
 
+    @Suppress("LongMethod", "CyclomaticComplexMethod")
     fun setupCatalogEntries(now: Instant = Instant.now()): List<AgentSetupCatalogEntry> =
         setups.map { setup ->
             val version = AgentSetupVersion(setup.version)

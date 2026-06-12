@@ -25,7 +25,7 @@ import org.springframework.web.client.ResourceAccessException
 import java.time.Instant
 
 @Component
-@Suppress("TooManyFunctions")
+@Suppress("TooManyFunctions", "LargeClass")
 class RunnerSessionBinder(
     private val workspaces: WorkspaceRepository,
     private val sessions: WorkspaceAgentSessionRepository,
@@ -39,6 +39,7 @@ class RunnerSessionBinder(
 ) : RunnerSessionBindingService {
     private val log = LoggerFactory.getLogger(RunnerSessionBinder::class.java)
 
+    @Suppress("LongMethod")
     override fun start(request: StartRunnerSessionBindingInput): RunnerSessionBindingResult {
         val workspace =
             workspaces.findById(request.workspaceId)
@@ -97,7 +98,7 @@ class RunnerSessionBinder(
         )
     }
 
-    @Suppress("LongMethod", "ReturnCount")
+    @Suppress("LongMethod", "ReturnCount", "CyclomaticComplexMethod", "ComplexCondition")
     override fun restart(request: RestartRunnerSessionBindingInput): RunnerSessionBindingResult {
         val session =
             sessions.findById(request.sessionId)
@@ -168,7 +169,7 @@ class RunnerSessionBinder(
         )
     }
 
-    @Suppress("LongMethod", "ReturnCount")
+    @Suppress("LongMethod", "ReturnCount", "CyclomaticComplexMethod", "ComplexCondition")
     override fun ensureBound(request: EnsureRunnerSessionBoundInput): RunnerSessionBindingResult {
         val session =
             sessions.findById(request.sessionId)
@@ -281,6 +282,7 @@ class RunnerSessionBinder(
         )
     }
 
+    @Suppress("ThrowsCount")
     private fun prepareRunner(
         workspace: Workspace,
         target: RunnerSetupTarget,

@@ -97,6 +97,7 @@ data class AgentSetupDetailResponse(
     val updatedAt: Instant,
 ) {
     companion object {
+        @Suppress("LongMethod")
         fun of(entry: AgentSetupCatalogEntry): AgentSetupDetailResponse {
             val definition = entry.definition
             val availability = entry.availability

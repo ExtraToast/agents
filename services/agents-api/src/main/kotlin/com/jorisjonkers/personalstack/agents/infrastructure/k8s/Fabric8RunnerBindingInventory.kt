@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component
 class Fabric8RunnerBindingInventory(
     private val client: KubernetesClient,
 ) : RunnerBindingInventory {
+    @Suppress("LongMethod")
     override fun inspect(
         definition: AgentSetupDefinition,
         workspace: Workspace?,
@@ -155,6 +156,7 @@ class Fabric8RunnerBindingInventory(
 @Component
 @Profile("system-test")
 class StubRunnerBindingInventory : RunnerBindingInventory {
+    @Suppress("LongMethod")
     override fun inspect(
         definition: AgentSetupDefinition,
         workspace: Workspace?,

@@ -27,7 +27,6 @@ import com.jorisjonkers.personalstack.agents.domain.port.SetupRestartEventReposi
 import com.jorisjonkers.personalstack.agents.domain.port.WorkspaceAgentSessionRepository
 import com.jorisjonkers.personalstack.agents.domain.port.WorkspaceRepository
 import io.mockk.every
-import io.mockk.firstArg
 import io.mockk.mockk
 import io.mockk.verify
 import org.junit.jupiter.api.Test

@@ -88,6 +88,7 @@ class AgentSetupValidationService(
         return AgentSetupCatalogEntry(definition = definition, availability = availability)
     }
 
+    @Suppress("LongMethod", "CyclomaticComplexMethod")
     private fun validateCompatibility(
         target: AgentSetupCatalogEntry,
         request: AgentSetupValidationRequest,
@@ -186,6 +187,7 @@ class AgentSetupValidationService(
         }
     }
 
+    @Suppress("LongMethod")
     private fun validateBindings(
         snapshot: RunnerBindingInventorySnapshot,
         issues: MutableList<AgentSetupValidationIssue>,

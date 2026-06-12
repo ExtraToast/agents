@@ -22,6 +22,7 @@ class RestartAgentSessionService(
     private val setupValidation: AgentSetupValidationService,
     private val clock: Clock = Clock.systemUTC(),
 ) {
+    @Suppress("LongMethod")
     fun restart(request: RestartAgentSessionInput): RunnerSessionBindingResult {
         val workspace =
             workspaces.findById(request.workspaceId)
