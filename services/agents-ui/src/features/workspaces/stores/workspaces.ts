@@ -7,14 +7,14 @@ import * as workspaceService from '../services/workspaceService'
 
 const ACTIVE_SESSION_STORAGE_KEY = 'agents-ui:workspace-active-session'
 
-export type RestartSessionState =
-  | 'idle'
-  | 'confirm-pending'
-  | 'in-progress'
-  | 'reattaching'
-  | 'replaying-history'
-  | 'live'
-  | 'failed'
+export type RestartSessionState
+  = | 'idle'
+    | 'confirm-pending'
+    | 'in-progress'
+    | 'reattaching'
+    | 'replaying-history'
+    | 'live'
+    | 'failed'
 
 function isLiveSession(session: AgentSession): boolean {
   return session.status === 'STARTING' || session.status === 'RUNNING'

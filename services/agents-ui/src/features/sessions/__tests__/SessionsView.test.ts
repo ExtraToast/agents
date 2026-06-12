@@ -69,7 +69,7 @@ vi.mock('@/lib/vueWebCommons', async () => {
         keepAlive: { type: Boolean, default: false },
       },
       setup(props, { slots }) {
-        const active = inject(activeKey) as { value: string } | undefined
+        const active = inject<{ value: string }>(activeKey)
         return () => {
           const selected = active?.value === props.value
           if (!props.keepAlive && !selected) return null
@@ -106,7 +106,7 @@ describe('sessions home', () => {
     })
 
     const shell = wrapper.getComponent({ name: 'CommonsAppShell' })
-    const navItems = shell.props('navItems') as AppShellNavItem[]
+    const navItems: AppShellNavItem[] = shell.props('navItems')
     const sessions = navItems[0]
 
     expect(shell.props('layout')).toBe('rail')
@@ -128,7 +128,7 @@ describe('sessions home', () => {
     expect(wrapper.classes()).not.toContain('mx-auto')
     expect(wrapper.findAll('[role="tab"]').map((tab) => tab.text())).toEqual(['Workspace', 'Scratch', 'Chat'])
     expect(wrapper.get('[data-testid="sessions-tab-workspace"]').attributes('aria-selected')).toBe('true')
-    expect(wrapper.get('[data-testid="workspace-tab-stub"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="workspace-tab-stub"]').exists()).toBe(true)
   })
 
   it('reads and writes the active tab from the route query', async () => {

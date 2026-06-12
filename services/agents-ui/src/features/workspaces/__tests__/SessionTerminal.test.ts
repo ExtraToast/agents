@@ -4,6 +4,12 @@ import { nextTick } from 'vue'
 import SessionTerminal from '../components/SessionTerminal.vue'
 import { attachSessionSocket } from '../services/sessionSocket'
 
+// Build a minimal KeyboardEvent stub for the captured custom-key handler.
+function keyboardEvent(init: Partial<KeyboardEvent>): KeyboardEvent {
+  // eslint-disable-next-line ts/consistent-type-assertions -- test stub, not a real DOM event
+  return init as KeyboardEvent
+}
+
 // xterm touches real DOM/canvas APIs jsdom does not implement, so the
 // Terminal + FitAddon are stubbed. The stub captures the data/resize
 // handlers and exposes the write spy so both directions can be asserted.
@@ -291,7 +297,7 @@ describe('sessionTerminal', () => {
     term.getSelection.mockReturnValue('selected')
     const preventDefault = vi.fn()
 
-    const handled = customKeyHandler?.({
+    const handled = customKeyHandler?.(keyboardEvent({
       altKey: false,
       ctrlKey: true,
       key: 'c',
@@ -299,7 +305,7 @@ describe('sessionTerminal', () => {
       preventDefault,
       shiftKey: false,
       type: 'keydown',
-    } as KeyboardEvent)
+    }))
     await flushPromises()
 
     expect(handled).toBe(false)
@@ -313,7 +319,7 @@ describe('sessionTerminal', () => {
     term.hasSelection.mockReturnValue(true)
     term.getSelection.mockReturnValue('selected')
 
-    const handled = customKeyHandler?.({
+    const handled = customKeyHandler?.(keyboardEvent({
       altKey: false,
       ctrlKey: false,
       key: 'C',
@@ -321,7 +327,7 @@ describe('sessionTerminal', () => {
       preventDefault: vi.fn(),
       shiftKey: false,
       type: 'keydown',
-    } as KeyboardEvent)
+    }))
     await flushPromises()
 
     expect(handled).toBe(false)
@@ -333,7 +339,7 @@ describe('sessionTerminal', () => {
     mountTerminal({ active: true })
     const preventDefault = vi.fn()
 
-    const handled = customKeyHandler?.({
+    const handled = customKeyHandler?.(keyboardEvent({
       altKey: false,
       ctrlKey: true,
       key: 'c',
@@ -341,7 +347,7 @@ describe('sessionTerminal', () => {
       preventDefault,
       shiftKey: false,
       type: 'keydown',
-    } as KeyboardEvent)
+    }))
 
     expect(handled).toBe(false)
     expect(preventDefault).toHaveBeenCalled()
@@ -352,7 +358,7 @@ describe('sessionTerminal', () => {
   it('lets non-copy custom key events continue through xterm', () => {
     mountTerminal({ active: true })
 
-    const handled = customKeyHandler?.({
+    const handled = customKeyHandler?.(keyboardEvent({
       altKey: false,
       ctrlKey: false,
       key: 'x',
@@ -360,7 +366,7 @@ describe('sessionTerminal', () => {
       preventDefault: vi.fn(),
       shiftKey: false,
       type: 'keydown',
-    } as KeyboardEvent)
+    }))
 
     expect(handled).toBe(true)
     expect(socket.sendKey).not.toHaveBeenCalled()
@@ -381,12 +387,12 @@ describe('sessionTerminal', () => {
     await nextTick()
 
     expect(socket.sendKey.mock.calls).toEqual([
-      ['\x1b'],
+      ['\x1B'],
       ['\x03'],
-      ['\x1b[D'],
-      ['\x1b[A'],
-      ['\x1b[B'],
-      ['\x1b[C'],
+      ['\x1B[D'],
+      ['\x1B[A'],
+      ['\x1B[B'],
+      ['\x1B[C'],
       ['\t'],
     ])
     expect(term.focus).toHaveBeenCalled()

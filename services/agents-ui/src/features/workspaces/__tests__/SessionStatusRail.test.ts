@@ -78,7 +78,7 @@ describe('sessionStatusRail', () => {
       },
     })
 
-    expect(wrapper.get('[data-testid="session-status-rail-restart"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="session-status-rail-restart"]').exists()).toBe(true)
     expect(wrapper.get('[data-testid="custom-restart"]').text()).toBe('Restarting generation 5')
   })
 

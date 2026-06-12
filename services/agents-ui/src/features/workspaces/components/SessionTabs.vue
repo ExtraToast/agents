@@ -184,9 +184,9 @@ function sessionShellClasses(s: AgentSession): string[] {
         role="presentation"
       >
         <div
+          :id="`session-tab-control-${s.id}`"
           :ref="(el) => setTabRef(s.id, el)"
           role="tab"
-          :id="`session-tab-control-${s.id}`"
           :aria-selected="isSelected(s) ? 'true' : 'false'"
           :aria-controls="tabPanelId(s)"
           :tabindex="isRoving(s) ? 0 : -1"

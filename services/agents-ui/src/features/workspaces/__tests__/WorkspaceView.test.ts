@@ -380,7 +380,7 @@ describe('workspaceView terminal persistence', () => {
     await wrapper.get('[data-testid="workspace-active-restart"]').trigger('click')
     await flush()
 
-    expect(wrapper.get('[data-testid="workspace-restart-confirmation"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="workspace-restart-confirmation"]').exists()).toBe(true)
     expect(document.activeElement).toBe(wrapper.get('[data-testid="workspace-lifecycle-controls"]').element)
 
     await wrapper.get('[data-testid="workspace-restart-confirm"]').trigger('click')
@@ -396,7 +396,7 @@ describe('workspaceView terminal persistence', () => {
     store.markRestartLive('sess-a')
     await wrapper.vm.$nextTick()
     expect(wrapper.get('[data-testid="session-status-rail-restart"]').text()).toContain('Restart complete')
-    expect(wrapper.get('[data-testid="workspace-restart-dismiss"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="workspace-restart-dismiss"]').exists()).toBe(true)
 
     store.markRestartFailed('sess-a')
     await wrapper.vm.$nextTick()

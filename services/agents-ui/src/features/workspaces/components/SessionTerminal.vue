@@ -15,12 +15,12 @@ let fitAddon: FitAddon | null = null
 let socket: SessionSocket | null = null
 let resizeObserver: ResizeObserver | null = null
 
-const KEY_ESCAPE = '\x1b'
+const KEY_ESCAPE = '\x1B'
 const KEY_CTRL_C = '\x03'
-const KEY_ARROW_UP = '\x1b[A'
-const KEY_ARROW_DOWN = '\x1b[B'
-const KEY_ARROW_RIGHT = '\x1b[C'
-const KEY_ARROW_LEFT = '\x1b[D'
+const KEY_ARROW_UP = '\x1B[A'
+const KEY_ARROW_DOWN = '\x1B[B'
+const KEY_ARROW_RIGHT = '\x1B[C'
+const KEY_ARROW_LEFT = '\x1B[D'
 const KEY_TAB = '\t'
 
 function fitAndReportSize(): void {

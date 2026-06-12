@@ -147,7 +147,7 @@ describe('workspace tab delete', () => {
     const { router, wrapper } = await mountTab('/sessions?tab=workspace&new=1')
     await flushPromises()
 
-    expect(wrapper.get('[data-testid="modal"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="modal"]').exists()).toBe(true)
     expect(wrapper.getComponent({ name: 'CreateWorkspaceWizard' }).props('open')).toBe(true)
     expect(router.currentRoute.value.query).toEqual({ tab: 'workspace' })
   })

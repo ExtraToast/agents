@@ -13,15 +13,14 @@ const route = useRoute()
 const router = useRouter()
 
 function normalizedTab(value: unknown): SessionTab {
-  return typeof value === 'string' && validTabs.includes(value as SessionTab) ? (value as SessionTab) : 'workspace'
+  return validTabs.find((tab) => tab === value) ?? 'workspace'
 }
 
 const active = computed<SessionTab>({
   get: () => normalizedTab(route.query.tab),
   set: (value) => {
-    const query = { ...route.query, tab: value }
-    delete query.new
-    void router.push({ path: '/sessions', query })
+    const { new: _omit, ...rest } = route.query
+    void router.push({ path: '/sessions', query: { ...rest, tab: value } })
   },
 })
 </script>
