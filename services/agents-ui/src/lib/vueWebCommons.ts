@@ -18,7 +18,7 @@ export * from '@extratoast/vue-web-commons'
 
 const authBaseUrl: string = import.meta.env.VITE_AUTH_URL ?? 'http://localhost:5174'
 const validRoles = ['ADMIN', 'USER', 'READONLY'] as const
-type PersonalStackRole = (typeof validRoles)[number]
+type AgentsRole = (typeof validRoles)[number]
 
 interface SessionUserPayload {
   id?: string
@@ -28,8 +28,8 @@ interface SessionUserPayload {
   role?: string
 }
 
-export const personalStackThemeOptions = {
-  storageKey: 'ps_theme',
+export const agentsThemeOptions = {
+  storageKey: 'agents_theme',
   defaultMode: 'system',
   allowedModes: ['light', 'dark', 'system'],
   target: () => (typeof document === 'undefined' ? null : document.documentElement),
@@ -37,8 +37,8 @@ export const personalStackThemeOptions = {
   className: 'dark',
 } satisfies UseThemeOptions<ThemeMode>
 
-export function useAuth(): AuthApi<User<PersonalStackRole>> {
-  return useCommonsAuth<SessionUserPayload, User<PersonalStackRole>>({
+export function useAuth(): AuthApi<User<AgentsRole>> {
+  return useCommonsAuth<SessionUserPayload, User<AgentsRole>>({
     baseUrl: authBaseUrl,
     currentUserUrl: '/api/v1/auth/me',
     credentials: 'include',
@@ -60,7 +60,7 @@ export function useApiWithAuth(options: ApiWithAuthOptions = {}): ApiClient {
 }
 
 export function useTheme(): ThemeApi<ThemeMode> {
-  return useCommonsTheme(personalStackThemeOptions)
+  return useCommonsTheme(agentsThemeOptions)
 }
 
 function csrfTokenSource(): string | null {
@@ -68,7 +68,7 @@ function csrfTokenSource(): string | null {
   return cookieCsrfTokenSource('XSRF-TOKEN', document)()
 }
 
-function mapUser(payload: SessionUserPayload): User<PersonalStackRole> {
+function mapUser(payload: SessionUserPayload): User<AgentsRole> {
   const role = validRoles.find((candidate) => candidate === payload.role) ?? 'USER'
   return {
     id: payload.id ?? '',
