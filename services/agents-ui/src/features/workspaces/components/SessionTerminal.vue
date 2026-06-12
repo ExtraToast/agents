@@ -151,6 +151,9 @@ async function revealAndFocus(): Promise<void> {
   if (!term) return
   fitAndReportSize()
   term.focus()
+  // Keep the prompt line pinned to the bottom so it stays visible above the
+  // on-screen keyboard once the console has shrunk to the visual viewport.
+  term.scrollToBottom?.()
 }
 
 watch(
@@ -190,7 +193,12 @@ onBeforeUnmount(() => {
         Copy
       </button>
     </div>
-    <div ref="container" class="min-h-0 flex-1 overflow-hidden p-2" data-testid="session-terminal" />
+    <div
+      ref="container"
+      class="min-h-0 flex-1 overflow-hidden p-2"
+      data-testid="session-terminal"
+      @click="revealAndFocus"
+    />
     <div class="terminal-touch-bar border-t border-white/10 bg-[#11151c] px-2 py-1">
       <button type="button" data-testid="terminal-touch-esc" @click="sendTerminalKey(KEY_ESCAPE)">Esc</button>
       <button type="button" data-testid="terminal-touch-ctrl-c" @click="sendTerminalKey(KEY_CTRL_C)">Ctrl-C</button>
