@@ -148,8 +148,8 @@ describe('sessionTerminal', () => {
     )
     capturedOnOutput?.('[31mhello[0m')
     capturedOnOutput?.('--- restart delimiter from gateway ---\r\n')
-    expect(term.write).toHaveBeenNthCalledWith(1, '[31mhello[0m')
-    expect(term.write).toHaveBeenNthCalledWith(2, '--- restart delimiter from gateway ---\r\n')
+    expect(term.write).toHaveBeenNthCalledWith(1, '[31mhello[0m', expect.any(Function))
+    expect(term.write).toHaveBeenNthCalledWith(2, '--- restart delimiter from gateway ---\r\n', expect.any(Function))
   })
 
   it('forwards terminal keystrokes as input frames with enter=false', () => {
@@ -232,8 +232,8 @@ describe('sessionTerminal', () => {
     capturedOnOutput?.('gap')
     capturedOnOutput?.('live')
     expect(term.clear).not.toHaveBeenCalled()
-    expect(term.write).toHaveBeenNthCalledWith(1, 'gap')
-    expect(term.write).toHaveBeenNthCalledWith(2, 'live')
+    expect(term.write).toHaveBeenNthCalledWith(1, 'gap', expect.any(Function))
+    expect(term.write).toHaveBeenNthCalledWith(2, 'live', expect.any(Function))
   })
 
   it('retains a deep scrollback so a long session keeps its history', () => {
@@ -432,7 +432,7 @@ describe('sessionTerminal', () => {
     await wrapper.setProps({ active: true })
     await nextTick()
 
-    expect(term.write).toHaveBeenCalledWith('existing buffer')
+    expect(term.write).toHaveBeenCalledWith('existing buffer', expect.any(Function))
     expect(term.clear).not.toHaveBeenCalled()
     expect(term.dispose).not.toHaveBeenCalled()
     expect(attachSessionSocket).not.toHaveBeenCalled()
