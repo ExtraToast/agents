@@ -431,7 +431,7 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
     data-testid="workspace-console"
   >
     <header
-      class="z-10 flex shrink-0 flex-col gap-3 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-dark)] px-3 py-3 sm:px-5 lg:flex-row lg:items-center lg:justify-between"
+      class="z-10 flex shrink-0 flex-col gap-2 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-dark)] px-3 py-2 sm:gap-3 sm:px-5 sm:py-3 lg:flex-row lg:items-center lg:justify-between"
       data-testid="workspace-view-header"
     >
       <div class="flex min-w-0 items-start gap-3">
@@ -443,10 +443,13 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
           Sessions
         </button>
         <div class="min-w-0">
-          <h1 class="truncate text-xl font-bold">
+          <h1 class="truncate text-lg font-bold sm:text-xl">
             {{ store.activeWorkspace?.name ?? 'Loading…' }}
           </h1>
-          <p v-if="store.activeWorkspace?.repoUrl" class="truncate font-mono text-xs text-[var(--color-text-muted)]">
+          <p
+            v-if="store.activeWorkspace?.repoUrl"
+            class="hidden truncate font-mono text-xs text-[var(--color-text-muted)] sm:block"
+          >
             {{ store.activeWorkspace.repoUrl }}
           </p>
         </div>
