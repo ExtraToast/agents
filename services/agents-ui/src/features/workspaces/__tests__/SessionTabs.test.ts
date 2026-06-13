@@ -201,7 +201,7 @@ describe('sessionTabs', () => {
     })
     const tab = wrapper.get('[data-testid="session-tab-sess-starting"]')
 
-    expect(tab.get('[aria-label="SHELL, STARTING"]').exists()).toBe(true)
+    expect(tab.find('[aria-label="SHELL, STARTING"]').exists()).toBe(true)
   })
 
   it('surfaces current and pending setup through the tab label tooltip', () => {
