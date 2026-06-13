@@ -458,11 +458,11 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
     </header>
 
     <main
-      class="relative flex min-h-0 flex-1 flex-col overflow-hidden pb-[env(safe-area-inset-bottom)] lg:grid lg:overflow-hidden"
+      class="flex min-h-0 flex-1 flex-col overflow-y-auto pb-[env(safe-area-inset-bottom)] lg:grid lg:overflow-hidden"
       :class="showSidebar ? 'lg:grid-cols-[minmax(0,1fr)_22rem]' : 'lg:grid-cols-[minmax(0,1fr)]'"
       data-testid="workspace-console-main"
     >
-      <section class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-3 sm:p-4">
+      <section class="flex min-h-[70svh] min-w-0 flex-1 flex-col overflow-hidden p-3 sm:p-4 lg:min-h-0">
         <div
           ref="consoleSurface"
           tabindex="-1"
@@ -515,7 +515,7 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
       <aside
         v-if="store.activeWorkspace && showSidebar"
         id="workspace-sidebar"
-        class="absolute inset-x-0 bottom-0 top-0 z-20 flex flex-col gap-3 overflow-y-auto border-l border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-3 pt-[env(safe-area-inset-top)] lg:static lg:z-auto lg:pt-3"
+        class="flex shrink-0 flex-col gap-3 overflow-y-auto border-t border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-3 lg:min-h-0 lg:border-l lg:border-t-0"
         data-testid="workspace-sidebar"
         aria-label="Workspace controls"
       >
