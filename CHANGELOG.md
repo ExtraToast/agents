@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.0](https://github.com/ExtraToast/agents/compare/v0.3.0...v0.4.0) (2026-06-13)
+
+
+### Features
+
+* **012:** bigger header title with repo beneath; tab kind icons + claude-N names ([#31](https://github.com/ExtraToast/agents/issues/31)) ([9b01350](https://github.com/ExtraToast/agents/commit/9b013504325483dc0d11fa91f518b43ad212c02e))
+* **012:** session delete, controls rail with edge arrow, mobile fullscreen ([#29](https://github.com/ExtraToast/agents/issues/29)) ([3831724](https://github.com/ExtraToast/agents/commit/38317243b0d654545066bb150aa30f04d50c358e))
+
 ## [0.3.0](https://github.com/ExtraToast/agents/compare/v0.2.2...v0.3.0) (2026-06-13)
 
 
