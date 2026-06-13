@@ -53,8 +53,29 @@ const setupOptionsLoading = ref(false)
 const setupControlsError = ref<string | null>(null)
 const consoleSurface = ref<HTMLElement | null>(null)
 const restartConfirmPanel = ref<HTMLElement | null>(null)
+// Copy moved off the terminal chrome into the controls rail: keep a handle on
+// each mounted terminal so the rail's Copy button can drive the active one.
+const terminalRefs = new Map<string, { copySelection: () => Promise<boolean> }>()
 let loadSeq = 0
 let setupOptionsSeq = 0
+
+interface TerminalHandle { copySelection: () => Promise<boolean> }
+
+function setTerminalRef(id: string, instance: unknown): void {
+  // Component refs arrive untyped; narrow to the exposed copy action.
+  // eslint-disable-next-line ts/consistent-type-assertions
+  const handle = instance as Partial<TerminalHandle> | null
+  if (handle && typeof handle.copySelection === 'function') {
+    terminalRefs.set(id, { copySelection: handle.copySelection })
+    return
+  }
+  terminalRefs.delete(id)
+}
+
+function copyActiveSelection(): void {
+  const id = store.activeSessionId
+  if (id) void terminalRefs.get(id)?.copySelection()
+}
 
 // Only sessions with a live PTY get a mounted terminal. A session
 // dropping out of this set (STOPPED/FAILED) unmounts its
@@ -415,7 +436,8 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
     data-testid="workspace-console"
   >
     <header
-      class="z-10 flex shrink-0 flex-col gap-2 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-dark)] px-3 py-2 sm:px-5"
+      class="z-10 flex shrink-0 flex-col border-b border-[var(--color-surface-border)] bg-[var(--color-surface-dark)] px-3 sm:px-5"
+      :class="isFullscreen ? 'gap-0 py-1' : 'gap-2 py-2'"
       data-testid="workspace-view-header"
     >
       <div class="flex min-w-0 items-start gap-3">
@@ -424,7 +446,7 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
             {{ store.activeWorkspace?.name ?? 'Loading…' }}
           </h1>
           <p
-            v-if="store.activeWorkspace?.repoUrl"
+            v-if="store.activeWorkspace?.repoUrl && !isFullscreen"
             class="truncate font-mono text-xs text-[var(--color-text-muted)]"
             :title="store.activeWorkspace.repoUrl"
           >
@@ -453,7 +475,7 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
         </button>
       </div>
       <nav
-        v-if="store.activeWorkspace"
+        v-if="store.activeWorkspace && !isFullscreen"
         class="-mb-2 min-w-0 overflow-x-auto pb-2"
         data-testid="workspace-tabs"
         aria-label="Sessions"
@@ -472,22 +494,28 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
       class="flex min-h-0 flex-1 overflow-hidden pb-[env(safe-area-inset-bottom)]"
       data-testid="workspace-console-main"
     >
-      <section class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-2 sm:p-4">
+      <section
+        class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+        :class="isFullscreen ? 'p-0' : 'p-2 sm:p-4'"
+      >
         <div
           ref="consoleSurface"
           tabindex="-1"
-          class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-[var(--color-surface-border)] bg-[#0b0e14] shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)]"
+          class="console-surface flex min-h-0 flex-1 flex-col overflow-hidden bg-[#0b0e14] shadow-2xl"
+          :class="isFullscreen
+            ? ''
+            : activeSessionIsLive
+              ? 'rounded-md border border-[var(--color-surface-border)] border-t-2 border-t-[var(--color-accent-light)]'
+              : 'rounded-md border border-[var(--color-surface-border)]'"
           data-testid="workspace-hero-terminal"
         >
-          <div class="flex min-h-10 shrink-0 items-center gap-2 border-b border-white/10 bg-[#11151c] px-3 py-2">
-            <div class="min-w-0">
-              <p class="truncate font-mono text-sm text-slate-100" data-testid="workspace-active-session-label">
-                {{ activeRailSession?.label ?? 'No session selected' }}
-              </p>
-              <p class="truncate text-xs text-slate-400">
-                {{ activeRailSession?.affordance.description ?? 'Start an agent to attach a terminal.' }}
-              </p>
-            </div>
+          <div
+            v-if="!isFullscreen"
+            class="flex min-h-10 shrink-0 items-center gap-2 border-b border-white/10 bg-[#11151c] px-3 py-2"
+          >
+            <p class="min-w-0 flex-1 truncate font-mono text-sm text-slate-100" data-testid="workspace-active-session-label">
+              {{ activeRailSession?.label ?? 'No session selected' }}
+            </p>
           </div>
 
           <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -496,6 +524,7 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
               v-for="s in liveSessions"
               v-show="s.id === store.activeSessionId"
               :key="s.id"
+              :ref="(el) => setTerminalRef(s.id, el)"
               :session-id="s.id"
               :active="s.id === store.activeSessionId"
             />
@@ -523,17 +552,18 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
       </section>
 
       <aside
-        v-if="store.activeWorkspace"
+        v-if="store.activeWorkspace && !isFullscreen"
         id="workspace-sidebar"
         class="flex shrink-0 flex-col border-l border-[var(--color-surface-border)] bg-[var(--color-surface-card)]"
         :class="showSidebar ? 'w-[min(22rem,85vw)]' : 'w-10'"
         data-testid="workspace-sidebar"
         aria-label="Workspace controls"
       >
-        <!-- Fold arrow rides the pane's left edge: it moves left as the pane opens. -->
+        <!-- Block toggle styled like the Stop/Restart controls; the arrow points
+             the way the pane will move (› to close, ‹ to open). -->
         <button
           type="button"
-          class="flex h-11 w-full shrink-0 items-center justify-start px-2 text-base text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)]"
+          class="m-2 flex min-h-10 shrink-0 items-center justify-center rounded-md border border-[var(--color-surface-border)] bg-[var(--color-surface-elevated)] px-2 text-base font-medium text-[var(--color-text-primary)] transition-colors hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)]"
           :aria-expanded="showSidebar"
           aria-controls="workspace-sidebar-body"
           data-testid="workspace-sidebar-toggle"
@@ -567,7 +597,18 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
               Restart
             </button>
           </div>
+          <button
+            type="button"
+            class="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-[var(--color-surface-border)] bg-[var(--color-surface-elevated)] px-3 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] disabled:cursor-not-allowed disabled:opacity-60"
+            :disabled="!activeSessionIsLive"
+            data-testid="session-terminal-copy"
+            title="Copy the current terminal selection"
+            @click="copyActiveSelection"
+          >
+            Copy selection
+          </button>
           <SessionStatusRail
+          class="shrink-0"
           :session="activeRailSession"
           :connection-state="statuses.connectionState"
           :connection-error="statuses.connectionError"
@@ -749,3 +790,14 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
     </Modal>
   </div>
 </template>
+
+<style scoped>
+/* The console surface is a programmatic focus target (tabindex=-1), not a
+   tab-reachable control. The shared theme draws a 2px accent outline on every
+   :focus-visible element, which here wraps the whole terminal and reads as a
+   heavy duplicate of the active tab's indicator — suppress it on this surface. */
+.console-surface:focus,
+.console-surface:focus-visible {
+  outline: none;
+}
+</style>

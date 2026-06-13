@@ -271,11 +271,12 @@ describe('sessionTerminal', () => {
     expect(term.focus).not.toHaveBeenCalled()
   })
 
-  it('copies the current terminal selection when the Copy control is clicked', async () => {
+  it('copies the current terminal selection via the exposed copy action', async () => {
     const wrapper = mountTerminal({ active: true })
     term.getSelection.mockReturnValue('selected text')
 
-    await wrapper.get('[data-testid="session-terminal-copy"]').trigger('click')
+    // eslint-disable-next-line ts/consistent-type-assertions -- reach the defineExpose'd action
+    await (wrapper.vm as unknown as { copySelection: () => Promise<boolean> }).copySelection()
     await flushPromises()
 
     expect(clipboard.writeText).toHaveBeenCalledWith('selected text')

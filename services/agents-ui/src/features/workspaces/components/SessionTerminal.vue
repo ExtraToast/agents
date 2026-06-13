@@ -66,6 +66,11 @@ async function copySelection(refocus = true): Promise<boolean> {
   }
 }
 
+// The explicit Copy control now lives in the workspace controls rail rather
+// than on the terminal chrome; expose the action so the parent can drive the
+// active terminal's selection copy.
+defineExpose({ copySelection })
+
 function sendTerminalKey(key: string): void {
   socket?.sendKey(key)
   if (props.active) void revealAndFocus()
@@ -228,16 +233,6 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded bg-[#0b0e14]">
-    <div class="flex items-center justify-end border-b border-white/10 bg-[#11151c] px-2 py-1">
-      <button
-        type="button"
-        class="rounded border border-white/15 px-2 py-1 text-xs font-medium text-slate-100 hover:bg-white/10"
-        data-testid="session-terminal-copy"
-        @click="copySelection()"
-      >
-        Copy
-      </button>
-    </div>
     <div class="relative flex min-h-0 flex-1 flex-col">
       <div
         ref="container"
