@@ -432,7 +432,7 @@ describe('workspaceView terminal persistence', () => {
     const sidebar = wrapper.get('[data-testid="workspace-sidebar"]')
 
     expect(header.find('[data-testid="workspace-fullscreen-toggle"]').exists()).toBe(true)
-    expect(sidebar.find('[data-testid="workspace-sidebar-toggle"]').exists()).toBe(true)
+    expect(header.find('[data-testid="workspace-sidebar-toggle"]').exists()).toBe(true)
     expect(header.find('[data-testid="stage-input-open"]').exists()).toBe(false)
     expect(tabs.find('[data-testid="session-tabs"]').exists()).toBe(true)
     expect(tabs.find('[data-testid="session-tab-sess-a"]').exists()).toBe(true)
@@ -475,21 +475,21 @@ describe('workspaceView terminal persistence', () => {
     expect(wrapper.get('[data-testid="stage-input-open"]').attributes('disabled')).toBeDefined()
   })
 
-  it('folds the controls rail with its edge arrow', async () => {
+  it('folds the controls pane away entirely from the header toggle', async () => {
     getWorkspace.mockResolvedValue(detail([fakeSession({ id: 'sess-a' })]))
 
     const wrapper = await mountView()
     const toggle = wrapper.get('[data-testid="workspace-sidebar-toggle"]')
-    const rail = wrapper.get('[data-testid="workspace-sidebar"]')
 
     expect(toggle.attributes('aria-expanded')).toBe('true')
-    expect(toggle.attributes('aria-controls')).toBe('workspace-sidebar-body')
-    expect(rail.classes()).toContain('w-[min(22rem,85vw)]')
+    expect(toggle.attributes('aria-controls')).toBe('workspace-sidebar')
+    expect(wrapper.get('[data-testid="workspace-sidebar"]').classes()).toContain('lg:w-[min(22rem,85vw)]')
 
     await toggle.trigger('click')
 
+    // Closed: the pane is removed from the layout so it takes zero space.
     expect(toggle.attributes('aria-expanded')).toBe('false')
-    expect(rail.classes()).toContain('w-10')
+    expect(wrapper.find('[data-testid="workspace-sidebar"]').exists()).toBe(false)
   })
 
   it('opens the status subscription for the workspace and closes it on unmount', async () => {
@@ -676,7 +676,8 @@ describe('workspaceView terminal persistence', () => {
     await flush()
 
     expect(startSession).toHaveBeenCalledWith('ws-1', 'CLAUDE', expect.any(Function))
-    expect(wrapper.get('[data-testid="workspace-active-session-label"]').text()).toBe('sess-new')
+    // The session label moved off the terminal chrome into the controls rail.
+    expect(wrapper.get('[data-testid="session-status-rail-label"]').text()).toBe('sess-new')
 
     await wrapper.get('[data-testid="workspace-active-stop"]').trigger('click')
     await flush()
