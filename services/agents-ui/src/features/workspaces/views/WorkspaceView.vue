@@ -418,12 +418,21 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
       class="z-10 flex shrink-0 flex-col gap-2 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-dark)] px-3 py-2 sm:px-5"
       data-testid="workspace-view-header"
     >
-      <div class="flex min-w-0 items-center gap-3">
-        <h1 class="min-w-0 shrink truncate text-base font-bold" :title="store.activeWorkspace?.repoUrl ?? undefined">
-          {{ store.activeWorkspace?.name ?? 'Loading…' }}
-        </h1>
+      <div class="flex min-w-0 items-start gap-3">
+        <div class="min-w-0 flex-1">
+          <h1 class="truncate text-lg font-bold sm:text-xl">
+            {{ store.activeWorkspace?.name ?? 'Loading…' }}
+          </h1>
+          <p
+            v-if="store.activeWorkspace?.repoUrl"
+            class="truncate font-mono text-xs text-[var(--color-text-muted)]"
+            :title="store.activeWorkspace.repoUrl"
+          >
+            {{ store.activeWorkspace.repoUrl }}
+          </p>
+        </div>
         <span
-          class="ml-auto hidden shrink-0 items-center gap-1.5 rounded px-2 py-1 text-xs text-[var(--color-text-muted)] sm:inline-flex"
+          class="mt-0.5 hidden shrink-0 items-center gap-1.5 rounded px-2 py-1 text-xs text-[var(--color-text-muted)] sm:inline-flex"
           data-testid="workspace-status-summary"
         >
           <span
