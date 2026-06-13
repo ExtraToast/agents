@@ -453,129 +453,114 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
             {{ store.activeWorkspace.repoUrl }}
           </p>
         </div>
-        <span
-          class="mt-0.5 hidden shrink-0 items-center gap-1.5 rounded px-2 py-1 text-xs text-[var(--color-text-muted)] sm:inline-flex"
-          data-testid="workspace-status-summary"
-        >
+        <div class="ml-auto flex shrink-0 items-center gap-2">
           <span
-            class="size-1.5 rounded-full"
-            :class="statuses.connectionState === 'open' ? 'bg-green-400' : 'bg-amber-400'"
-          />
-          {{ statuses.connectionState === 'open' ? 'Live' : activeRestartLabel ?? 'Connecting' }}
-        </span>
-        <button
-          type="button"
-          class="ml-auto inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-md border border-[var(--color-surface-border)] bg-[var(--color-surface-elevated)] px-2 text-base text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-border)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] lg:hidden"
-          :aria-pressed="isFullscreen"
-          data-testid="workspace-fullscreen-toggle"
-          :title="isFullscreen ? 'Exit full screen' : 'Full screen'"
-          @click="isFullscreen = !isFullscreen"
-        >
-          {{ isFullscreen ? '✕' : '⛶' }}
-        </button>
+            class="hidden items-center gap-1.5 rounded px-2 py-1 text-xs text-[var(--color-text-muted)] sm:inline-flex"
+            data-testid="workspace-status-summary"
+          >
+            <span
+              class="size-1.5 rounded-full"
+              :class="statuses.connectionState === 'open' ? 'bg-green-400' : 'bg-amber-400'"
+            />
+            {{ statuses.connectionState === 'open' ? 'Live' : activeRestartLabel ?? 'Connecting' }}
+          </span>
+          <!-- Controls fold toggle: same size and position as the fullscreen
+               button, on both mobile and PC. When closed the controls pane is
+               removed entirely so the terminal gets the full width. -->
+          <button
+            v-if="store.activeWorkspace && !isFullscreen"
+            type="button"
+            class="inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-md border border-[var(--color-surface-border)] bg-[var(--color-surface-elevated)] px-2 text-base text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-border)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)]"
+            :aria-expanded="showSidebar"
+            aria-controls="workspace-sidebar"
+            data-testid="workspace-sidebar-toggle"
+            :title="showSidebar ? 'Hide controls' : 'Show controls'"
+            @click="showSidebar = !showSidebar"
+          >
+            {{ showSidebar ? '›' : '‹' }}
+          </button>
+          <button
+            type="button"
+            class="inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-md border border-[var(--color-surface-border)] bg-[var(--color-surface-elevated)] px-2 text-base text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-border)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] lg:hidden"
+            :aria-pressed="isFullscreen"
+            data-testid="workspace-fullscreen-toggle"
+            :title="isFullscreen ? 'Exit full screen' : 'Full screen'"
+            @click="isFullscreen = !isFullscreen"
+          >
+            {{ isFullscreen ? '✕' : '⛶' }}
+          </button>
+        </div>
       </div>
-      <nav
-        v-if="store.activeWorkspace && !isFullscreen"
-        class="-mb-2 min-w-0 overflow-x-auto pb-2"
-        data-testid="workspace-tabs"
-        aria-label="Sessions"
-      >
-        <SessionTabs
-          :sessions="consoleSessions"
-          :active-id="store.activeSessionId"
-          orientation="horizontal"
-          @select="onSelectSession"
-          @delete="onStopSession"
-        />
-      </nav>
     </header>
 
     <main
       class="flex min-h-0 flex-1 overflow-hidden pb-[env(safe-area-inset-bottom)]"
       data-testid="workspace-console-main"
     >
-      <section
-        class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
-        :class="isFullscreen ? 'p-0' : 'p-2 sm:p-4'"
-      >
+      <section class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <!-- Tabs sit flush on top of the terminal: the active tab's accent
+             underline meets the terminal with no gap. -->
+        <nav
+          v-if="store.activeWorkspace && !isFullscreen"
+          class="min-w-0 shrink-0"
+          data-testid="workspace-tabs"
+          aria-label="Sessions"
+        >
+          <SessionTabs
+            :sessions="consoleSessions"
+            :active-id="store.activeSessionId"
+            orientation="horizontal"
+            @select="onSelectSession"
+            @delete="onStopSession"
+          />
+        </nav>
         <div
           ref="consoleSurface"
           tabindex="-1"
-          class="console-surface flex min-h-0 flex-1 flex-col overflow-hidden bg-[#0b0e14] shadow-2xl"
-          :class="isFullscreen
-            ? ''
-            : activeSessionIsLive
-              ? 'rounded-md border border-[var(--color-surface-border)] border-t-2 border-t-[var(--color-accent-light)]'
-              : 'rounded-md border border-[var(--color-surface-border)]'"
+          class="console-surface flex min-h-0 flex-1 flex-col overflow-hidden bg-[#0b0e14]"
           data-testid="workspace-hero-terminal"
         >
+          <!-- One terminal per live session, all kept mounted; v-show keeps tab buffers while switching. -->
+          <SessionTerminal
+            v-for="s in liveSessions"
+            v-show="s.id === store.activeSessionId"
+            :key="s.id"
+            :ref="(el) => setTerminalRef(s.id, el)"
+            :session-id="s.id"
+            :active="s.id === store.activeSessionId"
+          />
           <div
-            v-if="!isFullscreen"
-            class="flex min-h-10 shrink-0 items-center gap-2 border-b border-white/10 bg-[#11151c] px-3 py-2"
+            v-if="!activeSessionIsLive"
+            class="flex min-h-0 flex-1 items-center justify-center p-6 text-center"
+            data-testid="workspace-empty-state"
           >
-            <p class="min-w-0 flex-1 truncate font-mono text-sm text-slate-100" data-testid="workspace-active-session-label">
-              {{ activeRailSession?.label ?? 'No session selected' }}
-            </p>
-          </div>
-
-          <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <!-- One terminal per live session, all kept mounted; v-show keeps tab buffers while switching. -->
-            <SessionTerminal
-              v-for="s in liveSessions"
-              v-show="s.id === store.activeSessionId"
-              :key="s.id"
-              :ref="(el) => setTerminalRef(s.id, el)"
-              :session-id="s.id"
-              :active="s.id === store.activeSessionId"
-            />
-            <div
-              v-if="!activeSessionIsLive"
-              class="flex min-h-0 flex-1 items-center justify-center p-6 text-center"
-              data-testid="workspace-empty-state"
-            >
-              <div class="max-w-sm space-y-3">
-                <h2 class="text-lg font-semibold text-slate-100">{{ activeEmptyTitle }}</h2>
-                <p class="text-sm text-slate-400">{{ activeEmptyCopy }}</p>
-                <button
-                  type="button"
-                  class="inline-flex min-h-10 items-center justify-center rounded-md bg-[var(--color-accent)] px-4 text-sm font-medium text-white transition-colors hover:bg-[var(--color-accent-light)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] disabled:cursor-not-allowed disabled:opacity-60"
-                  :disabled="store.startingSession"
-                  data-testid="workspace-empty-start"
-                  @click="onSpawn"
-                >
-                  {{ spawnButtonLabel }}
-                </button>
-              </div>
+            <div class="max-w-sm space-y-3">
+              <h2 class="text-lg font-semibold text-slate-100">{{ activeEmptyTitle }}</h2>
+              <p class="text-sm text-slate-400">{{ activeEmptyCopy }}</p>
+              <button
+                type="button"
+                class="inline-flex min-h-10 items-center justify-center rounded-md bg-[var(--color-accent)] px-4 text-sm font-medium text-white transition-colors hover:bg-[var(--color-accent-light)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="store.startingSession"
+                data-testid="workspace-empty-start"
+                @click="onSpawn"
+              >
+                {{ spawnButtonLabel }}
+              </button>
             </div>
           </div>
         </div>
       </section>
 
       <aside
-        v-if="store.activeWorkspace && !isFullscreen"
+        v-if="store.activeWorkspace && !isFullscreen && showSidebar"
         id="workspace-sidebar"
-        class="flex shrink-0 flex-col border-l border-[var(--color-surface-border)] bg-[var(--color-surface-card)]"
-        :class="showSidebar ? 'w-[min(22rem,85vw)]' : 'w-10'"
+        class="flex w-full shrink-0 flex-col border-l border-[var(--color-surface-border)] bg-[var(--color-surface-card)] lg:w-[min(22rem,85vw)]"
         data-testid="workspace-sidebar"
         aria-label="Workspace controls"
       >
-        <!-- Block toggle styled like the Stop/Restart controls; the arrow points
-             the way the pane will move (› to close, ‹ to open). -->
-        <button
-          type="button"
-          class="m-2 flex min-h-10 shrink-0 items-center justify-center rounded-md border border-[var(--color-surface-border)] bg-[var(--color-surface-elevated)] px-2 text-base font-medium text-[var(--color-text-primary)] transition-colors hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)]"
-          :aria-expanded="showSidebar"
-          aria-controls="workspace-sidebar-body"
-          data-testid="workspace-sidebar-toggle"
-          :title="showSidebar ? 'Hide controls' : 'Show controls'"
-          @click="showSidebar = !showSidebar"
-        >
-          {{ showSidebar ? '›' : '‹' }}
-        </button>
         <div
-          v-show="showSidebar"
           id="workspace-sidebar-body"
-          class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 pt-0"
+          class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3"
         >
           <div class="flex items-center gap-2">
             <button

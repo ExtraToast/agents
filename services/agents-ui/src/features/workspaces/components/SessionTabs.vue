@@ -177,16 +177,15 @@ function sessionShellClasses(s: AgentSession): string[] {
     ]
   }
 
-  // Each tab is a clearly outlined, rounded block so adjacent tabs read as
-  // distinct. The active tab carries a thicker accent bottom edge that lines up
-  // with the terminal's accent top border, so the active session reads as
-  // attached to the console below.
+  // Minimal underline tabs: no box, just a 2px accent bottom edge on the active
+  // tab. The strip sits flush on the terminal so that edge meets the console
+  // with no gap. Inactive tabs are muted text that brightens on hover.
   return [
     base,
-    'flex rounded-md border border-b-2 px-3 py-2',
+    'flex border-b-2 px-3 py-2',
     active
-      ? 'border-[var(--color-accent-light)] bg-[var(--color-surface-elevated)] text-[var(--color-text-primary)]'
-      : 'border-[var(--color-surface-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:border-[var(--color-accent-light)] hover:text-[var(--color-text-primary)]',
+      ? 'border-[var(--color-accent-light)] text-[var(--color-text-primary)]'
+      : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]',
   ]
 }
 </script>
@@ -196,7 +195,7 @@ function sessionShellClasses(s: AgentSession): string[] {
     <p v-if="props.sessions.length === 0" class="text-sm italic text-[var(--color-text-muted)]">No sessions yet.</p>
     <ul
       v-else
-      :class="isVertical ? 'space-y-2' : 'flex gap-2 overflow-x-auto overflow-y-hidden px-1 pt-1'"
+      :class="isVertical ? 'space-y-2' : 'tabs-scroll flex overflow-x-auto overflow-y-hidden'"
       data-testid="session-tabs-list"
       role="tablist"
       :aria-orientation="isVertical ? 'vertical' : 'horizontal'"
@@ -204,8 +203,8 @@ function sessionShellClasses(s: AgentSession): string[] {
       <li
         v-for="s in props.sessions"
         :key="s.id"
-        class="flex min-w-0 items-stretch gap-1"
-        :class="isVertical ? '' : 'w-[18rem] shrink-0'"
+        class="flex min-w-0"
+        :class="isVertical ? '' : 'max-w-[14rem] shrink-0'"
         role="presentation"
       >
         <div
@@ -327,18 +326,32 @@ function sessionShellClasses(s: AgentSession): string[] {
               <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
             </svg>
           </button>
+          <button
+            v-if="editingId !== s.id"
+            type="button"
+            class="flex size-6 shrink-0 items-center justify-center rounded text-base leading-none text-[var(--color-text-muted)] transition-colors hover:bg-red-500/10 hover:text-red-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+            :aria-label="`Delete session ${tabLabel(s)}`"
+            :title="`Delete session ${tabLabel(s)}`"
+            :data-testid="`session-tab-delete-${s.id}`"
+            @click.stop="emit('delete', s.id)"
+            @keydown.stop
+          >
+            ×
+          </button>
         </div>
-        <button
-          type="button"
-          class="shrink-0 self-stretch rounded-md border border-transparent px-2 text-sm text-red-400 transition-colors hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
-          :aria-label="`Delete session ${tabLabel(s)}`"
-          :title="`Delete session ${tabLabel(s)}`"
-          :data-testid="`session-tab-delete-${s.id}`"
-          @click.stop="emit('delete', s.id)"
-        >
-          ×
-        </button>
       </li>
     </ul>
   </nav>
 </template>
+
+<style scoped>
+/* The tab strip scrolls horizontally when there are many sessions, but a
+   visible scrollbar is noise — that you can scroll is already obvious. */
+.tabs-scroll {
+  scrollbar-width: none;
+}
+
+.tabs-scroll::-webkit-scrollbar {
+  display: none;
+}
+</style>
