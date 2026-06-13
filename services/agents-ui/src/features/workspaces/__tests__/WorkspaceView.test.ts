@@ -427,14 +427,14 @@ describe('workspaceView terminal persistence', () => {
 
     const wrapper = await mountView()
     const header = wrapper.get('[data-testid="workspace-view-header"]')
-    const sessionList = wrapper.get('[data-testid="workspace-session-list"]')
+    const tabs = wrapper.get('[data-testid="workspace-tabs"]')
     const hero = wrapper.get('[data-testid="workspace-hero-terminal"]')
     const sidebar = wrapper.get('[data-testid="workspace-sidebar"]')
 
-    expect(header.find('[data-testid="workspace-session-list-toggle"]').exists()).toBe(true)
+    expect(header.find('[data-testid="workspace-sidebar-toggle"]').exists()).toBe(true)
     expect(header.find('[data-testid="stage-input-open"]').exists()).toBe(false)
-    expect(sessionList.find('[data-testid="session-tabs"]').exists()).toBe(true)
-    expect(sessionList.find('[data-testid="session-tab-sess-a"]').exists()).toBe(true)
+    expect(tabs.find('[data-testid="session-tabs"]').exists()).toBe(true)
+    expect(tabs.find('[data-testid="session-tab-sess-a"]').exists()).toBe(true)
     expect(hero.find('[data-testid="session-terminal"]').exists()).toBe(true)
     expect(sidebar.find('[data-testid="session-status-rail"]').exists()).toBe(true)
     expect(sidebar.find('[data-testid="session-status-rail-setup"]').text()).toContain('setup-current@v1')
@@ -454,10 +454,10 @@ describe('workspaceView terminal persistence', () => {
       getWorkspace.mockResolvedValue(detail([fakeSession({ id: 'sess-a' }), fakeSession({ id: 'sess-b', status })]))
 
       const wrapper = await mountView()
-      const sessionList = wrapper.get('[data-testid="workspace-session-list"]')
+      const tabs = wrapper.get('[data-testid="workspace-tabs"]')
 
-      expect(sessionList.find('[data-testid="session-tab-sess-a"]').exists()).toBe(true)
-      expect(sessionList.find('[data-testid="session-tab-sess-b"]').exists()).toBe(true)
+      expect(tabs.find('[data-testid="session-tab-sess-a"]').exists()).toBe(true)
+      expect(tabs.find('[data-testid="session-tab-sess-b"]').exists()).toBe(true)
       expect(wrapper.findAll('[data-testid="session-terminal"]').length).toBe(1)
     })
   }
@@ -474,22 +474,20 @@ describe('workspaceView terminal persistence', () => {
     expect(wrapper.get('[data-testid="stage-input-open"]').attributes('disabled')).toBeDefined()
   })
 
-  it('collapses the session list with the rail control', async () => {
+  it('folds the controls sidebar with the header toggle', async () => {
     getWorkspace.mockResolvedValue(detail([fakeSession({ id: 'sess-a' })]))
 
     const wrapper = await mountView()
-    const toggle = wrapper.get('[data-testid="workspace-session-list-collapse"]')
-    const sessionList = wrapper.get('[data-testid="workspace-session-list"]')
+    const toggle = wrapper.get('[data-testid="workspace-sidebar-toggle"]')
 
     expect(toggle.attributes('aria-expanded')).toBe('true')
-    expect(toggle.attributes('aria-controls')).toBe('workspace-session-list-tabs')
-    expect(sessionList.classes()).toContain('lg:w-72')
+    expect(toggle.attributes('aria-controls')).toBe('workspace-sidebar')
+    expect(wrapper.find('[data-testid="workspace-sidebar"]').exists()).toBe(true)
 
     await toggle.trigger('click')
 
     expect(toggle.attributes('aria-expanded')).toBe('false')
-    expect(sessionList.classes()).toContain('lg:w-14')
-    expect(sessionList.attributes('aria-hidden')).toBe('true')
+    expect(wrapper.find('[data-testid="workspace-sidebar"]').exists()).toBe(false)
   })
 
   it('opens the status subscription for the workspace and closes it on unmount', async () => {
@@ -661,7 +659,7 @@ describe('workspaceView terminal persistence', () => {
     expect(wrapper.get('[data-testid="workspace-console-main"]').classes()).toContain(
       'pb-[env(safe-area-inset-bottom)]',
     )
-    expect(wrapper.get('[data-testid="workspace-session-list-toggle"]').classes()).toContain('min-h-10')
+    expect(wrapper.get('[data-testid="workspace-sidebar-toggle"]').classes()).toContain('min-h-10')
     expect(wrapper.get('[data-testid="workspace-active-restart"]').classes()).toContain('min-h-10')
   })
 
