@@ -29,8 +29,22 @@ const kindBadge: Record<AgentSession['kind'], string> = {
 const tabRefs = new Map<string, HTMLElement>()
 const rovingId = ref<string | null>(null)
 
+const kindLabel: Record<AgentSession['kind'], string> = {
+  CLAUDE: 'Claude',
+  CODEX: 'Codex',
+  SHELL: 'Shell',
+}
+
+// Default name reads like claude-1 / codex-2 / shell-1: the agent kind plus its
+// 1-based position among same-kind sessions, so tabs are recognisable before
+// anyone renames them.
+function defaultName(s: AgentSession): string {
+  const index = props.sessions.filter((other) => other.kind === s.kind).findIndex((other) => other.id === s.id)
+  return `${s.kind.toLowerCase()}-${index + 1}`
+}
+
 function tabLabel(s: AgentSession): string {
-  return labels.labelFor(s.id) ?? s.id.slice(0, 8)
+  return labels.labelFor(s.id) ?? defaultName(s)
 }
 
 function tabPanelId(s: AgentSession): string {
@@ -204,15 +218,62 @@ function sessionShellClasses(s: AgentSession): string[] {
           @contextmenu.prevent="startEdit(s)"
           @dblclick.prevent="startEdit(s)"
         >
-          <span class="shrink-0 rounded px-2 py-0.5 text-xs font-semibold" :class="kindBadge[s.kind]">
-            {{ s.kind }}
+          <span
+            class="flex size-6 shrink-0 items-center justify-center rounded"
+            :class="kindBadge[s.kind]"
+            :aria-label="kindLabel[s.kind]"
+            :title="kindLabel[s.kind]"
+            :data-testid="`session-tab-kind-${s.id}`"
+            :data-kind="s.kind"
+          >
+            <!-- Claude: Anthropic-style spark -->
+            <svg
+              v-if="s.kind === 'CLAUDE'"
+              class="size-3.5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              aria-hidden="true"
+            >
+              <path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4" />
+            </svg>
+            <!-- Codex: OpenAI-style hex mark -->
+            <svg
+              v-else-if="s.kind === 'CODEX'"
+              class="size-3.5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 2 20.66 7v10L12 22 3.34 17V7L12 2z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            <!-- Shell: terminal prompt -->
+            <svg
+              v-else
+              class="size-3.5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M5 7l5 5-5 5M13 17h6" />
+            </svg>
           </span>
           <template v-if="editingId === s.id">
             <input
               :ref="(el) => focusInput(el)"
               v-model="draft"
               type="text"
-              :placeholder="s.id.slice(0, 8)"
+              :placeholder="defaultName(s)"
               data-testid="session-tab-rename"
               class="min-w-0 flex-1 border-b border-[var(--color-accent-light)] bg-transparent font-mono text-sm focus:outline-none"
               @click.stop
