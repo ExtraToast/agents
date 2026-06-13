@@ -26,14 +26,15 @@ const toast = useToast()
 
 const workspaceId = computed(() => String(route.params.id))
 const pickerKind = ref<AgentKind>('CLAUDE')
-// On phones the control sidebar folds away by default so the terminal is
-// effectively full-screen; the fold toggle in the header reopens it (it
-// overlays the terminal on mobile, and is a collapsible column on desktop).
-// Layout sizing stays pure CSS (svh/dvh) — robust across devices.
+// The controls live in a right-side rail that folds in/out via an arrow that
+// rides the pane edge; on phones it folds away by default so the terminal is
+// the priority. Fullscreen (mobile) breaks the console out of the app shell so
+// the terminal + controls own the whole viewport. Sizing stays CSS (svh/dvh).
 const mobileQuery
   = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(max-width: 1023px)') : null
 const isMobile = ref(mobileQuery?.matches ?? false)
 const showSidebar = ref(true)
+const isFullscreen = ref(false)
 
 function syncIsMobile(event?: MediaQueryListEvent): void {
   isMobile.value = event?.matches ?? mobileQuery?.matches ?? false
@@ -409,7 +410,8 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
 
 <template>
   <div
-    class="relative flex h-dvh min-h-[100svh] flex-col overflow-hidden bg-[var(--color-surface-dark)] pt-[env(safe-area-inset-top)] text-[var(--color-text-primary)]"
+    class="flex h-dvh min-h-[100svh] flex-col overflow-hidden bg-[var(--color-surface-dark)] pt-[env(safe-area-inset-top)] text-[var(--color-text-primary)]"
+    :class="isFullscreen ? 'fixed inset-0 z-[60]' : 'relative'"
     data-testid="workspace-console"
   >
     <header
@@ -432,14 +434,13 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
         </span>
         <button
           type="button"
-          class="ml-auto inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-md border border-[var(--color-surface-border)] bg-[var(--color-surface-elevated)] px-2 text-sm text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-border)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] sm:ml-0"
-          :aria-expanded="showSidebar"
-          aria-controls="workspace-sidebar"
-          data-testid="workspace-sidebar-toggle"
-          :title="showSidebar ? 'Hide controls' : 'Show controls'"
-          @click="showSidebar = !showSidebar"
+          class="ml-auto inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-md border border-[var(--color-surface-border)] bg-[var(--color-surface-elevated)] px-2 text-base text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-border)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] lg:hidden"
+          :aria-pressed="isFullscreen"
+          data-testid="workspace-fullscreen-toggle"
+          :title="isFullscreen ? 'Exit full screen' : 'Full screen'"
+          @click="isFullscreen = !isFullscreen"
         >
-          {{ showSidebar ? 'Controls ›' : '‹ Controls' }}
+          {{ isFullscreen ? '✕' : '⛶' }}
         </button>
       </div>
       <nav
@@ -453,16 +454,16 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
           :active-id="store.activeSessionId"
           orientation="horizontal"
           @select="onSelectSession"
+          @delete="onStopSession"
         />
       </nav>
     </header>
 
     <main
-      class="flex min-h-0 flex-1 flex-col overflow-y-auto pb-[env(safe-area-inset-bottom)] lg:grid lg:overflow-hidden"
-      :class="showSidebar ? 'lg:grid-cols-[minmax(0,1fr)_22rem]' : 'lg:grid-cols-[minmax(0,1fr)]'"
+      class="flex min-h-0 flex-1 overflow-hidden pb-[env(safe-area-inset-bottom)]"
       data-testid="workspace-console-main"
     >
-      <section class="flex min-h-[70svh] min-w-0 flex-1 flex-col overflow-hidden p-3 sm:p-4 lg:min-h-0">
+      <section class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-2 sm:p-4">
         <div
           ref="consoleSurface"
           tabindex="-1"
@@ -513,42 +514,51 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
       </section>
 
       <aside
-        v-if="store.activeWorkspace && showSidebar"
+        v-if="store.activeWorkspace"
         id="workspace-sidebar"
-        class="flex shrink-0 flex-col gap-3 overflow-y-auto border-t border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-3 lg:min-h-0 lg:border-l lg:border-t-0"
+        class="flex shrink-0 flex-col border-l border-[var(--color-surface-border)] bg-[var(--color-surface-card)]"
+        :class="showSidebar ? 'w-[min(22rem,85vw)]' : 'w-10'"
         data-testid="workspace-sidebar"
         aria-label="Workspace controls"
       >
-        <div class="flex items-center gap-2">
-          <button
-            type="button"
-            class="inline-flex min-h-10 flex-1 items-center justify-center rounded-md border border-[var(--color-surface-border)] bg-[var(--color-surface-elevated)] px-3 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] disabled:cursor-not-allowed disabled:opacity-60"
-            :disabled="!canStopActive"
-            data-testid="workspace-active-stop"
-            @click="activeSession && onStopSession(activeSession.id)"
-          >
-            Stop
-          </button>
-          <button
-            type="button"
-            class="inline-flex min-h-10 flex-1 items-center justify-center rounded-md border border-[var(--color-surface-border)] bg-[var(--color-surface-elevated)] px-3 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] disabled:cursor-not-allowed disabled:opacity-60"
-            :disabled="!canRestartActive"
-            data-testid="workspace-active-restart"
-            @click="onRequestRestart"
-          >
-            Restart
-          </button>
-          <button
-            type="button"
-            class="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md border border-[var(--color-surface-border)] bg-[var(--color-surface-elevated)] px-2 text-sm text-[var(--color-text-primary)] transition-colors hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)]"
-            data-testid="workspace-sidebar-collapse"
-            title="Hide controls"
-            @click="showSidebar = false"
-          >
-            ›
-          </button>
-        </div>
-        <SessionStatusRail
+        <!-- Fold arrow rides the pane's left edge: it moves left as the pane opens. -->
+        <button
+          type="button"
+          class="flex h-11 w-full shrink-0 items-center justify-start px-2 text-base text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)]"
+          :aria-expanded="showSidebar"
+          aria-controls="workspace-sidebar-body"
+          data-testid="workspace-sidebar-toggle"
+          :title="showSidebar ? 'Hide controls' : 'Show controls'"
+          @click="showSidebar = !showSidebar"
+        >
+          {{ showSidebar ? '›' : '‹' }}
+        </button>
+        <div
+          v-show="showSidebar"
+          id="workspace-sidebar-body"
+          class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 pt-0"
+        >
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="inline-flex min-h-10 flex-1 items-center justify-center rounded-md border border-[var(--color-surface-border)] bg-[var(--color-surface-elevated)] px-3 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] disabled:cursor-not-allowed disabled:opacity-60"
+              :disabled="!canStopActive"
+              data-testid="workspace-active-stop"
+              @click="activeSession && onStopSession(activeSession.id)"
+            >
+              Stop
+            </button>
+            <button
+              type="button"
+              class="inline-flex min-h-10 flex-1 items-center justify-center rounded-md border border-[var(--color-surface-border)] bg-[var(--color-surface-elevated)] px-3 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] disabled:cursor-not-allowed disabled:opacity-60"
+              :disabled="!canRestartActive"
+              data-testid="workspace-active-restart"
+              @click="onRequestRestart"
+            >
+              Restart
+            </button>
+          </div>
+          <SessionStatusRail
           :session="activeRailSession"
           :connection-state="statuses.connectionState"
           :connection-error="statuses.connectionError"
@@ -676,6 +686,7 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
           @add-destination="showRepositoryPicker = true"
           @send-command="onSendSplitCommand"
         />
+        </div>
       </aside>
     </main>
 

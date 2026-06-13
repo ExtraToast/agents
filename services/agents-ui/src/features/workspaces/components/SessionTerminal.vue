@@ -94,7 +94,7 @@ onMounted(() => {
     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
     // Phones are narrow: a small font fits far more columns/rows on screen so
     // wrapped agent output stays readable. Desktop keeps the comfortable size.
-    fontSize: isCoarsePointer ? 11 : 13,
+    fontSize: isCoarsePointer ? 9 : 13,
     // xterm keeps only 1000 scrollback lines by default, so a
     // long-running agent session scrolls its own history out of reach
     // within minutes. Hold far more — this is browser memory, not the
@@ -171,9 +171,19 @@ onMounted(() => {
   resizeObserver = new ResizeObserver(() => fitAndReportSize())
   resizeObserver.observe(el)
   window.addEventListener('resize', fitAndReportSize)
+  // Returning to the tab on another device (or rotating) doesn't always fire a
+  // resize, so re-fit when the window regains focus / becomes visible too.
+  window.addEventListener('focus', onWindowActive)
+  document.addEventListener('visibilitychange', onWindowActive)
 
   if (props.active) void revealAndFocus()
 })
+
+function onWindowActive(): void {
+  if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+  if (props.active) void revealAndFocus()
+  else fitAndReportSize()
+}
 
 // While a terminal is hidden via `display:none` (v-show on an
 // inactive tab) xterm cannot measure its container, so fit() computed
@@ -204,6 +214,8 @@ watch(
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', fitAndReportSize)
+  window.removeEventListener('focus', onWindowActive)
+  document.removeEventListener('visibilitychange', onWindowActive)
   resizeObserver?.disconnect()
   resizeObserver = null
   socket?.close()
