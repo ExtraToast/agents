@@ -195,18 +195,16 @@ describe('sessionTabs', () => {
     expect(wrapper.find('[data-testid="session-tab-stop-sess-failed"]').exists()).toBe(false)
   })
 
-  it('renders kind and status metadata with a non-color status label', () => {
+  it('exposes kind and status through an accessible status dot', () => {
     const wrapper = mount(SessionTabs, {
       props: { sessions: [fakeSession({ id: 'sess-starting', kind: 'SHELL', status: 'STARTING' })], activeId: null },
     })
     const tab = wrapper.get('[data-testid="session-tab-sess-starting"]')
 
-    expect(tab.text()).toContain('SHELL')
-    expect(tab.text()).toContain('STARTING')
-    expect(tab.get('[aria-label="Status: STARTING"]').text()).toBe('STARTING')
+    expect(tab.get('[aria-label="SHELL, STARTING"]').exists()).toBe(true)
   })
 
-  it('renders current and pending setup metadata on session tabs', () => {
+  it('surfaces current and pending setup through the tab label tooltip', () => {
     const wrapper = mount(SessionTabs, {
       props: {
         sessions: [
@@ -220,7 +218,7 @@ describe('sessionTabs', () => {
       },
     })
 
-    expect(wrapper.get('[data-testid="session-tab-setup-sess-setup"]').text()).toBe(
+    expect(wrapper.get('[data-testid="session-tab-label-sess-setup"]').attributes('title')).toBe(
       'setup-current@v1 -> setup-next@v2',
     )
   })

@@ -22,12 +22,6 @@ const isVertical = computed(() => props.orientation === 'vertical')
 const tabRefs = new Map<string, HTMLElement>()
 const rovingId = ref<string | null>(null)
 
-const kindBadge: Record<AgentSession['kind'], string> = {
-  CLAUDE: 'bg-orange-500/20 text-orange-300',
-  CODEX: 'bg-emerald-500/20 text-emerald-300',
-  SHELL: 'bg-gray-500/20 text-[var(--color-text-primary)]',
-}
-
 function tabLabel(s: AgentSession): string {
   return labels.labelFor(s.id) ?? s.id.slice(0, 8)
 }
@@ -203,9 +197,12 @@ function sessionShellClasses(s: AgentSession): string[] {
           @contextmenu.prevent="startEdit(s)"
           @dblclick.prevent="startEdit(s)"
         >
-          <span class="shrink-0 rounded px-2 py-0.5 text-xs font-semibold" :class="kindBadge[s.kind]">
-            {{ s.kind }}
-          </span>
+          <span
+            class="size-2 shrink-0 rounded-full"
+            :class="s.status === 'RUNNING' ? 'bg-green-400' : 'bg-[var(--color-text-muted)]'"
+            :title="`${s.kind} · ${s.status}`"
+            :aria-label="`${s.kind}, ${s.status}`"
+          />
           <template v-if="editingId === s.id">
             <input
               :ref="(el) => focusInput(el)"
@@ -221,33 +218,22 @@ function sessionShellClasses(s: AgentSession): string[] {
               @blur="commit(s.id)"
             />
           </template>
-          <span v-else class="min-w-0 flex-1 truncate font-mono" :title="s.id">{{ tabLabel(s) }}</span>
           <span
-            v-if="setupLabel(s)"
-            class="min-w-0 max-w-28 shrink truncate rounded border border-[var(--color-surface-border)] px-1.5 py-0.5 font-mono text-xs text-[var(--color-text-muted)]"
-            :title="setupLabel(s) ?? undefined"
-            :data-testid="`session-tab-setup-${s.id}`"
-          >
-            {{ setupLabel(s) }}
-          </span>
-          <span
-            class="shrink-0 rounded border border-[var(--color-surface-border)] px-1.5 py-0.5 text-xs"
-            :class="s.status === 'RUNNING' ? 'text-green-400' : 'text-[var(--color-text-muted)]'"
-            :aria-label="`Status: ${s.status}`"
-            :title="`Status: ${s.status}`"
-          >
-            {{ s.status }}
-          </span>
+            v-else
+            class="min-w-0 flex-1 truncate font-mono"
+            :title="setupLabel(s) ?? s.id"
+            :data-testid="`session-tab-label-${s.id}`"
+          >{{ tabLabel(s) }}</span>
           <button
             v-if="editingId !== s.id"
             type="button"
-            class="shrink-0 rounded border border-[var(--color-surface-border)] px-1.5 py-0.5 text-xs text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-accent-light)] hover:text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)]"
+            class="shrink-0 rounded p-1 text-xs text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)]"
             :aria-label="`Rename session ${tabLabel(s)}`"
             :data-testid="`session-tab-rename-${s.id}`"
             @click.stop="startEdit(s)"
             @keydown.stop
           >
-            Rename
+            ✎
           </button>
         </div>
       </li>
