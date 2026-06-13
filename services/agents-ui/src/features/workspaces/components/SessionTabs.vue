@@ -177,12 +177,16 @@ function sessionShellClasses(s: AgentSession): string[] {
     ]
   }
 
+  // Each tab is a clearly outlined, rounded block so adjacent tabs read as
+  // distinct. The active tab carries a thicker accent bottom edge that lines up
+  // with the terminal's accent top border, so the active session reads as
+  // attached to the console below.
   return [
     base,
-    'flex rounded-t-md border-b-2 px-3 py-2.5',
+    'flex rounded-md border border-b-2 px-3 py-2',
     active
       ? 'border-[var(--color-accent-light)] bg-[var(--color-surface-elevated)] text-[var(--color-text-primary)]'
-      : 'border-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface-card)] hover:text-[var(--color-text-primary)]',
+      : 'border-[var(--color-surface-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:border-[var(--color-accent-light)] hover:text-[var(--color-text-primary)]',
   ]
 }
 </script>
@@ -192,7 +196,7 @@ function sessionShellClasses(s: AgentSession): string[] {
     <p v-if="props.sessions.length === 0" class="text-sm italic text-[var(--color-text-muted)]">No sessions yet.</p>
     <ul
       v-else
-      :class="isVertical ? 'space-y-2' : 'flex gap-1 overflow-x-auto overflow-y-hidden px-1 pt-1'"
+      :class="isVertical ? 'space-y-2' : 'flex gap-2 overflow-x-auto overflow-y-hidden px-1 pt-1'"
       data-testid="session-tabs-list"
       role="tablist"
       :aria-orientation="isVertical ? 'vertical' : 'horizontal'"
@@ -201,7 +205,7 @@ function sessionShellClasses(s: AgentSession): string[] {
         v-for="s in props.sessions"
         :key="s.id"
         class="flex min-w-0 items-stretch gap-1"
-        :class="isVertical ? '' : 'w-[15rem] shrink-0'"
+        :class="isVertical ? '' : 'w-[18rem] shrink-0'"
         role="presentation"
       >
         <div
@@ -290,23 +294,38 @@ function sessionShellClasses(s: AgentSession): string[] {
             {{ setupLabel(s) }}
           </span>
           <span
-            class="shrink-0 rounded border border-[var(--color-surface-border)] px-1.5 py-0.5 text-xs"
-            :class="s.status === 'RUNNING' ? 'text-green-400' : 'text-[var(--color-text-muted)]'"
+            class="size-2.5 shrink-0 rounded-full"
+            :class="s.status === 'RUNNING'
+              ? 'bg-green-400'
+              : s.status === 'FAILED'
+                ? 'bg-red-400'
+                : 'bg-[var(--color-text-muted)]'"
             :aria-label="`Status: ${s.status}`"
             :title="`Status: ${s.status}`"
-          >
-            {{ s.status }}
-          </span>
+          />
           <button
             v-if="editingId !== s.id"
             type="button"
-            class="shrink-0 rounded border border-[var(--color-surface-border)] px-1.5 py-0.5 text-xs text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-accent-light)] hover:text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)]"
+            class="flex size-7 shrink-0 items-center justify-center rounded border border-[var(--color-surface-border)] text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-accent-light)] hover:text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)]"
             :aria-label="`Rename session ${tabLabel(s)}`"
+            :title="`Rename session ${tabLabel(s)}`"
             :data-testid="`session-tab-rename-${s.id}`"
             @click.stop="startEdit(s)"
             @keydown.stop
           >
-            Rename
+            <svg
+              class="size-3.5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 20h9" />
+              <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+            </svg>
           </button>
         </div>
         <button

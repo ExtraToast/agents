@@ -661,7 +661,7 @@ describe('workspaceView terminal persistence', () => {
     expect(wrapper.get('[data-testid="workspace-console-main"]').classes()).toContain(
       'pb-[env(safe-area-inset-bottom)]',
     )
-    expect(wrapper.get('[data-testid="workspace-sidebar-toggle"]').classes()).toContain('h-11')
+    expect(wrapper.get('[data-testid="workspace-sidebar-toggle"]').classes()).toContain('min-h-10')
     expect(wrapper.get('[data-testid="workspace-active-restart"]').classes()).toContain('min-h-10')
   })
 
