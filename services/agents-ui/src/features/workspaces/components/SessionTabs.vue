@@ -51,13 +51,6 @@ function tabPanelId(s: AgentSession): string {
   return `session-panel-${s.id}`
 }
 
-function setupLabel(s: AgentSession): string | null {
-  const current = s.currentSetup ? `${s.currentSetup.id}@v${s.currentSetup.version}` : null
-  const pending = s.pendingSetup ? `${s.pendingSetup.id}@v${s.pendingSetup.version}` : null
-  if (pending) return current ? `${current} -> ${pending}` : pending
-  return current
-}
-
 function isSelected(s: AgentSession): boolean {
   return props.activeId === s.id
 }
@@ -177,15 +170,17 @@ function sessionShellClasses(s: AgentSession): string[] {
     ]
   }
 
-  // Minimal underline tabs: no box, just a 2px accent bottom edge on the active
-  // tab. The strip sits flush on the terminal so that edge meets the console
-  // with no gap. Inactive tabs are muted text that brightens on hover.
+  // Folder-style tabs: rounded top corners, square bottom, with visible top and
+  // side borders so each tab is distinct from the surface. The active tab takes
+  // the terminal's background and drops its bottom border so it merges into the
+  // console below; its accent top edge marks it active. Heights match because
+  // both states reserve a 2px top border.
   return [
     base,
-    'flex border-b-2 px-3 py-2',
+    'relative flex rounded-t-md border border-t-2 px-3 py-2',
     active
-      ? 'border-[var(--color-accent-light)] text-[var(--color-text-primary)]'
-      : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]',
+      ? 'border-[var(--color-surface-border)] border-t-[var(--color-accent-light)] border-b-transparent bg-[#0b0e14] text-slate-100'
+      : 'border-[var(--color-surface-border)] border-t-transparent bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]',
   ]
 }
 </script>
@@ -204,7 +199,7 @@ function sessionShellClasses(s: AgentSession): string[] {
         v-for="s in props.sessions"
         :key="s.id"
         class="flex min-w-0"
-        :class="isVertical ? '' : 'max-w-[14rem] shrink-0'"
+        :class="isVertical ? '' : 'w-[13rem] shrink-0'"
         role="presentation"
       >
         <div
@@ -222,13 +217,23 @@ function sessionShellClasses(s: AgentSession): string[] {
           @dblclick.prevent="startEdit(s)"
         >
           <span
-            class="flex size-6 shrink-0 items-center justify-center rounded"
+            class="relative flex size-6 shrink-0 items-center justify-center rounded"
             :class="kindBadge[s.kind]"
             :aria-label="kindLabel[s.kind]"
             :title="kindLabel[s.kind]"
             :data-testid="`session-tab-kind-${s.id}`"
             :data-kind="s.kind"
           >
+            <span
+              class="absolute -right-1 -top-1 size-2.5 rounded-full ring-2 ring-[var(--color-surface-dark)]"
+              :class="s.status === 'RUNNING'
+                ? 'bg-green-400'
+                : s.status === 'FAILED'
+                  ? 'bg-red-400'
+                  : 'bg-[var(--color-text-muted)]'"
+              :aria-label="`Status: ${s.status}`"
+              :title="`Status: ${s.status}`"
+            />
             <svg
               v-if="s.kind === 'CLAUDE'"
               class="size-3.5"
@@ -275,7 +280,7 @@ function sessionShellClasses(s: AgentSession): string[] {
               type="text"
               :placeholder="defaultName(s)"
               data-testid="session-tab-rename"
-              class="min-w-0 flex-1 border-b border-[var(--color-accent-light)] bg-transparent font-mono text-sm focus:outline-none"
+              class="min-w-0 flex-1 rounded bg-[var(--color-surface-dark)] px-1 py-0.5 font-mono text-sm text-[var(--color-text-primary)] ring-1 ring-[var(--color-accent-light)] focus:outline-none"
               @click.stop
               @keydown.stop
               @keydown.enter.prevent="commit(s.id)"
@@ -283,49 +288,15 @@ function sessionShellClasses(s: AgentSession): string[] {
               @blur="commit(s.id)"
             />
           </template>
-          <span v-else class="min-w-0 flex-1 truncate font-mono" :title="s.id">{{ tabLabel(s) }}</span>
+          <!-- The name is the rename affordance: hovering it reveals an input
+               box; clicking turns it into a focused text field (no pencil). -->
           <span
-            v-if="setupLabel(s)"
-            class="min-w-0 max-w-28 shrink truncate rounded border border-[var(--color-surface-border)] px-1.5 py-0.5 font-mono text-xs text-[var(--color-text-muted)]"
-            :title="setupLabel(s) ?? undefined"
-            :data-testid="`session-tab-setup-${s.id}`"
-          >
-            {{ setupLabel(s) }}
-          </span>
-          <span
-            class="size-2.5 shrink-0 rounded-full"
-            :class="s.status === 'RUNNING'
-              ? 'bg-green-400'
-              : s.status === 'FAILED'
-                ? 'bg-red-400'
-                : 'bg-[var(--color-text-muted)]'"
-            :aria-label="`Status: ${s.status}`"
-            :title="`Status: ${s.status}`"
-          />
-          <button
-            v-if="editingId !== s.id"
-            type="button"
-            class="flex size-7 shrink-0 items-center justify-center rounded border border-[var(--color-surface-border)] text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-accent-light)] hover:text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)]"
-            :aria-label="`Rename session ${tabLabel(s)}`"
-            :title="`Rename session ${tabLabel(s)}`"
+            v-else
+            class="min-w-0 flex-1 cursor-text truncate rounded px-1 py-0.5 font-mono transition-colors hover:bg-white/10 hover:ring-1 hover:ring-inset hover:ring-[var(--color-surface-border)]"
             :data-testid="`session-tab-rename-${s.id}`"
+            :title="`Rename ${tabLabel(s)}`"
             @click.stop="startEdit(s)"
-            @keydown.stop
-          >
-            <svg
-              class="size-3.5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M12 20h9" />
-              <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-            </svg>
-          </button>
+          >{{ tabLabel(s) }}</span>
           <button
             v-if="editingId !== s.id"
             type="button"
