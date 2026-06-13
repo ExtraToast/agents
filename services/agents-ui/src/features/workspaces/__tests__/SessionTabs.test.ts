@@ -162,7 +162,7 @@ describe('sessionTabs', () => {
       props: { sessions: [session], activeId: null },
     })
 
-    const rename = wrapper.get(`button[aria-label="Rename session ${session.id.slice(0, 8)}"]`)
+    const rename = wrapper.get(`[data-testid="session-tab-rename-${session.id}"]`)
     expect(rename.isVisible()).toBe(true)
     await rename.trigger('click')
 
@@ -195,15 +195,25 @@ describe('sessionTabs', () => {
     expect(wrapper.find('[data-testid="session-tab-stop-sess-failed"]').exists()).toBe(false)
   })
 
-  it('renders kind and status metadata on the tab', () => {
+  it('shows a kind icon and status on the tab', () => {
     const wrapper = mount(SessionTabs, {
       props: { sessions: [fakeSession({ id: 'sess-starting', kind: 'SHELL', status: 'STARTING' })], activeId: null },
     })
     const tab = wrapper.get('[data-testid="session-tab-sess-starting"]')
+    const kind = tab.get('[data-testid="session-tab-kind-sess-starting"]')
 
-    expect(tab.text()).toContain('SHELL')
-    expect(tab.text()).toContain('STARTING')
+    expect(kind.attributes('data-kind')).toBe('SHELL')
+    expect(kind.attributes('aria-label')).toBe('Shell')
     expect(tab.find('[aria-label="Status: STARTING"]').exists()).toBe(true)
+  })
+
+  it('defaults the tab name to kind-index (claude-1) and exposes a rename control', () => {
+    const wrapper = mount(SessionTabs, {
+      props: { sessions: [fakeSession({ id: 'sess-c' })], activeId: null },
+    })
+
+    expect(wrapper.get('[data-testid="session-tab-sess-c"]').text()).toContain('claude-1')
+    expect(wrapper.find('[data-testid="session-tab-rename-sess-c"]').exists()).toBe(true)
   })
 
   it('renders current and pending setup metadata on session tabs', () => {
