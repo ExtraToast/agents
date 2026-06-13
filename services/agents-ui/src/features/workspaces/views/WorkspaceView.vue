@@ -2,7 +2,7 @@
 import type { RestartSessionState } from '../stores/workspaces'
 import type { AgentKind, AgentSetupReference } from '../types'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { Modal, useToast } from '@/lib/vueWebCommons'
 import AgentKindPicker from '../components/AgentKindPicker.vue'
 import SessionSetupDiff from '../components/SessionSetupDiff.vue'
@@ -19,7 +19,6 @@ import { useSessionStatusesStore } from '../stores/sessionStatuses'
 import { useWorkspacesStore } from '../stores/workspaces'
 
 const route = useRoute()
-const router = useRouter()
 const store = useWorkspacesStore()
 const statuses = useSessionStatusesStore()
 const consoleViewModels = useSessionConsoleViewModelsStore()
@@ -27,11 +26,10 @@ const toast = useToast()
 
 const workspaceId = computed(() => String(route.params.id))
 const pickerKind = ref<AgentKind>('CLAUDE')
-const isSessionListCollapsed = ref(false)
-// On phones the terminal is the priority surface: the session list and the
-// control sidebar fold away by default so the terminal is effectively
-// full-screen. Layout sizing stays pure CSS (svh/dvh) — robust across devices —
-// while a real compose input keeps "what you're typing" above the keyboard.
+// On phones the control sidebar folds away by default so the terminal is
+// effectively full-screen; the fold toggle in the header reopens it (it
+// overlays the terminal on mobile, and is a collapsible column on desktop).
+// Layout sizing stays pure CSS (svh/dvh) — robust across devices.
 const mobileQuery
   = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(max-width: 1023px)') : null
 const isMobile = ref(mobileQuery?.matches ?? false)
@@ -205,7 +203,6 @@ onMounted(() => {
   statuses.useWorkspace(workspaceId.value)
   syncIsMobile()
   if (isMobile.value) {
-    isSessionListCollapsed.value = true
     showSidebar.value = false
   }
   mobileQuery?.addEventListener('change', syncIsMobile)
@@ -416,139 +413,70 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
     data-testid="workspace-console"
   >
     <header
-      class="z-10 flex shrink-0 flex-col gap-2 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-dark)] px-3 py-2 sm:gap-3 sm:px-5 sm:py-3 lg:flex-row lg:items-center lg:justify-between"
+      class="z-10 flex shrink-0 flex-col gap-2 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-dark)] px-3 py-2 sm:px-5"
       data-testid="workspace-view-header"
     >
-      <div class="flex min-w-0 items-start gap-3">
-        <button
-          type="button"
-          class="inline-flex min-h-10 shrink-0 items-center rounded-md border border-[var(--color-surface-border)] bg-[var(--color-surface-elevated)] px-3 text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface-dark)]"
-          @click="router.push('/sessions')"
+      <div class="flex min-w-0 items-center gap-3">
+        <h1 class="min-w-0 shrink truncate text-base font-bold" :title="store.activeWorkspace?.repoUrl ?? undefined">
+          {{ store.activeWorkspace?.name ?? 'Loading…' }}
+        </h1>
+        <span
+          class="ml-auto hidden shrink-0 items-center gap-1.5 rounded px-2 py-1 text-xs text-[var(--color-text-muted)] sm:inline-flex"
+          data-testid="workspace-status-summary"
         >
-          Sessions
-        </button>
-        <div class="min-w-0">
-          <h1 class="truncate text-lg font-bold sm:text-xl">
-            {{ store.activeWorkspace?.name ?? 'Loading…' }}
-          </h1>
-          <p
-            v-if="store.activeWorkspace?.repoUrl"
-            class="hidden truncate font-mono text-xs text-[var(--color-text-muted)] sm:block"
-          >
-            {{ store.activeWorkspace.repoUrl }}
-          </p>
-        </div>
-      </div>
-      <div class="flex min-w-0 flex-wrap items-center gap-2">
+          <span
+            class="size-1.5 rounded-full"
+            :class="statuses.connectionState === 'open' ? 'bg-green-400' : 'bg-amber-400'"
+          />
+          {{ statuses.connectionState === 'open' ? 'Live' : activeRestartLabel ?? 'Connecting' }}
+        </span>
         <button
           type="button"
-          class="inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--color-surface-border)] bg-[var(--color-surface-elevated)] px-3 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-border)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface-dark)]"
-          :aria-expanded="!isSessionListCollapsed"
-          aria-controls="workspace-session-list"
-          data-testid="workspace-session-list-toggle"
-          @click="isSessionListCollapsed = !isSessionListCollapsed"
-        >
-          {{ isSessionListCollapsed ? 'Show sessions' : 'Hide sessions' }}
-        </button>
-        <button
-          type="button"
-          class="inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--color-surface-border)] bg-[var(--color-surface-elevated)] px-3 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-border)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface-dark)] lg:hidden"
+          class="ml-auto inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-md border border-[var(--color-surface-border)] bg-[var(--color-surface-elevated)] px-2 text-sm text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-border)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] sm:ml-0"
           :aria-expanded="showSidebar"
           aria-controls="workspace-sidebar"
           data-testid="workspace-sidebar-toggle"
+          :title="showSidebar ? 'Hide controls' : 'Show controls'"
           @click="showSidebar = !showSidebar"
         >
-          {{ showSidebar ? 'Hide controls' : 'Controls' }}
+          {{ showSidebar ? 'Controls ›' : '‹ Controls' }}
         </button>
-        <p
-          class="rounded border border-[var(--color-surface-border)] px-3 py-2 text-xs text-[var(--color-text-muted)]"
-          data-testid="workspace-status-summary"
-        >
-          {{ statuses.connectionState === 'open' ? 'Status live' : activeRestartLabel ?? 'Status stream' }}
-        </p>
       </div>
+      <nav
+        v-if="store.activeWorkspace"
+        class="-mb-2 min-w-0 overflow-x-auto pb-2"
+        data-testid="workspace-tabs"
+        aria-label="Sessions"
+      >
+        <SessionTabs
+          :sessions="consoleSessions"
+          :active-id="store.activeSessionId"
+          orientation="horizontal"
+          @select="onSelectSession"
+        />
+      </nav>
     </header>
 
     <main
-      class="flex min-h-0 flex-1 flex-col overflow-y-auto pb-[env(safe-area-inset-bottom)] lg:grid lg:grid-cols-[auto_minmax(0,1fr)_22rem] lg:overflow-hidden"
+      class="relative flex min-h-0 flex-1 flex-col overflow-hidden pb-[env(safe-area-inset-bottom)] lg:grid lg:overflow-hidden"
+      :class="showSidebar ? 'lg:grid-cols-[minmax(0,1fr)_22rem]' : 'lg:grid-cols-[minmax(0,1fr)]'"
       data-testid="workspace-console-main"
     >
-      <aside
-        v-if="store.activeWorkspace"
-        id="workspace-session-list"
-        class="min-h-0 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-card)] lg:border-b-0 lg:border-r"
-        :class="isSessionListCollapsed ? 'hidden lg:block lg:w-14' : 'w-full lg:w-72'"
-        :aria-hidden="isSessionListCollapsed ? 'true' : undefined"
-        data-testid="workspace-session-list"
-      >
-        <div class="flex min-h-0 flex-col gap-3 p-3">
-          <div class="flex min-h-10 items-center justify-between gap-2">
-            <h2 v-if="!isSessionListCollapsed" class="text-sm font-semibold">Sessions</h2>
-            <button
-              type="button"
-              class="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md border border-[var(--color-surface-border)] bg-[var(--color-surface-elevated)] px-2 text-sm text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-border)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface-card)]"
-              :aria-expanded="!isSessionListCollapsed"
-              aria-controls="workspace-session-list-tabs"
-              data-testid="workspace-session-list-collapse"
-              @click="isSessionListCollapsed = !isSessionListCollapsed"
-            >
-              {{ isSessionListCollapsed ? '›' : '‹' }}
-            </button>
-          </div>
-          <div
-            v-show="!isSessionListCollapsed"
-            id="workspace-session-list-tabs"
-            class="min-h-0 overflow-y-auto"
-            data-testid="workspace-session-list-tabs"
-          >
-            <SessionTabs
-              :sessions="consoleSessions"
-              :active-id="store.activeSessionId"
-              orientation="vertical"
-              @select="onSelectSession"
-              @stop="onStopSession"
-            />
-          </div>
-        </div>
-      </aside>
-
-      <section class="flex min-h-[70svh] min-w-0 flex-1 flex-col overflow-hidden p-3 sm:p-4 lg:min-h-0">
+      <section class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-3 sm:p-4">
         <div
           ref="consoleSurface"
           tabindex="-1"
           class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-[var(--color-surface-border)] bg-[#0b0e14] shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)]"
           data-testid="workspace-hero-terminal"
         >
-          <div
-            class="flex min-h-10 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-white/10 bg-[#11151c] px-3 py-2"
-          >
+          <div class="flex min-h-10 shrink-0 items-center gap-2 border-b border-white/10 bg-[#11151c] px-3 py-2">
             <div class="min-w-0">
               <p class="truncate font-mono text-sm text-slate-100" data-testid="workspace-active-session-label">
                 {{ activeRailSession?.label ?? 'No session selected' }}
               </p>
-              <p class="text-xs text-slate-400">
+              <p class="truncate text-xs text-slate-400">
                 {{ activeRailSession?.affordance.description ?? 'Start an agent to attach a terminal.' }}
               </p>
-            </div>
-            <div class="flex min-h-10 items-center gap-2">
-              <button
-                type="button"
-                class="inline-flex min-h-10 items-center rounded-md border border-white/15 px-3 text-sm font-medium text-slate-100 transition-colors hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] disabled:cursor-not-allowed disabled:opacity-60"
-                :disabled="!canStopActive"
-                data-testid="workspace-active-stop"
-                @click="activeSession && onStopSession(activeSession.id)"
-              >
-                Stop
-              </button>
-              <button
-                type="button"
-                class="inline-flex min-h-10 items-center rounded-md border border-white/15 px-3 text-sm font-medium text-slate-100 transition-colors hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] disabled:cursor-not-allowed disabled:opacity-60"
-                :disabled="!canRestartActive"
-                data-testid="workspace-active-restart"
-                @click="onRequestRestart"
-              >
-                Restart
-              </button>
             </div>
           </div>
 
@@ -585,13 +513,41 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
       </section>
 
       <aside
-        v-if="store.activeWorkspace"
+        v-if="store.activeWorkspace && showSidebar"
         id="workspace-sidebar"
-        class="min-h-0 max-h-[50svh] flex-col gap-3 overflow-y-auto border-t border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-3 lg:flex lg:max-h-none lg:border-l lg:border-t-0"
-        :class="showSidebar ? 'flex' : 'hidden lg:flex'"
+        class="absolute inset-x-0 bottom-0 top-0 z-20 flex flex-col gap-3 overflow-y-auto border-l border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-3 pt-[env(safe-area-inset-top)] lg:static lg:z-auto lg:pt-3"
         data-testid="workspace-sidebar"
         aria-label="Workspace controls"
       >
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            class="inline-flex min-h-10 flex-1 items-center justify-center rounded-md border border-[var(--color-surface-border)] bg-[var(--color-surface-elevated)] px-3 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] disabled:cursor-not-allowed disabled:opacity-60"
+            :disabled="!canStopActive"
+            data-testid="workspace-active-stop"
+            @click="activeSession && onStopSession(activeSession.id)"
+          >
+            Stop
+          </button>
+          <button
+            type="button"
+            class="inline-flex min-h-10 flex-1 items-center justify-center rounded-md border border-[var(--color-surface-border)] bg-[var(--color-surface-elevated)] px-3 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] disabled:cursor-not-allowed disabled:opacity-60"
+            :disabled="!canRestartActive"
+            data-testid="workspace-active-restart"
+            @click="onRequestRestart"
+          >
+            Restart
+          </button>
+          <button
+            type="button"
+            class="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md border border-[var(--color-surface-border)] bg-[var(--color-surface-elevated)] px-2 text-sm text-[var(--color-text-primary)] transition-colors hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)]"
+            data-testid="workspace-sidebar-collapse"
+            title="Hide controls"
+            @click="showSidebar = false"
+          >
+            ›
+          </button>
+        </div>
         <SessionStatusRail
           :session="activeRailSession"
           :connection-state="statuses.connectionState"
@@ -670,7 +626,7 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
             </button>
           </div>
           <div v-if="showStartControls" class="mt-3 grid gap-2">
-            <AgentKindPicker v-model="pickerKind" compact class="min-w-0" />
+            <AgentKindPicker v-model="pickerKind" stacked class="min-w-0" />
             <button
               type="button"
               class="inline-flex min-h-10 w-full items-center justify-center whitespace-nowrap rounded-md border border-transparent bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[var(--color-accent-light)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface-dark)] disabled:cursor-not-allowed disabled:opacity-60"

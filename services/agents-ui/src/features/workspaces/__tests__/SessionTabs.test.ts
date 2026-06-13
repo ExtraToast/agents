@@ -143,20 +143,17 @@ describe('sessionTabs', () => {
     wrapper.unmount()
   })
 
-  it('keeps the stop action inside the tab and isolates its click from selection', async () => {
+  it('selects a tab on click and carries no stop control (stop lives in the controls pane)', async () => {
     const session = fakeSession()
     const wrapper = mount(SessionTabs, {
-      props: { sessions: [session], activeId: session.id, orientation: 'vertical' },
+      props: { sessions: [session], activeId: session.id, orientation: 'horizontal' },
     })
 
     await wrapper.get(`[data-testid="session-tab-${session.id}"]`).trigger('click')
-    await wrapper.get(`[data-testid="session-tab-stop-${session.id}"]`).trigger('click')
 
-    const tab = wrapper.get(`[data-testid="session-tab-${session.id}"]`)
     expect(wrapper.get('[data-testid="session-tabs"]').attributes('aria-label')).toBe('Agent sessions')
-    expect(tab.find(`[data-testid="session-tab-stop-${session.id}"]`).exists()).toBe(true)
+    expect(wrapper.find(`[data-testid="session-tab-stop-${session.id}"]`).exists()).toBe(false)
     expect(wrapper.emitted('select')).toEqual([[session.id]])
-    expect(wrapper.emitted('stop')).toEqual([[session.id]])
   })
 
   it('shows a click rename affordance and opens the inline editor from it', async () => {

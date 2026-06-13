@@ -106,8 +106,9 @@ onMounted(() => {
     convertEol: false,
     cursorBlink: true,
     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
-    // Bump the type size on touch screens so output stays legible on a phone.
-    fontSize: isCoarsePointer ? 15 : 13,
+    // Phones are narrow: a small font fits far more columns/rows on screen so
+    // wrapped agent output stays readable. Desktop keeps the comfortable size.
+    fontSize: isCoarsePointer ? 11 : 13,
     // xterm keeps only 1000 scrollback lines by default, so a
     // long-running agent session scrolls its own history out of reach
     // within minutes. Hold far more — this is browser memory, not the

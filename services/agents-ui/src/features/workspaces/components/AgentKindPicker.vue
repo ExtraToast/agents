@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { AgentKind } from '../types'
 
-const props = withDefaults(defineProps<{ modelValue: AgentKind; compact?: boolean }>(), {
+const props = withDefaults(defineProps<{ modelValue: AgentKind; compact?: boolean; stacked?: boolean }>(), {
   compact: false,
+  stacked: false,
 })
 const emit = defineEmits<{ 'update:modelValue': [value: AgentKind] }>()
 
@@ -16,7 +17,7 @@ const options: { value: AgentKind; label: string; description: string }[] = [
 <template>
   <div
     class="grid gap-2"
-    :class="props.compact ? 'grid-cols-3' : 'grid-cols-1 sm:grid-cols-3'"
+    :class="props.stacked ? 'grid-cols-1' : props.compact ? 'grid-cols-3' : 'grid-cols-1 sm:grid-cols-3'"
     data-testid="agent-kind-picker"
     aria-label="Agent kind"
   >
@@ -26,7 +27,7 @@ const options: { value: AgentKind; label: string; description: string }[] = [
       type="button"
       class="rounded-md border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface-dark)]"
       :class="[
-        props.compact ? 'px-3 py-2 text-center' : 'p-3 text-left',
+        props.compact && !props.stacked ? 'px-3 py-2 text-center' : 'p-3 text-left',
         props.modelValue === opt.value
           ? 'border-[var(--color-accent-light)] bg-[var(--color-surface-elevated)] text-[var(--color-text-primary)]'
           : 'border-[var(--color-surface-border)] bg-[var(--color-surface)] text-[var(--color-text-primary)] hover:border-[var(--color-accent-light)]',
@@ -36,7 +37,9 @@ const options: { value: AgentKind; label: string; description: string }[] = [
       @click="emit('update:modelValue', opt.value)"
     >
       <div class="text-sm font-semibold leading-5">{{ opt.label }}</div>
-      <div v-if="!props.compact" class="text-xs text-[var(--color-text-muted)] mt-1">{{ opt.description }}</div>
+      <div v-if="!props.compact || props.stacked" class="mt-1 text-xs text-[var(--color-text-muted)]">
+        {{ opt.description }}
+      </div>
     </button>
   </div>
 </template>

@@ -15,7 +15,6 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   select: [id: string]
-  stop: [id: string]
 }>()
 
 const labels = useSessionLabelsStore()
@@ -244,21 +243,11 @@ function sessionShellClasses(s: AgentSession): string[] {
             type="button"
             class="shrink-0 rounded border border-[var(--color-surface-border)] px-1.5 py-0.5 text-xs text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-accent-light)] hover:text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)]"
             :aria-label="`Rename session ${tabLabel(s)}`"
+            :data-testid="`session-tab-rename-${s.id}`"
             @click.stop="startEdit(s)"
             @keydown.stop
           >
             Rename
-          </button>
-          <button
-            v-if="s.status === 'RUNNING'"
-            type="button"
-            class="shrink-0 rounded-md border border-transparent px-2 text-sm text-red-400 transition-colors hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface-dark)]"
-            :aria-label="`Stop session ${tabLabel(s)}`"
-            :data-testid="`session-tab-stop-${s.id}`"
-            @click.stop="emit('stop', s.id)"
-            @keydown.stop
-          >
-            ×
           </button>
         </div>
       </li>
