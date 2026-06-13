@@ -431,7 +431,8 @@ describe('workspaceView terminal persistence', () => {
     const hero = wrapper.get('[data-testid="workspace-hero-terminal"]')
     const sidebar = wrapper.get('[data-testid="workspace-sidebar"]')
 
-    expect(header.find('[data-testid="workspace-sidebar-toggle"]').exists()).toBe(true)
+    expect(header.find('[data-testid="workspace-fullscreen-toggle"]').exists()).toBe(true)
+    expect(sidebar.find('[data-testid="workspace-sidebar-toggle"]').exists()).toBe(true)
     expect(header.find('[data-testid="stage-input-open"]').exists()).toBe(false)
     expect(tabs.find('[data-testid="session-tabs"]').exists()).toBe(true)
     expect(tabs.find('[data-testid="session-tab-sess-a"]').exists()).toBe(true)
@@ -474,20 +475,21 @@ describe('workspaceView terminal persistence', () => {
     expect(wrapper.get('[data-testid="stage-input-open"]').attributes('disabled')).toBeDefined()
   })
 
-  it('folds the controls sidebar with the header toggle', async () => {
+  it('folds the controls rail with its edge arrow', async () => {
     getWorkspace.mockResolvedValue(detail([fakeSession({ id: 'sess-a' })]))
 
     const wrapper = await mountView()
     const toggle = wrapper.get('[data-testid="workspace-sidebar-toggle"]')
+    const rail = wrapper.get('[data-testid="workspace-sidebar"]')
 
     expect(toggle.attributes('aria-expanded')).toBe('true')
-    expect(toggle.attributes('aria-controls')).toBe('workspace-sidebar')
-    expect(wrapper.find('[data-testid="workspace-sidebar"]').exists()).toBe(true)
+    expect(toggle.attributes('aria-controls')).toBe('workspace-sidebar-body')
+    expect(rail.classes()).toContain('w-[min(22rem,85vw)]')
 
     await toggle.trigger('click')
 
     expect(toggle.attributes('aria-expanded')).toBe('false')
-    expect(wrapper.find('[data-testid="workspace-sidebar"]').exists()).toBe(false)
+    expect(rail.classes()).toContain('w-10')
   })
 
   it('opens the status subscription for the workspace and closes it on unmount', async () => {
@@ -659,7 +661,7 @@ describe('workspaceView terminal persistence', () => {
     expect(wrapper.get('[data-testid="workspace-console-main"]').classes()).toContain(
       'pb-[env(safe-area-inset-bottom)]',
     )
-    expect(wrapper.get('[data-testid="workspace-sidebar-toggle"]').classes()).toContain('min-h-10')
+    expect(wrapper.get('[data-testid="workspace-sidebar-toggle"]').classes()).toContain('h-11')
     expect(wrapper.get('[data-testid="workspace-active-restart"]').classes()).toContain('min-h-10')
   })
 

@@ -195,16 +195,18 @@ describe('sessionTabs', () => {
     expect(wrapper.find('[data-testid="session-tab-stop-sess-failed"]').exists()).toBe(false)
   })
 
-  it('exposes kind and status through an accessible status dot', () => {
+  it('renders kind and status metadata on the tab', () => {
     const wrapper = mount(SessionTabs, {
       props: { sessions: [fakeSession({ id: 'sess-starting', kind: 'SHELL', status: 'STARTING' })], activeId: null },
     })
     const tab = wrapper.get('[data-testid="session-tab-sess-starting"]')
 
-    expect(tab.find('[aria-label="SHELL, STARTING"]').exists()).toBe(true)
+    expect(tab.text()).toContain('SHELL')
+    expect(tab.text()).toContain('STARTING')
+    expect(tab.find('[aria-label="Status: STARTING"]').exists()).toBe(true)
   })
 
-  it('surfaces current and pending setup through the tab label tooltip', () => {
+  it('renders current and pending setup metadata on session tabs', () => {
     const wrapper = mount(SessionTabs, {
       props: {
         sessions: [
@@ -218,8 +220,17 @@ describe('sessionTabs', () => {
       },
     })
 
-    expect(wrapper.get('[data-testid="session-tab-label-sess-setup"]').attributes('title')).toBe(
-      'setup-current@v1 -> setup-next@v2',
-    )
+    expect(wrapper.get('[data-testid="session-tab-setup-sess-setup"]').text()).toBe('setup-current@v1 -> setup-next@v2')
+  })
+
+  it('deletes a session via the × control beside the tab', async () => {
+    const session = fakeSession({ id: 'sess-del', status: 'STOPPED' })
+    const wrapper = mount(SessionTabs, {
+      props: { sessions: [session], activeId: null },
+    })
+
+    await wrapper.get('[data-testid="session-tab-delete-sess-del"]').trigger('click')
+
+    expect(wrapper.emitted('delete')).toEqual([['sess-del']])
   })
 })
