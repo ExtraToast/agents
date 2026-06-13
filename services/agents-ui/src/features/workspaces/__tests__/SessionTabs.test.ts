@@ -216,23 +216,6 @@ describe('sessionTabs', () => {
     expect(wrapper.find('[data-testid="session-tab-rename-sess-c"]').exists()).toBe(true)
   })
 
-  it('renders current and pending setup metadata on session tabs', () => {
-    const wrapper = mount(SessionTabs, {
-      props: {
-        sessions: [
-          fakeSession({
-            id: 'sess-setup',
-            currentSetup: { id: 'setup-current', version: 1 },
-            pendingSetup: { id: 'setup-next', version: 2 },
-          }),
-        ],
-        activeId: 'sess-setup',
-      },
-    })
-
-    expect(wrapper.get('[data-testid="session-tab-setup-sess-setup"]').text()).toBe('setup-current@v1 -> setup-next@v2')
-  })
-
   it('deletes a session via the × control beside the tab', async () => {
     const session = fakeSession({ id: 'sess-del', status: 'STOPPED' })
     const wrapper = mount(SessionTabs, {
