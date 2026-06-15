@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { SessionSocket } from '../services/sessionSocket'
 import { FitAddon } from '@xterm/addon-fit'
+import { WebglAddon } from '@xterm/addon-webgl'
 import { Terminal } from '@xterm/xterm'
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { attachSessionSocket } from '../services/sessionSocket'
@@ -19,6 +20,7 @@ const isCoarsePointer
 
 let term: Terminal | null = null
 let fitAddon: FitAddon | null = null
+let webglAddon: WebglAddon | null = null
 let socket: SessionSocket | null = null
 let resizeObserver: ResizeObserver | null = null
 
@@ -29,6 +31,25 @@ const KEY_ARROW_DOWN = '\x1B[B'
 const KEY_ARROW_RIGHT = '\x1B[C'
 const KEY_ARROW_LEFT = '\x1B[D'
 const KEY_TAB = '\t'
+
+function enableWebglRenderer(): void {
+  if (!term) return
+  try {
+    const addon = new WebglAddon()
+    // A lost GPU context leaves the canvas frozen; dispose so xterm
+    // transparently reverts to the DOM renderer.
+    addon.onContextLoss(() => {
+      addon.dispose()
+      webglAddon = null
+    })
+    term.loadAddon(addon)
+    webglAddon = addon
+  } catch {
+    // No WebGL (headless/jsdom, blocked GPU): keep the DOM renderer.
+    webglAddon?.dispose()
+    webglAddon = null
+  }
+}
 
 function fitAndReportSize(): void {
   if (!fitAddon || !term) return
@@ -111,6 +132,14 @@ onMounted(() => {
   fitAddon = new FitAddon()
   term.loadAddon(fitAddon)
   term.open(el)
+  // xterm's default DOM renderer can't keep up with a full-screen TUI
+  // (Claude Code repaints the whole pane on every spinner tick); the
+  // write queue backs up and even local keystroke echoes lag seconds
+  // behind. The WebGL renderer offloads glyph drawing to the GPU and
+  // drains the queue in real time. If the GPU context is unavailable or
+  // is lost (backgrounded tab, driver reset) fall back to the DOM
+  // renderer rather than leaving a blank canvas.
+  enableWebglRenderer()
   fitAddon.fit()
 
   // Mobile keyboards otherwise autocorrect/autocapitalise and batch composed
@@ -225,6 +254,10 @@ onBeforeUnmount(() => {
   resizeObserver = null
   socket?.close()
   socket = null
+  // Dispose the renderer before the terminal so the GPU context is
+  // released deterministically rather than on GC.
+  webglAddon?.dispose()
+  webglAddon = null
   term?.dispose()
   term = null
   fitAddon = null

@@ -67,6 +67,12 @@ vi.mock('@xterm/addon-fit', () => ({
     fit = vi.fn()
   },
 }))
+vi.mock('@xterm/addon-webgl', () => ({
+  WebglAddon: class {
+    onContextLoss = vi.fn()
+    dispose = vi.fn()
+  },
+}))
 
 const socket = {
   send: vi.fn(),
