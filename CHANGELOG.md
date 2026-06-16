@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/ExtraToast/agents/compare/v0.5.1...v0.6.0) (2026-06-16)
+
+
+### Features
+
+* **agents-api:** auto-recycle disconnected runners onto new releases ([#45](https://github.com/ExtraToast/agents/issues/45)) ([2003f69](https://github.com/ExtraToast/agents/commit/2003f694ffc460235a67cbbd2995a3c3a8d6dd29))
+
 ## [0.5.1](https://github.com/ExtraToast/agents/compare/v0.5.0...v0.5.1) (2026-06-16)
 
 
