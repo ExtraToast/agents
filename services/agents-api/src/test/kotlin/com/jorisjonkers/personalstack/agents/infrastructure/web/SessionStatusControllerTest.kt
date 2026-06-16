@@ -52,8 +52,7 @@ class SessionStatusControllerTest {
             .perform(
                 get("/api/v1/sessions/events")
                     .requestAttr(ForwardAuthPrincipal::class.java.name, principal(userId)),
-            )
-            .andExpect(status().isOk)
+            ).andExpect(status().isOk)
             .andExpect(request().asyncStarted())
             .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_EVENT_STREAM))
             .andExpect(header().string("X-Accel-Buffering", "no"))

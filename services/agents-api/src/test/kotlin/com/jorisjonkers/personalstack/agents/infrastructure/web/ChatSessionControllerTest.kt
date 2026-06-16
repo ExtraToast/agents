@@ -90,8 +90,7 @@ class ChatSessionControllerTest {
             .perform(
                 get("/api/v1/chat-sessions")
                     .requestAttr(ForwardAuthPrincipal::class.java.name, principal(uid)),
-            )
-            .andExpect(status().isOk)
+            ).andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(1))
     }
 
