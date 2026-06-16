@@ -24,6 +24,17 @@ let webglAddon: WebglAddon | null = null
 let socket: SessionSocket | null = null
 let resizeObserver: ResizeObserver | null = null
 
+// A busy TUI streams output as a flood of small frames. Writing each one
+// individually means a `term.write` call — and the reactive at-bottom
+// recompute behind it — per frame, which is what made rendering feel
+// sluggish even on the GPU renderer. Instead accumulate frames and flush
+// them as one write per animation frame: the work collapses to ~60 writes
+// a second regardless of how many frames arrive, and xterm parses the
+// joined string in a single pass.
+let pendingOutput: string[] = []
+let flushScheduled = false
+let flushHandle: number | null = null
+
 const KEY_ESCAPE = '\x1B'
 const KEY_CTRL_C = '\x03'
 const KEY_ARROW_UP = '\x1B[A'
@@ -61,6 +72,34 @@ function fitAndReportSize(): void {
 function updateAtBottom(): void {
   const buffer = term?.buffer?.active
   atBottom.value = buffer == null || buffer.viewportY >= buffer.baseY
+}
+
+function flushOutput(): void {
+  flushScheduled = false
+  flushHandle = null
+  if (!term || pendingOutput.length === 0) return
+  const text = pendingOutput.join('')
+  pendingOutput = []
+  term.write(text, updateAtBottom)
+}
+
+function queueOutput(text: string): void {
+  pendingOutput.push(text)
+  if (flushScheduled) return
+  flushScheduled = true
+  flushHandle = requestAnimationFrame(flushOutput)
+}
+
+// A snapshot replaces the screen wholesale, so any frames still queued
+// belong to the pre-reset world and must be dropped, not flushed after
+// the clear.
+function discardPendingOutput(): void {
+  pendingOutput = []
+  flushScheduled = false
+  if (flushHandle !== null) {
+    cancelAnimationFrame(flushHandle)
+    flushHandle = null
+  }
 }
 
 function jumpToLatest(): void {
@@ -157,9 +196,12 @@ onMounted(() => {
 
   socket = attachSessionSocket({
     sessionId: props.sessionId,
-    onOutput: (text) => term?.write(text, updateAtBottom),
+    onOutput: queueOutput,
     onControl: (_epoch, snapshot) => {
-      if (snapshot) term?.clear()
+      if (snapshot) {
+        discardPendingOutput()
+        term?.clear()
+      }
     },
     onReplayComplete: () => {
       if (props.active) void revealAndFocus()
@@ -254,6 +296,7 @@ onBeforeUnmount(() => {
   resizeObserver = null
   socket?.close()
   socket = null
+  discardPendingOutput()
   // Dispose the renderer before the terminal so the GPU context is
   // released deterministically rather than on GC.
   webglAddon?.dispose()
