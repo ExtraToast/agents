@@ -35,6 +35,10 @@ let pendingOutput: string[] = []
 let flushScheduled = false
 let flushHandle: number | null = null
 
+// Trailing-debounce the PTY resize relayed to the gateway (see onResize).
+let resizeTimer: ReturnType<typeof setTimeout> | null = null
+const RESIZE_DEBOUNCE_MS = 120
+
 const KEY_ESCAPE = '\x1B'
 const KEY_CTRL_C = '\x03'
 const KEY_ARROW_UP = '\x1B[A'
@@ -60,6 +64,14 @@ function enableWebglRenderer(): void {
     webglAddon?.dispose()
     webglAddon = null
   }
+}
+
+function queueResize(cols: number, rows: number): void {
+  if (resizeTimer !== null) clearTimeout(resizeTimer)
+  resizeTimer = setTimeout(() => {
+    resizeTimer = null
+    socket?.sendResize(cols, rows)
+  }, RESIZE_DEBOUNCE_MS)
 }
 
 function fitAndReportSize(): void {
@@ -160,11 +172,12 @@ onMounted(() => {
     // Phones are narrow: a small font fits far more columns/rows on screen so
     // wrapped agent output stays readable. Desktop keeps the comfortable size.
     fontSize: isCoarsePointer ? 9 : 13,
-    // xterm keeps only 1000 scrollback lines by default, so a
-    // long-running agent session scrolls its own history out of reach
-    // within minutes. Hold far more — this is browser memory, not the
-    // server's, so it does not affect the streaming backend.
-    scrollback: 50_000,
+    // Scrollback is the dominant cost of scroll and resize jank: every
+    // reflow walks the whole buffer (tens to hundreds of ms at 50k lines),
+    // and a deep buffer keeps far more rows live in memory. 2000 matches
+    // tmux's default history and keeps scrolling smooth; deeper history
+    // belongs in a server-backed log viewer, not the live terminal buffer.
+    scrollback: 2000,
     rightClickSelectsWord: true,
     theme: { background: '#0b0e14' },
   })
@@ -216,9 +229,11 @@ onMounted(() => {
   // send-keys -l passes them literally, so enter is always false.
   term.onData((data) => socket?.send(data, false))
 
-  term.onResize(({ cols, rows }) => {
-    socket?.sendResize(cols, rows)
-  })
+  // A window/pane drag fires onResize on every animation frame; each
+  // sendResize shells out a `tmux resize-window` on the gateway, so relay
+  // only the final geometry once the drag settles. fit() stays immediate
+  // (above), so the local layout still tracks the drag in real time.
+  term.onResize(({ cols, rows }) => queueResize(cols, rows))
 
   term.onSelectionChange?.(() => {
     void copySelection(false)
@@ -296,6 +311,10 @@ onBeforeUnmount(() => {
   resizeObserver = null
   socket?.close()
   socket = null
+  if (resizeTimer !== null) {
+    clearTimeout(resizeTimer)
+    resizeTimer = null
+  }
   discardPendingOutput()
   // Dispose the renderer before the terminal so the GPU context is
   // released deterministically rather than on GC.

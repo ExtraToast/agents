@@ -173,10 +173,34 @@ describe('sessionTerminal', () => {
     expect(socket.send).toHaveBeenCalledWith('\r', false)
   })
 
-  it('forwards terminal resize as a resize frame', () => {
-    mountTerminal()
-    onResizeCb?.({ cols: 120, rows: 40 })
-    expect(socket.sendResize).toHaveBeenCalledWith(120, 40)
+  it('forwards terminal resize as a resize frame after the debounce settles', () => {
+    vi.useFakeTimers()
+    try {
+      mountTerminal()
+      onResizeCb?.({ cols: 120, rows: 40 })
+      // Debounced: nothing relayed until the drag settles.
+      expect(socket.sendResize).not.toHaveBeenCalled()
+      vi.advanceTimersByTime(150)
+      expect(socket.sendResize).toHaveBeenCalledTimes(1)
+      expect(socket.sendResize).toHaveBeenCalledWith(120, 40)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('relays only the final geometry when resize fires repeatedly', () => {
+    vi.useFakeTimers()
+    try {
+      mountTerminal()
+      onResizeCb?.({ cols: 100, rows: 30 })
+      onResizeCb?.({ cols: 110, rows: 35 })
+      onResizeCb?.({ cols: 120, rows: 40 })
+      vi.advanceTimersByTime(150)
+      expect(socket.sendResize).toHaveBeenCalledTimes(1)
+      expect(socket.sendResize).toHaveBeenCalledWith(120, 40)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('closes the socket and disposes the terminal on unmount', () => {
