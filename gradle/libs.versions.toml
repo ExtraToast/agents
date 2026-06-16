@@ -1,5 +1,5 @@
 [versions]
-extratoast-commons = "0.6.0"
+extratoast-commons = "0.6.2"
 extratoast-conventions = "0.2.2"
 
 [libraries]
