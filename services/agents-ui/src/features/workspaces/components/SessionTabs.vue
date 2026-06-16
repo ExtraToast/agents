@@ -105,8 +105,12 @@ function cancel(): void {
   editingId.value = null
 }
 
+// The ref callback re-fires on every re-render, and v-model re-renders the
+// input on each keystroke. Only focus + select the text when the input first
+// gains focus, otherwise typing would reselect everything and overwrite the
+// previous character on every input.
 function focusInput(el: unknown): void {
-  if (el instanceof HTMLInputElement) {
+  if (el instanceof HTMLInputElement && document.activeElement !== el) {
     el.focus()
     el.select()
   }
