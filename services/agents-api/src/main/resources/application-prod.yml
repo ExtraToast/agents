@@ -1,0 +1,5 @@
+extratoast:
+  identity:
+    jwks-uri: http://auth-api.auth-system.svc.cluster.local:8081/api/oauth2/jwks
+    # TODO: Set AUTH_ISSUER to auth-api's authorizationServerSettings.issuer.
+    issuer: ${AUTH_ISSUER:}

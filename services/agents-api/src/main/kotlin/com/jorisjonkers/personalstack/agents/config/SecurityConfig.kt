@@ -13,13 +13,6 @@ import java.security.MessageDigest
 @Configuration
 class SecurityConfig {
     @Bean
-    fun xUserIdFilterRegistration(): FilterRegistrationBean<XUserIdFilter> =
-        FilterRegistrationBean(XUserIdFilter()).apply {
-            addUrlPatterns("/api/*")
-            order = 1
-        }
-
-    @Bean
     fun internalBearerFilterRegistration(
         props: AgentRuntimeProperties,
     ): FilterRegistrationBean<InternalBearerAuthFilter> =
@@ -27,32 +20,6 @@ class SecurityConfig {
             addUrlPatterns("/api/v1/internal/*")
             order = 0
         }
-}
-
-class XUserIdFilter : OncePerRequestFilter() {
-    override fun doFilterInternal(
-        request: HttpServletRequest,
-        response: HttpServletResponse,
-        filterChain: FilterChain,
-    ) {
-        val userId = request.getHeader("X-User-Id")
-        if (userId.isNullOrBlank()) {
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Missing X-User-Id header")
-            return
-        }
-        filterChain.doFilter(request, response)
-    }
-
-    override fun shouldNotFilter(request: HttpServletRequest): Boolean {
-        // /api/v1/internal/* carries no X-User-Id (it skips the edge
-        // forward-auth); the bearer filter guards it instead.
-        val path = request.servletPath
-        return path.startsWith("/api/actuator") ||
-            path.startsWith("/api/v1/health") ||
-            path.startsWith("/api/v1/api-docs") ||
-            path.startsWith("/api/v1/swagger-ui") ||
-            path.startsWith("/api/v1/internal/")
-    }
 }
 
 /**

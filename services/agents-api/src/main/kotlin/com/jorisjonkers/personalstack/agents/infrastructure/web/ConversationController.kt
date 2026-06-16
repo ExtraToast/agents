@@ -7,6 +7,9 @@ import com.jorisjonkers.personalstack.agents.domain.model.ConversationId
 import com.jorisjonkers.personalstack.agents.infrastructure.web.dto.ConversationResponse
 import com.jorisjonkers.personalstack.agents.infrastructure.web.dto.CreateConversationRequest
 import com.jorisjonkers.personalstack.common.command.CommandBus
+import com.jorisjonkers.personalstack.common.identity.CurrentPrincipal
+import com.jorisjonkers.personalstack.common.identity.ForwardAuthPrincipal
+import io.swagger.v3.oas.annotations.Parameter
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -14,7 +17,6 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
@@ -29,15 +31,14 @@ class ConversationController(
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     fun create(
-        @RequestHeader("X-User-Id") userId: String,
+        @Parameter(hidden = true) @CurrentPrincipal principal: ForwardAuthPrincipal,
         @Valid @RequestBody request: CreateConversationRequest,
     ): ConversationResponse {
-        val userUuid = UUID.fromString(userId)
         val conversationId = ConversationId(UUID.randomUUID())
         commandBus.dispatch(
             StartConversationCommand(
                 conversationId = conversationId,
-                userId = userUuid,
+                userId = principal.userId,
                 title = request.title,
             ),
         )
@@ -57,18 +58,22 @@ class ConversationController(
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun archive(
         @PathVariable id: UUID,
-        @RequestHeader("X-User-Id") userId: String,
+        @Parameter(hidden = true) @CurrentPrincipal principal: ForwardAuthPrincipal,
     ) {
-        commandBus.dispatch(ArchiveConversationCommand(conversationId = ConversationId(id), userId = userId))
+        commandBus.dispatch(
+            ArchiveConversationCommand(
+                conversationId = ConversationId(id),
+                userId = principal.userId.toString(),
+            ),
+        )
     }
 
     @GetMapping
     fun listByUser(
-        @RequestHeader("X-User-Id") userId: String,
+        @Parameter(hidden = true) @CurrentPrincipal principal: ForwardAuthPrincipal,
     ): List<ConversationResponse> {
-        val userUuid = UUID.fromString(userId)
         return getConversationQueryService
-            .findByUserId(userUuid)
+            .findByUserId(principal.userId)
             .map { ConversationResponse.from(it) }
     }
 }
