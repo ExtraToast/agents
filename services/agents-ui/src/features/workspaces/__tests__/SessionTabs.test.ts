@@ -80,6 +80,33 @@ describe('sessionTabs', () => {
     expect(wrapper.emitted('select')).toBeUndefined()
   })
 
+  it('does not reselect the text on every keystroke while renaming', async () => {
+    const labels = useSessionLabelsStore()
+    labels.rename('aaaaaaaa-1111-2222-3333-444444444444', 'name')
+    const session = fakeSession()
+    const wrapper = mount(SessionTabs, {
+      attachTo: document.body,
+      props: { sessions: [session], activeId: null },
+    })
+    await wrapper.get(`[data-testid="session-tab-${session.id}"]`).trigger('contextmenu')
+    await nextTick()
+    const input = wrapper.find('[data-testid="session-tab-rename"]').element as HTMLInputElement
+
+    // The editor opens with the whole label selected so it can be replaced.
+    expect(input.selectionStart).toBe(0)
+    expect(input.selectionEnd).toBe('name'.length)
+
+    // Simulate the cursor sitting at the end after typing another character.
+    input.setSelectionRange(5, 5)
+    await wrapper.find('[data-testid="session-tab-rename"]').setValue('named')
+    await nextTick()
+
+    // The keystroke-driven re-render must not reselect everything, otherwise
+    // the next character would overwrite the whole field.
+    expect(input.selectionStart).toBe(input.selectionEnd)
+    wrapper.unmount()
+  })
+
   it('renders accessible tab semantics with selected state and controlled panel ids', () => {
     const sessions = [
       fakeSession({ id: 'sess-a', kind: 'CLAUDE', status: 'RUNNING' }),
