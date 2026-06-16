@@ -90,7 +90,7 @@ describe('sessionTabs', () => {
     })
     await wrapper.get(`[data-testid="session-tab-${session.id}"]`).trigger('contextmenu')
     await nextTick()
-    const input = wrapper.find('[data-testid="session-tab-rename"]').element as HTMLInputElement
+    const input = wrapper.find<HTMLInputElement>('[data-testid="session-tab-rename"]').element
 
     // The editor opens with the whole label selected so it can be replaced.
     expect(input.selectionStart).toBe(0)
