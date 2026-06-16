@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/ExtraToast/agents/compare/v0.6.0...v0.7.0) (2026-06-16)
+
+
+### Features
+
+* only recycle a stale runner once its agent has gone idle ([#47](https://github.com/ExtraToast/agents/issues/47)) ([704cebd](https://github.com/ExtraToast/agents/commit/704cebd6e6aafff3828cbcb5e476e94d62511bc0))
+
 ## [0.6.0](https://github.com/ExtraToast/agents/compare/v0.5.1...v0.6.0) (2026-06-16)
 
 
