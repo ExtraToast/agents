@@ -1,7 +1,7 @@
 import type { AgentSession } from '../types'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import SessionTabs from '../components/SessionTabs.vue'
 import { useSessionLabelsStore } from '../stores/sessionLabels'
@@ -80,30 +80,34 @@ describe('sessionTabs', () => {
     expect(wrapper.emitted('select')).toBeUndefined()
   })
 
-  it('does not reselect the text on every keystroke while renaming', async () => {
+  it('selects the text once on open but not again on every keystroke while renaming', async () => {
     const labels = useSessionLabelsStore()
     labels.rename('aaaaaaaa-1111-2222-3333-444444444444', 'name')
     const session = fakeSession()
+    // Spy on the prototype so the initial focus-time select() is counted too,
+    // and attach to the document so the input can actually take focus (the fix
+    // skips re-selecting once the input is already the active element).
+    const selectSpy = vi.spyOn(HTMLInputElement.prototype, 'select')
     const wrapper = mount(SessionTabs, {
       attachTo: document.body,
       props: { sessions: [session], activeId: null },
     })
     await wrapper.get(`[data-testid="session-tab-${session.id}"]`).trigger('contextmenu')
     await nextTick()
-    const input = wrapper.find<HTMLInputElement>('[data-testid="session-tab-rename"]').element
 
-    // The editor opens with the whole label selected so it can be replaced.
-    expect(input.selectionStart).toBe(0)
-    expect(input.selectionEnd).toBe('name'.length)
+    // Opening the editor selects the whole label so it can be replaced.
+    expect(selectSpy).toHaveBeenCalledTimes(1)
 
-    // Simulate the cursor sitting at the end after typing another character.
-    input.setSelectionRange(5, 5)
+    // Each keystroke re-renders the input via v-model, re-firing the focus ref.
+    // It must not reselect the text, otherwise the next character would
+    // overwrite the whole field.
     await wrapper.find('[data-testid="session-tab-rename"]').setValue('named')
     await nextTick()
+    await wrapper.find('[data-testid="session-tab-rename"]').setValue('named-tab')
+    await nextTick()
+    expect(selectSpy).toHaveBeenCalledTimes(1)
 
-    // The keystroke-driven re-render must not reselect everything, otherwise
-    // the next character would overwrite the whole field.
-    expect(input.selectionStart).toBe(input.selectionEnd)
+    selectSpy.mockRestore()
     wrapper.unmount()
   })
 
