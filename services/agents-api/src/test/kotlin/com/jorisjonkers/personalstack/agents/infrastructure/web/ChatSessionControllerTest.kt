@@ -8,6 +8,9 @@ import com.jorisjonkers.personalstack.agents.domain.model.ChatSessionId
 import com.jorisjonkers.personalstack.agents.domain.model.ChatSessionKind
 import com.jorisjonkers.personalstack.agents.domain.model.ChatSessionStatus
 import com.jorisjonkers.personalstack.common.command.CommandBus
+import com.jorisjonkers.personalstack.common.identity.CredentialSource
+import com.jorisjonkers.personalstack.common.identity.CurrentPrincipalArgumentResolver
+import com.jorisjonkers.personalstack.common.identity.ForwardAuthPrincipal
 import com.jorisjonkers.personalstack.common.web.GlobalExceptionHandler
 import io.mockk.every
 import io.mockk.mockk
@@ -42,9 +45,18 @@ class ChatSessionControllerTest {
         mockMvc =
             MockMvcBuilders
                 .standaloneSetup(controller)
+                .setCustomArgumentResolvers(CurrentPrincipalArgumentResolver())
                 .setControllerAdvice(GlobalExceptionHandler())
                 .build()
     }
+
+    private fun principal(userId: UUID): ForwardAuthPrincipal =
+        ForwardAuthPrincipal(
+            userId = userId,
+            roles = emptySet(),
+            username = null,
+            credentialSource = CredentialSource.EDGE_ASSERTION,
+        )
 
     private fun session(
         id: ChatSessionId = ChatSessionId.random(),
@@ -61,7 +73,7 @@ class ChatSessionControllerTest {
         mockMvc
             .perform(
                 post("/api/v1/chat-sessions")
-                    .header("X-User-Id", s.userId.toString())
+                    .requestAttr(ForwardAuthPrincipal::class.java.name, principal(s.userId))
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(mapOf("title" to "x", "kind" to "PLAIN"))),
             ).andExpect(status().isCreated)
@@ -75,7 +87,10 @@ class ChatSessionControllerTest {
         val uid = UUID.randomUUID()
         every { query.list(uid) } returns listOf(session(userId = uid))
         mockMvc
-            .perform(get("/api/v1/chat-sessions").header("X-User-Id", uid.toString()))
+            .perform(
+                get("/api/v1/chat-sessions")
+                    .requestAttr(ForwardAuthPrincipal::class.java.name, principal(uid)),
+            )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(1))
     }
@@ -172,10 +187,11 @@ class ChatSessionControllerTest {
 
     @Test
     fun `DELETE archives session and returns 204`() {
+        val userId = UUID.randomUUID()
         mockMvc
             .perform(
                 delete("/api/v1/chat-sessions/${UUID.randomUUID()}")
-                    .header("X-User-Id", UUID.randomUUID().toString()),
+                    .requestAttr(ForwardAuthPrincipal::class.java.name, principal(userId)),
             ).andExpect(status().isNoContent)
         verify { commandBus.dispatch(any()) }
     }

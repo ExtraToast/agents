@@ -71,9 +71,8 @@ class ConversationController(
     @GetMapping
     fun listByUser(
         @Parameter(hidden = true) @CurrentPrincipal principal: ForwardAuthPrincipal,
-    ): List<ConversationResponse> {
-        return getConversationQueryService
+    ): List<ConversationResponse> =
+        getConversationQueryService
             .findByUserId(principal.userId)
             .map { ConversationResponse.from(it) }
-    }
 }
