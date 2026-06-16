@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.5.1](https://github.com/ExtraToast/agents/compare/v0.5.0...v0.5.1) (2026-06-16)
+
+
+### Bug Fixes
+
+* **agents-ui:** stop reselecting session tab name on every keystroke ([#41](https://github.com/ExtraToast/agents/issues/41)) ([016990b](https://github.com/ExtraToast/agents/commit/016990bbb7b9926109c3da2ef65e463fed9c5e4d))
+
+
+### Performance Improvements
+
+* **gateway:** bound cold-attach transcript replay to a recent tail ([#44](https://github.com/ExtraToast/agents/issues/44)) ([152c33f](https://github.com/ExtraToast/agents/commit/152c33f865fe5f2eff13eec72c22ac6ba302a61a))
+* **terminal:** cut scrollback to 2000 and debounce resize relay ([#42](https://github.com/ExtraToast/agents/issues/42)) ([1f311c6](https://github.com/ExtraToast/agents/commit/1f311c64a3653585181edb10040b599c41bdfee1))
+
 ## [0.5.0](https://github.com/ExtraToast/agents/compare/v0.4.0...v0.5.0) (2026-06-16)
 
 
