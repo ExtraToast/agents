@@ -273,12 +273,13 @@ describe('sessionTerminal', () => {
     expect(term.write).toHaveBeenNthCalledWith(2, 'live', expect.any(Function))
   })
 
-  it('retains a deep scrollback so a long session keeps its history', () => {
+  it('caps scrollback so scroll and resize stay smooth', () => {
     mountTerminal()
-    // The 1000-line xterm default scrolls a busy agent session out of
-    // reach within minutes; the terminal must request far more. This is
-    // browser memory only and does not affect the streaming backend.
-    expect(termOptions?.scrollback).toBeGreaterThanOrEqual(50_000)
+    // Scrollback is the dominant cost of scroll/resize jank: a deep buffer
+    // makes every reflow walk far more rows and keeps more rows live in
+    // memory. Keep it bounded (tmux-default territory); deep history belongs
+    // in a server-backed viewer, not the live buffer.
+    expect(termOptions?.scrollback).toBe(2000)
   })
 
   it('enables terminal selection hooks and right-click word selection', () => {
