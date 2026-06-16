@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.5.0](https://github.com/ExtraToast/agents/compare/v0.4.0...v0.5.0) (2026-06-16)
+
+
+### Features
+
+* **012:** attach active tab to terminal, declutter console chrome ([#32](https://github.com/ExtraToast/agents/issues/32)) ([96c8c49](https://github.com/ExtraToast/agents/commit/96c8c49b4868dfc0dc624d6a761286a70838a12f))
+* **012:** folder-style session tabs with live dot on the kind icon ([#35](https://github.com/ExtraToast/agents/issues/35)) ([80fc3a3](https://github.com/ExtraToast/agents/commit/80fc3a366f976dde4f4c273d1080d1b050dbd67a))
+* **012:** minimal underline tabs flush to a borderless terminal ([#34](https://github.com/ExtraToast/agents/issues/34)) ([605d34e](https://github.com/ExtraToast/agents/commit/605d34ea04a358b0d26d03dcb1d62e7dc07edc42))
+
+
+### Bug Fixes
+
+* **agents-api:** don't 502 session launch when nodes:list is denied ([#36](https://github.com/ExtraToast/agents/issues/36)) ([4f33fb4](https://github.com/ExtraToast/agents/commit/4f33fb4a1e12c1e9a66b163a961e8fc703d04299))
+* **agents-api:** pin runner node-selector to personal-stack/* labels ([#37](https://github.com/ExtraToast/agents/issues/37)) ([119ed4c](https://github.com/ExtraToast/agents/commit/119ed4c2a845b0857a2ac47ca22adab9983d5e21))
+* **agents-api:** reap stale runner-setup leases so a crash mid-provision can't wedge a workspace ([#38](https://github.com/ExtraToast/agents/issues/38)) ([c58e7e7](https://github.com/ExtraToast/agents/commit/c58e7e7a68ceaf4776d16e29969fa1db8f2f22d7))
+
+
+### Performance Improvements
+
+* **agents-ui:** render the terminal with the WebGL addon ([#39](https://github.com/ExtraToast/agents/issues/39)) ([323f0b3](https://github.com/ExtraToast/agents/commit/323f0b3b124a3b47d0eeac6d87456cb84d9164b9))
+* **terminal:** coalesce output writes and ship fewer, larger frames ([#40](https://github.com/ExtraToast/agents/issues/40)) ([033edcc](https://github.com/ExtraToast/agents/commit/033edcc3bd11664236da82cd5839280f0373efed))
+
 ## [0.4.0](https://github.com/ExtraToast/agents/compare/v0.3.0...v0.4.0) (2026-06-13)
 
 
