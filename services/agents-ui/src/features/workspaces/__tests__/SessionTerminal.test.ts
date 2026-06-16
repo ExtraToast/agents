@@ -141,6 +141,13 @@ describe('sessionTerminal', () => {
         disconnect() {}
       },
     )
+    // Output is coalesced via requestAnimationFrame; run the callback
+    // synchronously so a queued frame is written within the test tick.
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+      cb(0)
+      return 1
+    })
+    vi.stubGlobal('cancelAnimationFrame', () => {})
     return mount(SessionTerminal, { props: { sessionId: 'sess-1', ...props } })
   }
 
