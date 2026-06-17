@@ -124,6 +124,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{id}/connect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["connect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/repositories": {
         parameters: {
             query?: never;
@@ -772,6 +788,17 @@ export interface components {
             /** Format: uuid */
             repositoryId: string | null;
         };
+        WorkspaceConnectResponse: {
+            /** Format: uuid */
+            workspaceId: string;
+            setupId: string;
+            /** Format: int64 */
+            setupVersion: number;
+            state: string;
+            reason?: string | null;
+            /** Format: date-time */
+            checkedAt: string;
+        };
         CreateRepositoryRequest: {
             name: string;
             repoUrl: string;
@@ -1365,6 +1392,55 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    connect: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Runner is already ready */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["WorkspaceConnectResponse"];
+                };
+            };
+            /** @description Runner boot in progress or just provisioned */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["WorkspaceConnectResponse"];
+                };
+            };
+            /** @description Workspace not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["WorkspaceConnectResponse"];
+                };
+            };
+            /** @description Runner unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["WorkspaceConnectResponse"];
+                };
             };
         };
     };
