@@ -22,6 +22,7 @@ class WorkspaceRunnerEventsController(
     private val getQuery: GetWorkspaceQueryService,
 ) {
     @GetMapping("/{id}/runner-events", produces = [MediaType.TEXT_EVENT_STREAM_VALUE])
+    @Suppress("UnusedParameter")
     fun events(
         @PathVariable id: UUID,
         @RequestHeader("X-User-Id") userId: String,

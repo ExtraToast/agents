@@ -627,7 +627,10 @@ describe('useWorkspacesStore', () => {
   it('newSession de-dups concurrent start calls for the same workspace and kind', async () => {
     let resolveStart: (value: { sessionId: string }) => void = () => {}
     mocked.startSession.mockImplementationOnce(
-      () => new Promise((resolve) => { resolveStart = resolve }),
+      () =>
+        new Promise((resolve) => {
+          resolveStart = resolve
+        }),
     )
     mocked.getWorkspace.mockResolvedValue({
       workspace: fakeWorkspace(),

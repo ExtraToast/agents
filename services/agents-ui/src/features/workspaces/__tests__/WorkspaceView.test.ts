@@ -852,7 +852,12 @@ describe('workspaceView terminal persistence', () => {
 
   it('double-click on start spawns only one session', async () => {
     let resolveStart: (value: { sessionId: string }) => void = () => {}
-    startSession.mockImplementationOnce(() => new Promise((resolve) => { resolveStart = resolve }))
+    startSession.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveStart = resolve
+        }),
+    )
     getWorkspace
       .mockResolvedValueOnce(detail([]))
       .mockResolvedValue(detail([fakeSession({ id: 'sess-new' })]))
@@ -869,7 +874,12 @@ describe('workspaceView terminal persistence', () => {
 
   it('route change during start: navigating away does not spawn a session on the new workspace', async () => {
     let resolveStart: (value: { sessionId: string }) => void = () => {}
-    startSession.mockImplementationOnce(() => new Promise((resolve) => { resolveStart = resolve }))
+    startSession.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveStart = resolve
+        }),
+    )
     getWorkspace.mockResolvedValue(detail([]))
     const wrapper = await mountView()
 

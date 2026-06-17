@@ -32,7 +32,9 @@ class WorkspaceRunnerEventsBroadcaster(
         emitter.onCompletion { remove(workspaceId, emitter) }
         emitter.onTimeout { remove(workspaceId, emitter) }
         emitter.onError { remove(workspaceId, emitter) }
-        executor.execute { send(workspaceId, emitter, KEEPALIVE_EVENT, RunnerKeepaliveEvent(clock.instant().toString())) }
+        executor.execute {
+            send(workspaceId, emitter, KEEPALIVE_EVENT, RunnerKeepaliveEvent(clock.instant().toString()))
+        }
         return emitter
     }
 

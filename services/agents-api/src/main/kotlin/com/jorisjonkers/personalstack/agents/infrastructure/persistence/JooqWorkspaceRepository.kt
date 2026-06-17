@@ -247,6 +247,7 @@ class JooqWorkspaceRepository(
         dsl.deleteFrom(WORKSPACES).where(ID.eq(id.value)).execute()
     }
 
+    @Suppress("CyclomaticComplexMethod")
     private fun Record.toWorkspace(): Workspace =
         Workspace(
             id = WorkspaceId(this[ID]),

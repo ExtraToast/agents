@@ -271,7 +271,11 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
       // retry loop does not handle; refresh the snapshot so the UI reflects
       // the current session/runner state without triggering a new connect.
       if (err instanceof ApiError && err.status === 503) {
-        try { await open(workspaceId, { connectRunner: false, loadTurns: false }) } catch { /* ignore */ }
+        try {
+          await open(workspaceId, { connectRunner: false, loadTurns: false })
+        } catch {
+          /* ignore */
+        }
       }
       throw err
     } finally {

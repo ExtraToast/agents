@@ -76,7 +76,8 @@ class WorkspaceRunnerLifecycleServiceTest {
 
         assertThat(result).isInstanceOf(WorkspaceRunnerLifecycleService.BootOutcome.Ready::class.java)
         val ready = result as WorkspaceRunnerLifecycleService.BootOutcome.Ready
-        assertThat(ready.provisioning).isInstanceOf(WorkspaceRunnerLifecycleService.BootProvisioningOutcome.AlreadyReady::class.java)
+        assertThat(ready.provisioning)
+            .isInstanceOf(WorkspaceRunnerLifecycleService.BootProvisioningOutcome.AlreadyReady::class.java)
         verify { readinessPublisher.publish(match { it.state == RunnerReadinessState.Ready }) }
     }
 

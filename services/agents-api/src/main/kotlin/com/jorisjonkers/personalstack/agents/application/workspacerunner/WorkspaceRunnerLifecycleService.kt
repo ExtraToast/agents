@@ -68,6 +68,7 @@ class WorkspaceRunnerLifecycleService(
      * [WorkspaceRepository.completeBootLease]; on failure via
      * [WorkspaceRepository.failBootLease] (which increments the attempt counter).
      */
+    @Suppress("ReturnCount")
     fun boot(
         workspaceId: WorkspaceId,
         kind: WorkspaceAgentKind,
@@ -109,6 +110,7 @@ class WorkspaceRunnerLifecycleService(
      * is held the state is [RunnerReadinessState.Booting]; otherwise
      * orchestrator readiness is checked live.
      */
+    @Suppress("LongMethod")
     fun readinessSnapshot(workspace: Workspace): RunnerReadinessSnapshot {
         val now = clock.instant()
         val leaseId = workspace.runnerBootLeaseId
@@ -174,7 +176,9 @@ class WorkspaceRunnerLifecycleService(
                 orchestrator.provision(workspace, target.spec, workspace.runnerSetupGeneration)
             }.getOrElse { ex ->
                 runCatching { workspaces.failBootLease(workspace.id, leaseId) }
-                publish(unavailableSnapshot(workspace, target, RunnerUnavailableReason.PROVISION_FAILED, clock.instant()))
+                publish(
+                    unavailableSnapshot(workspace, target, RunnerUnavailableReason.PROVISION_FAILED, clock.instant()),
+                )
                 log.warn("runner provision failed for workspace {}: {}", workspace.id.value, ex.message)
                 return BootOutcome.Conflict(RunnerUnavailableReason.PROVISION_FAILED)
             }
@@ -191,11 +195,18 @@ class WorkspaceRunnerLifecycleService(
             publish(readySnapshot(saved, target, clock.instant()))
             BootOutcome.Ready(
                 workspace = saved,
-                provisioning = BootProvisioningOutcome.Provisioned(handle.podName, handle.pvcName, handle.gatewayEndpoint),
+                provisioning =
+                    BootProvisioningOutcome.Provisioned(
+                        handle.podName,
+                        handle.pvcName,
+                        handle.gatewayEndpoint,
+                    ),
             )
         } else {
             workspaces.failBootLease(saved.id, leaseId)
-            publish(unavailableSnapshot(saved, target, RunnerUnavailableReason.NOT_READY_AFTER_PROVISION, clock.instant()))
+            publish(
+                unavailableSnapshot(saved, target, RunnerUnavailableReason.NOT_READY_AFTER_PROVISION, clock.instant()),
+            )
             BootOutcome.Conflict(RunnerUnavailableReason.NOT_READY_AFTER_PROVISION)
         }
     }

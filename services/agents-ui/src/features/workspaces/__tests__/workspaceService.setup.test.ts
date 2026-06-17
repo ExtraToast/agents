@@ -34,7 +34,7 @@ describe('workspaceService connect adapter', () => {
     post.mockReset()
   })
 
-  it('POSTs to the connect endpoint and returns the connect response', async () => {
+  it('sends a POST to the connect endpoint and returns the connect response', async () => {
     const connectResponse = {
       workspaceId: 'ws-1',
       setupId: 'setup-current',

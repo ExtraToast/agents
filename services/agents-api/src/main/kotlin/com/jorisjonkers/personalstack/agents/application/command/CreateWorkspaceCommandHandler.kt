@@ -73,6 +73,30 @@ class CreateWorkspaceCommandHandler(
         require(command.kind != WorkspaceKind.CHAT) {
             "CHAT workspaces are not persisted — use StartChatSessionCommand instead"
         }
+        warnDeprecatedGithubLink(command)
+        val resolved = resolveRepo(command)
+        if (command.kind == WorkspaceKind.REPO_BACKED && resolved.repoUrl != null) {
+            verifyOrFail(resolved.repoUrl, resolved.branch, resolved.repositoryId)
+        }
+        val setup = setupSelection.defaultSelectable()
+
+        val workspaceId =
+            tx.execute {
+                val workspace = persistInitial(command, resolved, setup)
+                seedRepositoryMembership(workspace, command)
+                workspace.id
+            }
+
+        val outcome = lifecycleService.boot(workspaceId, WorkspaceAgentKind.CLAUDE)
+        when (outcome) {
+            is BootOutcome.Ready ->
+                log.info("workspace {} runner boot succeeded", workspaceId)
+            is BootOutcome.Conflict ->
+                log.warn("workspace {} boot conflict: {}", workspaceId, outcome.reason)
+        }
+    }
+
+    private fun warnDeprecatedGithubLink(command: CreateWorkspaceCommand) {
         if (command.repositoryId != null && command.githubLinkId != null) {
             log.warn(
                 "CreateWorkspaceCommand received both repositoryId={} and (deprecated) githubLinkId={}; " +
@@ -85,26 +109,6 @@ class CreateWorkspaceCommandHandler(
                 "CreateWorkspaceCommand uses deprecated githubLinkId={}; migrate the caller to repositoryId",
                 command.githubLinkId,
             )
-        }
-        val resolved = resolveRepo(command)
-        if (command.kind == WorkspaceKind.REPO_BACKED && resolved.repoUrl != null) {
-            verifyOrFail(resolved.repoUrl, resolved.branch, resolved.repositoryId)
-        }
-        val setup = setupSelection.defaultSelectable()
-
-        val workspaceId =
-            tx.execute {
-                val workspace = persistInitial(command, resolved, setup)
-                seedRepositoryMembership(workspace, command)
-                workspace.id
-            }!!
-
-        val outcome = lifecycleService.boot(workspaceId, WorkspaceAgentKind.CLAUDE)
-        when (outcome) {
-            is BootOutcome.Ready ->
-                log.info("workspace {} runner boot succeeded", workspaceId)
-            is BootOutcome.Conflict ->
-                log.warn("workspace {} boot conflict: {}", workspaceId, outcome.reason)
         }
     }
 

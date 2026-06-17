@@ -86,7 +86,12 @@ class RunnerSessionBinder(
             )
         val saved = sessions.save(session)
         sessionStatus.publishStatus(saved)
-        return spawnAndBind(workspace, session, continuation = null, provisioning = RunnerProvisioningResult.AlreadyReady)
+        return spawnAndBind(
+            workspace,
+            session,
+            continuation = null,
+            provisioning = RunnerProvisioningResult.AlreadyReady,
+        )
     }
 
     @Suppress("LongMethod", "ReturnCount", "CyclomaticComplexMethod", "ComplexCondition")
@@ -306,6 +311,7 @@ class RunnerSessionBinder(
         )
     }
 
+    @Suppress("ReturnCount")
     private fun checkBindingReadiness(
         workspace: Workspace,
         target: RunnerSetupTarget,

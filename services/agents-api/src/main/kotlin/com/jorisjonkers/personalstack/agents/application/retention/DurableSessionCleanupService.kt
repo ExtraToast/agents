@@ -144,7 +144,11 @@ class DurableSessionCleanupService(
         return when (bootOutcome) {
             is WorkspaceRunnerLifecycleService.BootOutcome.Ready -> bootOutcome.workspace
             is WorkspaceRunnerLifecycleService.BootOutcome.Conflict -> {
-                log.warn("durable cleanup could not provision runner for {}: {}", workspace.id, bootOutcome.reason.label)
+                log.warn(
+                    "durable cleanup could not provision runner for {}: {}",
+                    workspace.id,
+                    bootOutcome.reason.label,
+                )
                 recordCleanup(OutcomeLabel.FAILURE, FailureReasonLabel.UPSTREAM_UNAVAILABLE)
                 null
             }
