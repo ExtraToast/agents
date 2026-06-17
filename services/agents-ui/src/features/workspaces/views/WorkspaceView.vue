@@ -80,7 +80,7 @@ function withActiveTerminal(action: (handle: TerminalHandle) => unknown): void {
 }
 
 function copyActiveSelection(): void {
-  withActiveTerminal(t => t.copySelection())
+  withActiveTerminal((t) => t.copySelection())
 }
 
 // Only sessions with a live PTY get a mounted terminal. A session
@@ -231,7 +231,7 @@ watch(
 // terminal column's width in the same tick the sidebar is added/removed, which
 // the terminal's own ResizeObserver can miss — so re-fit the visible terminal
 // explicitly whenever the console layout shifts.
-watch([showSidebar, isFullscreen], () => withActiveTerminal(t => t.refit()))
+watch([showSidebar, isFullscreen], () => withActiveTerminal((t) => t.refit()))
 
 onMounted(() => {
   statuses.useWorkspace(workspaceId.value)
