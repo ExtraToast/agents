@@ -15,6 +15,7 @@ import com.jorisjonkers.personalstack.agents.application.sessionstatus.SessionSt
 import com.jorisjonkers.personalstack.agents.application.setup.AgentSetupSelectionService
 import com.jorisjonkers.personalstack.agents.application.setup.AgentSetupValidationInput
 import com.jorisjonkers.personalstack.agents.application.setup.AgentSetupValidationService
+import com.jorisjonkers.personalstack.agents.application.workspacerunner.RunnerSetupTarget
 import com.jorisjonkers.personalstack.agents.domain.model.AgentSetupCatalogEntry
 import com.jorisjonkers.personalstack.agents.domain.model.AgentSetupId
 import com.jorisjonkers.personalstack.agents.domain.model.AgentSetupVersion
@@ -693,11 +694,6 @@ class RunnerSessionBinder(
     private data class RunnerReady(
         val workspace: Workspace,
         val provisioning: RunnerProvisioningResult,
-    )
-
-    private data class RunnerSetupTarget(
-        val entry: AgentSetupCatalogEntry,
-        val spec: RunnerSetupProvisioningSpec,
     )
 
     private class RunnerSetupOperationConflict : RuntimeException()
