@@ -37,17 +37,17 @@ class WorkspaceRunnerEventsBroadcaster(
     }
 
     override fun publish(snapshot: RunnerReadinessSnapshot) {
-        val state =
+        val readiness =
             when (snapshot.state) {
-                is RunnerReadinessState.Ready -> "READY"
-                is RunnerReadinessState.Booting -> "BOOTING"
-                is RunnerReadinessState.Unavailable -> "UNAVAILABLE"
+                is RunnerReadinessState.Ready -> "ready"
+                is RunnerReadinessState.Booting -> "booting"
+                is RunnerReadinessState.Unavailable -> "failed"
             }
         val event =
             RunnerReadinessEvent(
                 workspaceId = snapshot.workspaceId.toString(),
-                state = state,
-                checkedAt = snapshot.checkedAt.toString(),
+                readiness = readiness,
+                ts = snapshot.checkedAt.toString(),
             )
         val workspaceEmitters = emitters[snapshot.workspaceId] ?: return
         workspaceEmitters.forEach { emitter ->
@@ -84,7 +84,7 @@ class WorkspaceRunnerEventsBroadcaster(
 
     private companion object {
         private const val TIMEOUT_MILLIS = 0L
-        private const val READINESS_EVENT = "readiness"
+        private const val READINESS_EVENT = "runner-readiness"
         private const val KEEPALIVE_EVENT = "keepalive"
     }
 }
