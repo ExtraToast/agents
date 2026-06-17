@@ -21,23 +21,20 @@ class ExceptionAdviceWiringIntegrationTest : IntegrationTestBase() {
 
     @Test
     fun `prints exception-handling advice wiring`() {
-        val commonsHandler =
-            ctx.getBeanNamesForType(
-                Class.forName("com.jorisjonkers.personalstack.common.web.GlobalExceptionHandler"),
-            ).toList()
+        val commonsType = Class.forName("com.jorisjonkers.personalstack.common.web.GlobalExceptionHandler")
+        val commonsHandler = ctx.getBeanNamesForType(commonsType).toList()
 
-        val controllerAdvices =
-            (
-                ctx.getBeanNamesForAnnotation(RestControllerAdvice::class.java).toList() +
-                    ctx.getBeanNamesForAnnotation(ControllerAdvice::class.java).toList()
-            ).distinct()
-                .map { name -> name to ctx.getBean(name).javaClass.name }
+        val restAdviceNames = ctx.getBeanNamesForAnnotation(RestControllerAdvice::class.java).toList()
+        val adviceNames = ctx.getBeanNamesForAnnotation(ControllerAdvice::class.java).toList()
+        val allAdviceNames = (restAdviceNames + adviceNames).distinct()
+        val controllerAdvices = allAdviceNames.map { name -> name to ctx.getBean(name).javaClass.name }
 
+        val allBeanNames = ctx.beanDefinitionNames.toList()
         val problemDetailsRelated =
-            ctx.beanDefinitionNames.toList().filter {
-                it.contains("problemDetails", ignoreCase = true) ||
-                    it.contains("responseEntityExceptionHandler", ignoreCase = true) ||
-                    it.contains("errorAttributes", ignoreCase = true)
+            allBeanNames.filter { name ->
+                name.contains("problemDetails", ignoreCase = true) ||
+                    name.contains("responseEntityExceptionHandler", ignoreCase = true) ||
+                    name.contains("errorAttributes", ignoreCase = true)
             }
 
         val problemDetailsEnabled =
