@@ -5,7 +5,7 @@ import { computed, ref } from 'vue'
 import { openSessionStatusStream } from '../services/sessionStatusStream'
 import { useWorkspacesStore } from './workspaces'
 
-export type SessionStatusConnectionState = 'idle' | 'connecting' | 'open' | 'error'
+export type SessionStatusConnectionState = 'idle' | 'connecting' | 'open' | 'reconnecting' | 'error'
 
 export interface SessionStatusOverlay {
   status: AgentSession['status']
@@ -151,7 +151,7 @@ export const useSessionStatusesStore = defineStore('sessionStatuses', () => {
   async function refreshActiveWorkspaceSnapshot(): Promise<void> {
     const id = workspaceId.value ?? workspaces.activeWorkspace?.id
     if (!id) return
-    await workspaces.open(id)
+    await workspaces.open(id, { connectRunner: false })
     syncRestSessions()
   }
 
@@ -171,6 +171,10 @@ export const useSessionStatusesStore = defineStore('sessionStatuses', () => {
         connectionState.value = 'open'
         connectionError.value = null
         refreshOnConnect()
+      },
+      onReconnecting() {
+        connectionState.value = 'reconnecting'
+        connectionError.value = null
       },
       onError() {
         connectionState.value = 'error'
