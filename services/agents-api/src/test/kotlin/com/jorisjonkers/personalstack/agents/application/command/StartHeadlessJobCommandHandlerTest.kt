@@ -89,7 +89,9 @@ class StartHeadlessJobCommandHandlerTest {
                 "/workspace/private",
             )
         }
-        verify(exactly = 1) { runnerLifecycle.boot(any(), any(), any(), any()) }
+        verify(exactly = 1) {
+            runnerLifecycle.boot(ws.id, WorkspaceAgentKind.CLAUDE, AgentSetupId("gpu"), AgentSetupVersion(2))
+        }
     }
 
     @Test

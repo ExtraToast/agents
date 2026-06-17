@@ -63,8 +63,8 @@ class WorkspaceRunnerLifecycleServiceTest {
             runnerSetupGeneration = 3,
         )
 
-    private val target = RunnerSetupTarget(entry = mockCatalogEntry(), spec = mockSpec())
     private val identity = RunnerState.Identity(setupId, setupVersion, "abc123", 3L)
+    private val target = RunnerSetupTarget(entry = mockCatalogEntry(), spec = mockSpec())
 
     @Test
     fun `returns Ready-AlreadyReady when runner is already ready`() {

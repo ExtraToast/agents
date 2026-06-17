@@ -193,7 +193,7 @@ class DurableSessionCleanupServiceTest {
 
         assertThat(result.cleaned).isEqualTo(0)
         assertThat(result.failed).isEqualTo(1)
-        verify(exactly = 0) { runnerLifecycle.boot(any(), any(), any(), any()) }
+        verify(exactly = 0) { runnerLifecycle.boot(any(), any()) }
         verify(exactly = 0) { gateway.cleanupStableSession(any(), any()) }
         assertThat(telemetry.operations.map { it.outcome }).contains(OutcomeLabel.SKIPPED)
         assertThat(telemetry.operations.map { it.reason }).contains(FailureReasonLabel.CANCELLED)
