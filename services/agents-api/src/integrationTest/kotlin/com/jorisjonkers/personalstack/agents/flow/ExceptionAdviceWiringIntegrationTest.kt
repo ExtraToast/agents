@@ -43,12 +43,16 @@ class ExceptionAdviceWiringIntegrationTest : IntegrationTestBase() {
         val problemDetailsEnabled =
             ctx.environment.getProperty("spring.mvc.problemdetails.enabled")
 
-        println("=== ADVICE-WIRING-DIAGNOSTIC START ===")
-        println("commons GlobalExceptionHandler bean names: $commonsHandler")
-        println("spring.mvc.problemdetails.enabled = $problemDetailsEnabled")
-        println("@ControllerAdvice beans (name -> class):")
-        controllerAdvices.forEach { (name, cls) -> println("  - $name -> $cls") }
-        println("problem-details / error beans: $problemDetailsRelated")
-        println("=== ADVICE-WIRING-DIAGNOSTIC END ===")
+        val report =
+            buildString {
+                appendLine("ADVICE-WIRING:")
+                appendLine("commonsGlobalExceptionHandlerBeans=$commonsHandler")
+                appendLine("problemdetails.enabled=$problemDetailsEnabled")
+                appendLine("controllerAdvices=" + controllerAdvices.joinToString("; ") { "${it.first}->${it.second}" })
+                appendLine("problemDetailBeans=$problemDetailsRelated")
+            }
+        // Intentionally fail so the wiring report surfaces in the CI job log
+        // (test stdout is not echoed to the gradle console). Removed once diagnosed.
+        throw AssertionError(report)
     }
 }
