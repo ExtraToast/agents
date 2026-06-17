@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '@/lib/vueWebCommons'
 import {
   agentSetupValidationProblemFromError,
+  connectWorkspace,
   getSessionSetup,
   listSessionSetupTransitions,
   listSetupOptions,
@@ -27,6 +28,44 @@ function validationProblem() {
     errors: [{ field: 'TARGET_NOT_SELECTABLE', message: 'TARGET_NOT_SELECTABLE', rejectedValue: null }],
   }
 }
+
+describe('workspaceService connect adapter', () => {
+  beforeEach(() => {
+    post.mockReset()
+  })
+
+  it('POSTs to the connect endpoint and returns the connect response', async () => {
+    const connectResponse = {
+      workspaceId: 'ws-1',
+      setupId: 'setup-current',
+      setupVersion: 1,
+      state: 'READY',
+      reason: null,
+      checkedAt: '2026-06-17T08:00:00Z',
+    }
+    post.mockResolvedValueOnce(connectResponse)
+
+    const result = await connectWorkspace('ws-1')
+
+    expect(post).toHaveBeenCalledWith('/workspaces/ws-1/connect', {})
+    expect(result).toEqual(connectResponse)
+  })
+
+  it('returns a booting state when the runner is not yet ready', async () => {
+    post.mockResolvedValueOnce({
+      workspaceId: 'ws-1',
+      setupId: 'setup-current',
+      setupVersion: 1,
+      state: 'STARTING',
+      reason: null,
+      checkedAt: '2026-06-17T08:00:00Z',
+    })
+
+    const result = await connectWorkspace('ws-1')
+
+    expect(result.state).toBe('STARTING')
+  })
+})
 
 describe('workspaceService setup adapters', () => {
   beforeEach(() => {

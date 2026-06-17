@@ -5,6 +5,7 @@ import { ApiError } from '@/lib/vueWebCommons'
 import {
   agentSetupValidationProblemFromError,
   attachRepository,
+  connectWorkspace,
   createWorkspace,
   destroyWorkspace,
   detachRepository,
@@ -22,6 +23,7 @@ import { useWorkspacesStore } from '../stores/workspaces'
 vi.mock('../services/workspaceService', () => ({
   listWorkspaces: vi.fn(),
   getWorkspace: vi.fn(),
+  connectWorkspace: vi.fn(),
   createWorkspace: vi.fn(),
   destroyWorkspace: vi.fn(),
   attachRepository: vi.fn(),
@@ -39,6 +41,7 @@ vi.mock('../services/workspaceService', () => ({
 const mocked = {
   listWorkspaces: vi.mocked(listWorkspaces),
   getWorkspace: vi.mocked(getWorkspace),
+  connectWorkspace: vi.mocked(connectWorkspace),
   createWorkspace: vi.mocked(createWorkspace),
   destroyWorkspace: vi.mocked(destroyWorkspace),
   attachRepository: vi.mocked(attachRepository),
@@ -145,6 +148,14 @@ describe('useWorkspacesStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     Object.values(mocked).forEach((m) => m.mockReset())
+    mocked.connectWorkspace.mockResolvedValue({
+      workspaceId: fakeWorkspace().id,
+      setupId: 'setup-current',
+      setupVersion: 1,
+      state: 'READY',
+      reason: null,
+      checkedAt: '2026-06-17T08:00:00Z',
+    })
     mocked.agentSetupValidationProblemFromError.mockImplementation((err) => {
       // eslint-disable-next-line ts/consistent-type-assertions -- narrow the commons ProblemDetail to the 422 subtype the helper guarantees
       if (err instanceof ApiError && err.status === 422) return err.problem as AgentSetupValidationProblem
@@ -546,5 +557,150 @@ describe('useWorkspacesStore', () => {
     expect(store.activeSessionId).toBe('sess-2')
     expect(store.restartStateFor('sess-1')).toBe('failed')
     expect(mocked.getWorkspace).not.toHaveBeenCalled()
+  })
+
+  it('open calls connectWorkspace and sets runnerReadiness to ready when state is READY', async () => {
+    mocked.getWorkspace.mockResolvedValue({ workspace: fakeWorkspace(), sessions: [] })
+    mocked.connectWorkspace.mockResolvedValue({
+      workspaceId: fakeWorkspace().id,
+      setupId: 'setup-current',
+      setupVersion: 1,
+      state: 'READY',
+      reason: null,
+      checkedAt: '2026-06-17T08:00:00Z',
+    })
+    const store = useWorkspacesStore()
+
+    await store.open(fakeWorkspace().id)
+
+    expect(mocked.connectWorkspace).toHaveBeenCalledWith(fakeWorkspace().id)
+    expect(store.runnerReadiness).toBe('ready')
+  })
+
+  it('open sets runnerReadiness to booting when connect state is not READY', async () => {
+    mocked.getWorkspace.mockResolvedValue({ workspace: fakeWorkspace(), sessions: [] })
+    mocked.connectWorkspace.mockResolvedValue({
+      workspaceId: fakeWorkspace().id,
+      setupId: 'setup-current',
+      setupVersion: 1,
+      state: 'STARTING',
+      reason: null,
+      checkedAt: '2026-06-17T08:00:00Z',
+    })
+    const store = useWorkspacesStore()
+
+    await store.open(fakeWorkspace().id)
+
+    expect(store.runnerReadiness).toBe('booting')
+  })
+
+  it('open sets runnerReadiness to failed when connectWorkspace throws', async () => {
+    mocked.getWorkspace.mockResolvedValue({ workspace: fakeWorkspace(), sessions: [] })
+    mocked.connectWorkspace.mockRejectedValue(apiError(503))
+    const store = useWorkspacesStore()
+
+    await store.open(fakeWorkspace().id)
+
+    expect(store.runnerReadiness).toBe('failed')
+    expect(mocked.getWorkspace).toHaveBeenCalledWith(fakeWorkspace().id)
+  })
+
+  it('open skips connectWorkspace when connectRunner is false', async () => {
+    mocked.getWorkspace.mockResolvedValue({ workspace: fakeWorkspace(), sessions: [] })
+    const store = useWorkspacesStore()
+
+    await store.open(fakeWorkspace().id, { connectRunner: false })
+
+    expect(mocked.connectWorkspace).not.toHaveBeenCalled()
+  })
+
+  it('open does not auto-spawn a session when no sessions exist', async () => {
+    mocked.getWorkspace.mockResolvedValue({ workspace: fakeWorkspace(), sessions: [] })
+    const store = useWorkspacesStore()
+
+    await store.open(fakeWorkspace().id)
+
+    expect(mocked.startSession).not.toHaveBeenCalled()
+    expect(store.sessions).toHaveLength(0)
+  })
+
+  it('newSession de-dups concurrent start calls for the same workspace and kind', async () => {
+    let resolveStart: (value: { sessionId: string }) => void = () => {}
+    mocked.startSession.mockImplementationOnce(
+      () => new Promise((resolve) => { resolveStart = resolve }),
+    )
+    mocked.getWorkspace.mockResolvedValue({
+      workspace: fakeWorkspace(),
+      sessions: [fakeSession({ id: 'sess-new' })],
+    })
+    const store = useWorkspacesStore()
+    store.activeWorkspace = fakeWorkspace()
+
+    const first = store.newSession('CLAUDE')
+    const second = store.newSession('CLAUDE')
+
+    resolveStart({ sessionId: 'sess-new' })
+    const [id1, id2] = await Promise.all([first, second])
+
+    expect(mocked.startSession).toHaveBeenCalledTimes(1)
+    expect(id1).toBe('sess-new')
+    expect(id2).toBe('sess-new')
+  })
+
+  it('newSession allows a new start after the previous one resolves', async () => {
+    mocked.startSession
+      .mockResolvedValueOnce({ sessionId: 'sess-1' })
+      .mockResolvedValueOnce({ sessionId: 'sess-2' })
+    mocked.getWorkspace.mockResolvedValue({ workspace: fakeWorkspace(), sessions: [] })
+    const store = useWorkspacesStore()
+    store.activeWorkspace = fakeWorkspace()
+
+    await store.newSession('CLAUDE')
+    await store.newSession('CLAUDE')
+
+    expect(mocked.startSession).toHaveBeenCalledTimes(2)
+  })
+
+  it('newSession refreshes snapshot without connectWorkspace on non-retryable 503', async () => {
+    mocked.startSession.mockRejectedValue(apiError(503))
+    mocked.getWorkspace.mockResolvedValue({ workspace: fakeWorkspace(), sessions: [] })
+    const store = useWorkspacesStore()
+    store.activeWorkspace = fakeWorkspace()
+
+    await expect(store.newSession('CLAUDE')).rejects.toBeDefined()
+
+    expect(mocked.getWorkspace).toHaveBeenCalledWith(fakeWorkspace().id)
+    // The snapshot refresh must not re-trigger a connect
+    const connectCallCount = mocked.connectWorkspace.mock.calls.length
+    expect(connectCallCount).toBe(0)
+  })
+
+  it('internal refreshes from endSession do not call connectWorkspace', async () => {
+    mocked.getWorkspace
+      .mockResolvedValueOnce({ workspace: fakeWorkspace(), sessions: [fakeSession()] })
+      .mockResolvedValueOnce({ workspace: fakeWorkspace(), sessions: [] })
+    const store = useWorkspacesStore()
+    store.activeWorkspace = fakeWorkspace()
+    store.sessions = [fakeSession()]
+    store.activeSessionId = 'sess-1'
+
+    await store.endSession('sess-1')
+
+    // open() from navigation would call connectWorkspace; the internal refresh must not
+    expect(mocked.connectWorkspace).not.toHaveBeenCalled()
+  })
+
+  it('internal refreshes from attachRepository do not call connectWorkspace', async () => {
+    mocked.attachRepository.mockResolvedValue()
+    mocked.getWorkspace.mockResolvedValue({
+      workspace: { ...fakeWorkspace(), repositories: [{ id: 'repo-a', name: 'r', repoUrl: 'u', defaultBranch: 'main', vaultKeyPath: 'v', createdAt: '2026-05-20T10:00:00Z', updatedAt: '2026-05-20T10:00:00Z', isPrimary: false, attachedAt: '2026-05-20T10:00:00Z', deployKeyFingerprint: null, deployKeyAddedAt: null }] },
+      sessions: [],
+    })
+    const store = useWorkspacesStore()
+    store.activeWorkspace = { ...fakeWorkspace(), repositories: [] }
+
+    await store.attachRepository('repo-a')
+
+    expect(mocked.connectWorkspace).not.toHaveBeenCalled()
   })
 })
