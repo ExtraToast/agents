@@ -55,26 +55,32 @@ const consoleSurface = ref<HTMLElement | null>(null)
 const restartConfirmPanel = ref<HTMLElement | null>(null)
 // Copy moved off the terminal chrome into the controls rail: keep a handle on
 // each mounted terminal so the rail's Copy button can drive the active one.
-const terminalRefs = new Map<string, { copySelection: () => Promise<boolean> }>()
+const terminalRefs = new Map<string, TerminalHandle>()
 let loadSeq = 0
 let setupOptionsSeq = 0
 
-interface TerminalHandle { copySelection: () => Promise<boolean> }
+interface TerminalHandle { copySelection: () => Promise<boolean>; refit: () => Promise<void> }
 
 function setTerminalRef(id: string, instance: unknown): void {
-  // Component refs arrive untyped; narrow to the exposed copy action.
+  // Component refs arrive untyped; narrow to the exposed actions.
   // eslint-disable-next-line ts/consistent-type-assertions
   const handle = instance as Partial<TerminalHandle> | null
-  if (handle && typeof handle.copySelection === 'function') {
-    terminalRefs.set(id, { copySelection: handle.copySelection })
+  if (handle && typeof handle.copySelection === 'function' && typeof handle.refit === 'function') {
+    terminalRefs.set(id, { copySelection: handle.copySelection, refit: handle.refit })
     return
   }
   terminalRefs.delete(id)
 }
 
-function copyActiveSelection(): void {
+// Drive an exposed action on the currently visible terminal, if any.
+function withActiveTerminal(action: (handle: TerminalHandle) => unknown): void {
   const id = store.activeSessionId
-  if (id) void terminalRefs.get(id)?.copySelection()
+  const handle = id ? terminalRefs.get(id) : undefined
+  if (handle) void action(handle)
+}
+
+function copyActiveSelection(): void {
+  withActiveTerminal((t) => t.copySelection())
 }
 
 // Only sessions with a live PTY get a mounted terminal. A session
@@ -220,6 +226,12 @@ watch(
   },
   { immediate: true },
 )
+
+// Folding the controls sidebar in/out (and toggling full screen) changes the
+// terminal column's width in the same tick the sidebar is added/removed, which
+// the terminal's own ResizeObserver can miss — so re-fit the visible terminal
+// explicitly whenever the console layout shifts.
+watch([showSidebar, isFullscreen], () => withActiveTerminal((t) => t.refit()))
 
 onMounted(() => {
   statuses.useWorkspace(workspaceId.value)
