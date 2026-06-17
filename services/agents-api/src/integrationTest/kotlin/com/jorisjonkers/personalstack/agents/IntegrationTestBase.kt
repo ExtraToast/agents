@@ -1,9 +1,14 @@
 package com.jorisjonkers.personalstack.agents
 
+import com.jorisjonkers.personalstack.common.identity.CurrentPrincipalArgumentResolver
 import org.junit.jupiter.api.Tag
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.test.context.TestConfiguration
+import org.springframework.context.annotation.Import
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
+import org.springframework.web.method.support.HandlerMethodArgumentResolver
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.postgresql.PostgreSQLContainer
@@ -11,6 +16,7 @@ import org.testcontainers.rabbitmq.RabbitMQContainer
 
 @Tag("integration")
 @SpringBootTest
+@Import(IntegrationTestPrincipalConfig::class)
 @Testcontainers
 abstract class IntegrationTestBase {
     companion object {
@@ -45,6 +51,14 @@ abstract class IntegrationTestBase {
             registry.add("spring.data.redis.port") { valkey.getMappedPort(6379).toString() }
             registry.add("spring.rabbitmq.host") { rabbitmq.host }
             registry.add("spring.rabbitmq.port") { rabbitmq.amqpPort.toString() }
+            registry.add("extratoast.identity.enabled") { "false" }
         }
+    }
+}
+
+@TestConfiguration
+class IntegrationTestPrincipalConfig : WebMvcConfigurer {
+    override fun addArgumentResolvers(resolvers: MutableList<HandlerMethodArgumentResolver>) {
+        resolvers.add(CurrentPrincipalArgumentResolver())
     }
 }

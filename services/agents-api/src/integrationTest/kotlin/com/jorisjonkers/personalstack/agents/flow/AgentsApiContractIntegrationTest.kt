@@ -2,6 +2,8 @@ package com.jorisjonkers.personalstack.agents.flow
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.jorisjonkers.personalstack.agents.IntegrationTestBase
+import com.jorisjonkers.personalstack.common.identity.CredentialSource
+import com.jorisjonkers.personalstack.common.identity.ForwardAuthPrincipal
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -29,6 +31,14 @@ class AgentsApiContractIntegrationTest : IntegrationTestBase() {
         mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build()
     }
 
+    private fun principal(userId: UUID): ForwardAuthPrincipal =
+        ForwardAuthPrincipal(
+            userId = userId,
+            roles = emptySet(),
+            username = null,
+            credentialSource = CredentialSource.EDGE_ASSERTION,
+        )
+
     @Test
     fun `OpenAPI spec endpoint returns valid JSON`() {
         mockMvc
@@ -42,12 +52,12 @@ class AgentsApiContractIntegrationTest : IntegrationTestBase() {
 
     @Test
     fun `conversation creation response matches expected schema`() {
-        val userId = UUID.randomUUID().toString()
+        val userId = UUID.randomUUID()
 
         mockMvc
             .perform(
                 post("/api/v1/conversations")
-                    .header("X-User-Id", userId)
+                    .requestAttr(ForwardAuthPrincipal::class.java.name, principal(userId))
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(mapOf("title" to "Contract Test Chat"))),
             ).andExpect(status().isCreated)
@@ -62,13 +72,13 @@ class AgentsApiContractIntegrationTest : IntegrationTestBase() {
 
     @Test
     fun `message response matches expected schema`() {
-        val userId = UUID.randomUUID().toString()
+        val userId = UUID.randomUUID()
 
         val convResult =
             mockMvc
                 .perform(
                     post("/api/v1/conversations")
-                        .header("X-User-Id", userId)
+                        .requestAttr(ForwardAuthPrincipal::class.java.name, principal(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(mapOf("title" to "Message Schema Test"))),
                 ).andExpect(status().isCreated)
@@ -79,7 +89,7 @@ class AgentsApiContractIntegrationTest : IntegrationTestBase() {
         mockMvc
             .perform(
                 post("/api/v1/conversations/$conversationId/messages")
-                    .header("X-User-Id", userId)
+                    .requestAttr(ForwardAuthPrincipal::class.java.name, principal(userId))
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(mapOf("content" to "Schema check"))),
             ).andExpect(status().isCreated)
@@ -259,31 +269,34 @@ class AgentsApiContractIntegrationTest : IntegrationTestBase() {
 
     @Test
     fun `chat session creation response matches expected schema`() {
-        val userId = UUID.randomUUID().toString()
+        val userId = UUID.randomUUID()
         mockMvc
             .perform(
                 post("/api/v1/chat-sessions")
-                    .header("X-User-Id", userId)
+                    .requestAttr(ForwardAuthPrincipal::class.java.name, principal(userId))
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(mapOf("title" to "Demo chat"))),
             ).andExpect(status().isCreated)
             .andExpect(jsonPath("$.id").exists())
-            .andExpect(jsonPath("$.userId").value(userId))
+            .andExpect(jsonPath("$.userId").value(userId.toString()))
             .andExpect(jsonPath("$.title").value("Demo chat"))
             .andExpect(jsonPath("$.status").value("ACTIVE"))
     }
 
     @Test
     fun `chat session list endpoint returns array for user`() {
-        val userId = UUID.randomUUID().toString()
+        val userId = UUID.randomUUID()
         mockMvc.perform(
             post("/api/v1/chat-sessions")
-                .header("X-User-Id", userId)
+                .requestAttr(ForwardAuthPrincipal::class.java.name, principal(userId))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(mapOf("title" to "List me"))),
         )
         mockMvc
-            .perform(get("/api/v1/chat-sessions").header("X-User-Id", userId))
+            .perform(
+                get("/api/v1/chat-sessions")
+                    .requestAttr(ForwardAuthPrincipal::class.java.name, principal(userId)),
+            )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$").isArray)
             .andExpect(jsonPath("$[0].id").exists())
@@ -292,12 +305,12 @@ class AgentsApiContractIntegrationTest : IntegrationTestBase() {
 
     @Test
     fun `appending a chat message returns the message envelope and surfaces in detail`() {
-        val userId = UUID.randomUUID().toString()
+        val userId = UUID.randomUUID()
         val createResult =
             mockMvc
                 .perform(
                     post("/api/v1/chat-sessions")
-                        .header("X-User-Id", userId)
+                        .requestAttr(ForwardAuthPrincipal::class.java.name, principal(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(mapOf("title" to "msg-test"))),
                 ).andExpect(status().isCreated)
@@ -327,18 +340,21 @@ class AgentsApiContractIntegrationTest : IntegrationTestBase() {
 
     @Test
     fun `conversation list response is valid JSON array`() {
-        val userId = UUID.randomUUID().toString()
+        val userId = UUID.randomUUID()
 
         // Create a conversation so the list is non-empty
         mockMvc.perform(
             post("/api/v1/conversations")
-                .header("X-User-Id", userId)
+                .requestAttr(ForwardAuthPrincipal::class.java.name, principal(userId))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(mapOf("title" to "List Test Chat"))),
         )
 
         mockMvc
-            .perform(get("/api/v1/conversations").header("X-User-Id", userId))
+            .perform(
+                get("/api/v1/conversations")
+                    .requestAttr(ForwardAuthPrincipal::class.java.name, principal(userId)),
+            )
             .andExpect(status().isOk)
             .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$").isArray)
