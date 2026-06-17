@@ -296,8 +296,7 @@ class AgentsApiContractIntegrationTest : IntegrationTestBase() {
             .perform(
                 get("/api/v1/chat-sessions")
                     .requestAttr(ForwardAuthPrincipal::class.java.name, principal(userId)),
-            )
-            .andExpect(status().isOk)
+            ).andExpect(status().isOk)
             .andExpect(jsonPath("$").isArray)
             .andExpect(jsonPath("$[0].id").exists())
             .andExpect(jsonPath("$[0].status").exists())
@@ -354,8 +353,7 @@ class AgentsApiContractIntegrationTest : IntegrationTestBase() {
             .perform(
                 get("/api/v1/conversations")
                     .requestAttr(ForwardAuthPrincipal::class.java.name, principal(userId)),
-            )
-            .andExpect(status().isOk)
+            ).andExpect(status().isOk)
             .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$").isArray)
             .andExpect(jsonPath("$[0].id").exists())

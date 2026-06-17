@@ -60,8 +60,7 @@ class ConversationFlowIntegrationTest : IntegrationTestBase() {
             .perform(
                 get("/api/v1/conversations/$id")
                     .requestAttr(ForwardAuthPrincipal::class.java.name, principal(userId)),
-            )
-            .andExpect(status().isOk)
+            ).andExpect(status().isOk)
             .andExpect(jsonPath("$.title").value("Integration Chat"))
     }
 
@@ -88,8 +87,7 @@ class ConversationFlowIntegrationTest : IntegrationTestBase() {
             .perform(
                 get("/api/v1/conversations")
                     .requestAttr(ForwardAuthPrincipal::class.java.name, principal(userId1)),
-            )
-            .andExpect(status().isOk)
+            ).andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(1))
             .andExpect(jsonPath("$[0].title").value("User1 Chat"))
     }
@@ -113,8 +111,7 @@ class ConversationFlowIntegrationTest : IntegrationTestBase() {
             .perform(
                 delete("/api/v1/conversations/$id")
                     .requestAttr(ForwardAuthPrincipal::class.java.name, principal(userId)),
-            )
-            .andExpect(status().isNoContent)
+            ).andExpect(status().isNoContent)
     }
 
     @Test
@@ -126,8 +123,7 @@ class ConversationFlowIntegrationTest : IntegrationTestBase() {
             .perform(
                 delete("/api/v1/conversations/$nonExistentId")
                     .requestAttr(ForwardAuthPrincipal::class.java.name, principal(userId)),
-            )
-            .andExpect(status().isNotFound)
+            ).andExpect(status().isNotFound)
     }
 
     @Test
@@ -139,8 +135,7 @@ class ConversationFlowIntegrationTest : IntegrationTestBase() {
             .perform(
                 get("/api/v1/conversations/$nonExistentId")
                     .requestAttr(ForwardAuthPrincipal::class.java.name, principal(userId)),
-            )
-            .andExpect(status().isNotFound)
+            ).andExpect(status().isNotFound)
     }
 
     @Test
