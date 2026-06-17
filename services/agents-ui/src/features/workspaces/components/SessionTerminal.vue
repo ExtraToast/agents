@@ -138,10 +138,19 @@ async function copySelection(refocus = true): Promise<boolean> {
   }
 }
 
+// Force a re-fit when the parent changes the surrounding layout (see the
+// caller in WorkspaceView). Wait for Vue's DOM flush, then a frame for the
+// browser to lay out the new size, before measuring.
+async function refit(): Promise<void> {
+  await nextTick()
+  requestAnimationFrame(fitAndReportSize)
+}
+
 // The explicit Copy control now lives in the workspace controls rail rather
 // than on the terminal chrome; expose the action so the parent can drive the
-// active terminal's selection copy.
-defineExpose({ copySelection })
+// active terminal's selection copy. `refit` lets the parent re-fit this
+// terminal when it changes the console layout.
+defineExpose({ copySelection, refit })
 
 function sendTerminalKey(key: string): void {
   socket?.sendKey(key)
