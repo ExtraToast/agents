@@ -2,7 +2,6 @@ package com.jorisjonkers.personalstack.agents.application.sessionbinding
 
 import com.jorisjonkers.personalstack.agents.application.exception.AgentRunnerUnavailableException
 import com.jorisjonkers.personalstack.agents.application.exception.AgentSetupValidationException
-import com.jorisjonkers.personalstack.agents.application.workspacerunner.RunnerUnavailableReason
 import com.jorisjonkers.personalstack.agents.application.observability.AgentsApiTelemetry
 import com.jorisjonkers.personalstack.agents.application.observability.FailureReasonLabel
 import com.jorisjonkers.personalstack.agents.application.observability.OperationLabel
@@ -12,6 +11,7 @@ import com.jorisjonkers.personalstack.agents.application.observability.RunnerRep
 import com.jorisjonkers.personalstack.agents.application.sessionstatus.SessionStatusPublisher
 import com.jorisjonkers.personalstack.agents.application.setup.AgentSetupSelectionService
 import com.jorisjonkers.personalstack.agents.application.setup.AgentSetupValidationService
+import com.jorisjonkers.personalstack.agents.application.workspacerunner.RunnerUnavailableReason
 import com.jorisjonkers.personalstack.agents.domain.model.AgentSetupAvailability
 import com.jorisjonkers.personalstack.agents.domain.model.AgentSetupCatalogEntry
 import com.jorisjonkers.personalstack.agents.domain.model.AgentSetupDefinition

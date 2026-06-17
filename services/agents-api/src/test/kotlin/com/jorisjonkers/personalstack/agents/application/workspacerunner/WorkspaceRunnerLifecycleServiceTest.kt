@@ -207,11 +207,12 @@ class WorkspaceRunnerLifecycleServiceTest {
     @Test
     fun `readinessSnapshot returns Booting state when lease is held`() {
         val leaseId = UUID.randomUUID()
-        val booting = workspace.copy(
-            runnerBootLeaseId = leaseId,
-            runnerBootAttempt = 2,
-            runnerBootStartedAt = now.minusSeconds(30),
-        )
+        val booting =
+            workspace.copy(
+                runnerBootLeaseId = leaseId,
+                runnerBootAttempt = 2,
+                runnerBootStartedAt = now.minusSeconds(30),
+            )
 
         val snapshot = service.readinessSnapshot(booting)
 

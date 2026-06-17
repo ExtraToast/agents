@@ -265,7 +265,13 @@ async function focusConsoleSurface(): Promise<void> {
 }
 
 async function onSpawn(): Promise<void> {
-  await store.newSession(pickerKind.value)
+  // newSession surfaces failure through store state (runner readiness / error);
+  // swallow here so a non-retryable 503 does not bubble as an unhandled rejection.
+  try {
+    await store.newSession(pickerKind.value)
+  } catch {
+    /* handled via store state */
+  }
   statuses.syncRestSessions()
   await focusConsoleSurface()
 }
