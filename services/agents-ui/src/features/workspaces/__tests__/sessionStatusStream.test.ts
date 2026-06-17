@@ -32,8 +32,15 @@ class MockEventSource {
     this.onopen?.()
   }
 
+  /** Simulates a transient connection drop — browser sets readyState back to CONNECTING and will retry. */
   error(): void {
     this.readyState = 0
+    this.onerror?.()
+  }
+
+  /** Simulates a permanent failure — browser has given up and sets readyState to CLOSED. */
+  permanentError(): void {
+    this.readyState = 2
     this.onerror?.()
   }
 
@@ -69,16 +76,45 @@ describe('sessionStatusStream', () => {
     expect(latest().init).toEqual({ withCredentials: true })
   })
 
-  it('reports open and error transitions from EventSource', () => {
+  it('calls onOpen when connection is established', () => {
     const open = vi.fn()
-    const error = vi.fn()
-    stream = openSessionStatusStream({ onOpen: open, onError: error })
+    stream = openSessionStatusStream({ onOpen: open })
 
     latest().open()
-    latest().error()
 
     expect(open).toHaveBeenCalledTimes(1)
+  })
+
+  it('calls onReconnecting on transient onerror when readyState is CONNECTING', () => {
+    const reconnecting = vi.fn()
+    const error = vi.fn()
+    stream = openSessionStatusStream({ onReconnecting: reconnecting, onError: error })
+
+    latest().error() // readyState = 0 (CONNECTING) — native reconnect pending
+
+    expect(reconnecting).toHaveBeenCalledTimes(1)
+    expect(error).not.toHaveBeenCalled()
+  })
+
+  it('calls onError on permanent disconnect when readyState is CLOSED', () => {
+    const reconnecting = vi.fn()
+    const error = vi.fn()
+    stream = openSessionStatusStream({ onReconnecting: reconnecting, onError: error })
+
+    latest().permanentError() // readyState = 2 (CLOSED) — browser gave up
+
     expect(error).toHaveBeenCalledTimes(1)
+    expect(reconnecting).not.toHaveBeenCalled()
+  })
+
+  it('processes keepalive event immediately without waiting for onopen', () => {
+    const keepalive = vi.fn()
+    stream = openSessionStatusStream({ onKeepalive: keepalive })
+
+    // Emit before open() fires — server may send keepalive as first frame.
+    latest().emit('keepalive', JSON.stringify({ ts: '2026-06-12T12:00:00Z' }))
+
+    expect(keepalive).toHaveBeenCalledWith({ ts: '2026-06-12T12:00:00Z' })
   })
 
   it('parses named status, remove, and keepalive events', () => {

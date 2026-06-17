@@ -94,7 +94,7 @@ describe('useSessionStatusesStore', () => {
     vi.unstubAllGlobals()
   })
 
-  it('refreshes the active workspace snapshot on connect and reconnect', async () => {
+  it('refreshes the active workspace snapshot on connect and reconnect without triggering a runner connect', async () => {
     const workspaces = useWorkspacesStore()
     workspaces.activeWorkspace = fakeWorkspace()
     const open = vi.spyOn(workspaces, 'open').mockResolvedValue()
@@ -103,24 +103,61 @@ describe('useSessionStatusesStore', () => {
     statuses.connect()
     latest().open()
     await statuses.waitForRefresh()
-    latest().error()
+    latest().error() // transient — readyState = 0 (CONNECTING)
     latest().open()
     await statuses.waitForRefresh()
 
     expect(open).toHaveBeenCalledTimes(2)
-    expect(open).toHaveBeenCalledWith('ws-1')
+    expect(open).toHaveBeenCalledWith('ws-1', { connectRunner: false })
     expect(statuses.connectionState).toBe('open')
     expect(statuses.connectionError).toBeNull()
   })
 
-  it('tracks error state while EventSource is reconnecting', () => {
+  it('sets reconnecting state while EventSource is auto-retrying after onerror', () => {
     const statuses = useSessionStatusesStore()
     statuses.connect()
 
-    latest().error()
+    latest().error() // readyState = 0 (CONNECTING) — native reconnect
 
-    expect(statuses.connectionState).toBe('error')
-    expect(statuses.connectionError).toBe('Session status stream disconnected')
+    expect(statuses.connectionState).toBe('reconnecting')
+    expect(statuses.connectionError).toBeNull()
+  })
+
+  it('recovers to open state after reconnect completes', async () => {
+    const workspaces = useWorkspacesStore()
+    workspaces.activeWorkspace = fakeWorkspace()
+    vi.spyOn(workspaces, 'open').mockResolvedValue()
+    const statuses = useSessionStatusesStore()
+
+    statuses.connect()
+    latest().error()
+    expect(statuses.connectionState).toBe('reconnecting')
+
+    latest().open()
+    await statuses.waitForRefresh()
+
+    expect(statuses.connectionState).toBe('open')
+    expect(statuses.connectionError).toBeNull()
+  })
+
+  it('does not open a second stream when connect is called while already connected', () => {
+    const statuses = useSessionStatusesStore()
+    statuses.connect()
+    statuses.connect()
+
+    expect(MockEventSource.instances).toHaveLength(1)
+  })
+
+  it('processes immediate keepalive before onopen fires', () => {
+    const workspaces = useWorkspacesStore()
+    workspaces.sessions = [fakeSession()]
+    const statuses = useSessionStatusesStore()
+    statuses.connect()
+
+    latest().emit('keepalive', JSON.stringify({ ts: '2026-06-12T10:07:00Z' }))
+
+    expect(statuses.lastKeepaliveAt).toBe('2026-06-12T10:07:00Z')
+    expect(statuses.connectionState).toBe('connecting')
   })
 
   it('merges newer status deltas into REST sessions and rejects stale events', () => {

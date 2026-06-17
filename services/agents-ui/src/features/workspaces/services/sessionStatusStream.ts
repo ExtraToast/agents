@@ -19,6 +19,9 @@ export interface SessionKeepaliveEvent {
 export interface SessionStatusStreamOptions {
   url?: string
   onOpen?: () => void
+  /** Fired when onerror fires while the browser is still reconnecting (readyState CONNECTING). */
+  onReconnecting?: () => void
+  /** Fired when onerror fires and the browser has given up reconnecting (readyState CLOSED). */
   onError?: () => void
   onStatus?: (event: SessionStatusEvent) => void
   onRemove?: (event: SessionRemoveEvent) => void
@@ -93,7 +96,11 @@ export function openSessionStatusStream(opts: SessionStatusStreamOptions = {}): 
   }
 
   source.onerror = () => {
-    opts.onError?.()
+    if (source.readyState === 0 /* CONNECTING — browser will auto-retry */) {
+      opts.onReconnecting?.()
+    } else {
+      opts.onError?.()
+    }
   }
 
   source.addEventListener('status', (ev) => {
