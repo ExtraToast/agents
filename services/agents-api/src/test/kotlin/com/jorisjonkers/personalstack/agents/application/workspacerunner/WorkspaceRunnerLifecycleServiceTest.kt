@@ -114,7 +114,7 @@ class WorkspaceRunnerLifecycleServiceTest {
         every { workspaces.findById(workspaceId) } returns workspace
         every { targetResolver.resolve(workspace, WorkspaceAgentKind.CLAUDE, null, null) } returns target
         every { orchestrator.isReady(workspace, identity) } returns false
-        every { workspaces.acquireBootLease(workspaceId, any()) } returns false
+        every { workspaces.acquireBootLease(workspaceId, any(), any()) } returns false
 
         val result = service.boot(workspaceId, WorkspaceAgentKind.CLAUDE)
 
@@ -132,12 +132,12 @@ class WorkspaceRunnerLifecycleServiceTest {
         every { workspaces.findById(workspaceId) } returns workspace
         every { targetResolver.resolve(workspace, WorkspaceAgentKind.CLAUDE, null, null) } returns target
         every { orchestrator.isReady(workspace, identity) } returns false
-        every { workspaces.acquireBootLease(workspaceId, any()) } returns true
+        every { workspaces.acquireBootLease(workspaceId, any(), any()) } returns true
         every { orchestrator.scaleDown(workspace) } returns Unit
         every { orchestrator.provision(workspace, target.spec, workspace.runnerSetupGeneration) } returns handle
         every { workspaces.save(any()) } returns provisioned
         every { orchestrator.isReady(provisioned, identity) } returns true
-        every { workspaces.completeBootLease(provisioned.id, any()) } returns true
+        every { workspaces.completeBootLease(provisioned.id, any(), any()) } returns true
 
         val result = service.boot(workspaceId, WorkspaceAgentKind.CLAUDE)
 
@@ -145,10 +145,10 @@ class WorkspaceRunnerLifecycleServiceTest {
         val ready = result as WorkspaceRunnerLifecycleService.BootOutcome.Ready
         val provisioning = ready.provisioning as WorkspaceRunnerLifecycleService.BootProvisioningOutcome.Provisioned
         assertThat(provisioning.podName).isEqualTo("pod-x")
-        verify { workspaces.acquireBootLease(workspaceId, any()) }
+        verify { workspaces.acquireBootLease(workspaceId, any(), any()) }
         verify { orchestrator.scaleDown(workspace) }
-        verify { workspaces.completeBootLease(provisioned.id, any()) }
-        verify(exactly = 0) { workspaces.failBootLease(any(), any()) }
+        verify { workspaces.completeBootLease(provisioned.id, any(), any()) }
+        verify(exactly = 0) { workspaces.failBootLease(any(), any(), any()) }
     }
 
     @Test
@@ -156,17 +156,17 @@ class WorkspaceRunnerLifecycleServiceTest {
         every { workspaces.findById(workspaceId) } returns workspace
         every { targetResolver.resolve(workspace, WorkspaceAgentKind.CLAUDE, null, null) } returns target
         every { orchestrator.isReady(workspace, identity) } returns false
-        every { workspaces.acquireBootLease(workspaceId, any()) } returns true
+        every { workspaces.acquireBootLease(workspaceId, any(), any()) } returns true
         every { orchestrator.scaleDown(workspace) } throws RuntimeException("k8s unreachable")
-        every { workspaces.failBootLease(workspaceId, any()) } returns true
+        every { workspaces.failBootLease(workspaceId, any(), any()) } returns true
 
         val result = service.boot(workspaceId, WorkspaceAgentKind.CLAUDE)
 
         assertThat(result).isEqualTo(
             WorkspaceRunnerLifecycleService.BootOutcome.Conflict(RunnerUnavailableReason.PROVISION_FAILED),
         )
-        verify { workspaces.failBootLease(workspaceId, any()) }
-        verify(exactly = 0) { workspaces.completeBootLease(any(), any()) }
+        verify { workspaces.failBootLease(workspaceId, any(), any()) }
+        verify(exactly = 0) { workspaces.completeBootLease(any(), any(), any()) }
     }
 
     @Test
@@ -177,20 +177,20 @@ class WorkspaceRunnerLifecycleServiceTest {
         every { workspaces.findById(workspaceId) } returns workspace
         every { targetResolver.resolve(workspace, WorkspaceAgentKind.CLAUDE, null, null) } returns target
         every { orchestrator.isReady(workspace, identity) } returns false
-        every { workspaces.acquireBootLease(workspaceId, any()) } returns true
+        every { workspaces.acquireBootLease(workspaceId, any(), any()) } returns true
         every { orchestrator.scaleDown(workspace) } returns Unit
         every { orchestrator.provision(workspace, target.spec, workspace.runnerSetupGeneration) } returns handle
         every { workspaces.save(any()) } returns provisioned
         every { orchestrator.isReady(provisioned, identity) } returns false
-        every { workspaces.failBootLease(provisioned.id, any()) } returns true
+        every { workspaces.failBootLease(provisioned.id, any(), any()) } returns true
 
         val result = service.boot(workspaceId, WorkspaceAgentKind.CLAUDE)
 
         assertThat(result).isEqualTo(
             WorkspaceRunnerLifecycleService.BootOutcome.Conflict(RunnerUnavailableReason.NOT_READY_AFTER_PROVISION),
         )
-        verify { workspaces.failBootLease(provisioned.id, any()) }
-        verify(exactly = 0) { workspaces.completeBootLease(any(), any()) }
+        verify { workspaces.failBootLease(provisioned.id, any(), any()) }
+        verify(exactly = 0) { workspaces.completeBootLease(any(), any(), any()) }
     }
 
     @Test
