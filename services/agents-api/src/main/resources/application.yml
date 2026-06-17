@@ -1,6 +1,12 @@
 spring:
   application:
     name: agents-api
+  mvc:
+    # Let kotlin-commons-web GlobalExceptionHandler own RFC7807 error mapping
+    # (e.g. bean-validation -> 422). Boot's built-in ProblemDetailsExceptionHandler
+    # otherwise wins and maps MethodArgumentNotValidException to 400.
+    problemdetails:
+      enabled: false
   threads:
     virtual:
       enabled: true
@@ -110,11 +116,6 @@ extratoast:
     audience: agents-api
     jwks-uri: ${AUTH_JWKS_URI:}
     issuer: ${AUTH_ISSUER:}
-  web:
-    problem-details:
-      # Map bean-validation failures (@Valid @RequestBody) to 422 ProblemDetail
-      # via kotlin-commons-web's ValidationProblemDetailsAdvice.
-      validation-enabled: true
 
 agent-runtime:
   namespace: ${AGENT_RUNTIME_NAMESPACE:agents-system}
