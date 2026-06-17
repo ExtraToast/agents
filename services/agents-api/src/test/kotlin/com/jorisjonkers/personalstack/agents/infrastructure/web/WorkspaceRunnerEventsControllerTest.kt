@@ -53,7 +53,7 @@ class WorkspaceRunnerEventsControllerTest {
         every { broadcaster.subscribe(WorkspaceId(id)) } returns SseEmitter()
 
         mockMvc
-            .perform(get("/api/v1/workspaces/$id/events").header("X-User-Id", "user-1"))
+            .perform(get("/api/v1/workspaces/$id/runner-events").header("X-User-Id", "user-1"))
             .andExpect(status().isOk)
             .andExpect(request().asyncStarted())
             .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_EVENT_STREAM))
@@ -69,7 +69,7 @@ class WorkspaceRunnerEventsControllerTest {
         every { getQuery.getSummary(WorkspaceId(id)) } returns null
 
         mockMvc
-            .perform(get("/api/v1/workspaces/$id/events").header("X-User-Id", "user-1"))
+            .perform(get("/api/v1/workspaces/$id/runner-events").header("X-User-Id", "user-1"))
             .andExpect(status().isNotFound)
 
         verify(exactly = 0) { broadcaster.subscribe(any()) }
@@ -78,7 +78,7 @@ class WorkspaceRunnerEventsControllerTest {
     @Test
     fun `GET workspace events without X-User-Id returns 401`() {
         mockMvc
-            .perform(get("/api/v1/workspaces/${UUID.randomUUID()}/events"))
+            .perform(get("/api/v1/workspaces/${UUID.randomUUID()}/runner-events"))
             .andExpect(status().isUnauthorized)
     }
 }
