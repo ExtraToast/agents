@@ -10,6 +10,7 @@ import type {
   StagedInput,
   Turn,
   Workspace,
+  WorkspaceConnectResponse,
   WorkspaceDetail,
 } from '../types'
 import type { components } from '@/api/generated'
@@ -27,6 +28,17 @@ const SESSION_START_BUDGET_MS = 180_000
 const DEFAULT_RETRY_AFTER_S = 5
 const AGENT_SETUP_VALIDATION_TYPE = 'https://jorisjonkers.dev/errors/agent-setup-validation'
 
+// runnerStatus values in a 503 that indicate a pre-bind transient state:
+// the runner pod exists but is still initialising; retrying is safe.
+// Statuses that are absent from this set (e.g. 'Failed', 'Terminating')
+// signal a terminal condition — we surface the error immediately.
+const RETRYABLE_RUNNER_STATUSES = new Set(['Pending', 'ContainerCreating', 'PodInitializing'])
+
+function isRetryable503(err: ApiError): boolean {
+  const runnerStatus = err.problem.runnerStatus
+  return runnerStatus == null || RETRYABLE_RUNNER_STATUSES.has(runnerStatus)
+}
+
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, ms)
@@ -39,6 +51,15 @@ export async function listWorkspaces(): Promise<Workspace[]> {
 
 export async function getWorkspace(id: string): Promise<WorkspaceDetail> {
   return getApi().get<WorkspaceDetail>(`/workspaces/${id}`)
+}
+
+/**
+ * Signal to the backend that the user has opened this workspace so the
+ * runner pod is provisioned/woken up. Returns immediately; the `state`
+ * field indicates whether the runner is already `READY` or still booting.
+ */
+export async function connectWorkspace(id: string): Promise<WorkspaceConnectResponse> {
+  return getApi().post<WorkspaceConnectResponse>(`/workspaces/${id}/connect`, {})
 }
 
 export async function getSessionSetup(workspaceId: string, sessionId: string): Promise<SessionSetupState> {
@@ -132,7 +153,7 @@ export async function startSession(
     try {
       return await getApi().post<{ sessionId: string }>(`/workspaces/${workspaceId}/sessions`, { kind })
     } catch (err) {
-      if (err instanceof ApiError && err.status === 503 && Date.now() < deadline) {
+      if (err instanceof ApiError && err.status === 503 && Date.now() < deadline && isRetryable503(err)) {
         const waitSeconds = Math.max(1, err.problem.retryAfterSeconds ?? DEFAULT_RETRY_AFTER_S)
         onWaiting?.(waitSeconds)
         await delay(waitSeconds * 1000)

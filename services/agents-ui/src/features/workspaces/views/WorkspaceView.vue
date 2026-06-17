@@ -133,9 +133,12 @@ const agentKindLabels: Record<AgentKind, string> = {
   CODEX: 'Codex',
   SHELL: 'shell',
 }
-const spawnButtonLabel = computed(() =>
-  store.startingSession ? 'Starting runner…' : `Start ${agentKindLabels[pickerKind.value]}`,
-)
+const spawnDisabled = computed(() => store.startingSession || store.runnerReadiness === 'booting')
+const spawnButtonLabel = computed(() => {
+  if (store.startingSession) return 'Starting runner…'
+  if (store.runnerReadiness === 'booting') return 'Runner booting…'
+  return `Start ${agentKindLabels[pickerKind.value]}`
+})
 const restartLabels: Record<RestartSessionState, string | null> = {
   'idle': null,
   'confirm-pending': 'Confirm restart',
@@ -262,7 +265,13 @@ async function focusConsoleSurface(): Promise<void> {
 }
 
 async function onSpawn(): Promise<void> {
-  await store.newSession(pickerKind.value)
+  // newSession surfaces failure through store state (runner readiness / error);
+  // swallow here so a non-retryable 503 does not bubble as an unhandled rejection.
+  try {
+    await store.newSession(pickerKind.value)
+  } catch {
+    /* handled via store state */
+  }
   statuses.syncRestSessions()
   await focusConsoleSurface()
 }
@@ -552,7 +561,7 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
               <button
                 type="button"
                 class="inline-flex min-h-10 items-center justify-center rounded-md bg-[var(--color-accent)] px-4 text-sm font-medium text-white transition-colors hover:bg-[var(--color-accent-light)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] disabled:cursor-not-allowed disabled:opacity-60"
-                :disabled="store.startingSession"
+                :disabled="spawnDisabled"
                 data-testid="workspace-empty-start"
                 @click="onSpawn"
               >
@@ -687,7 +696,7 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
             <button
               type="button"
               class="inline-flex min-h-10 w-full items-center justify-center whitespace-nowrap rounded-md border border-transparent bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[var(--color-accent-light)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface-dark)] disabled:cursor-not-allowed disabled:opacity-60"
-              :disabled="store.startingSession"
+              :disabled="spawnDisabled"
               data-testid="workspace-new-agent"
               aria-label="Start a new agent session"
               @click="onSpawn"

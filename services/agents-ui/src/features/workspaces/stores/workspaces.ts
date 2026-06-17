@@ -5,6 +5,7 @@ import type {
   AgentSetupReference,
   AgentSetupValidationProblem,
   RestartSessionResponse,
+  RunnerReadiness,
   SetupPreview,
   SetupTargetOptions,
   Turn,
@@ -93,6 +94,10 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
   // True while a new session's runner is cold-starting (start-session
   // is polling through the runner's not-ready 503 window).
   const startingSession = ref(false)
+  const runnerReadiness = ref<RunnerReadiness>('unknown')
+  // De-dup concurrent start requests for the same workspace+kind so that
+  // double-clicks or rapid re-renders share one in-flight POST /sessions.
+  const startingSessionByKey = new Map<string, Promise<string | null>>()
   const restartStates = ref<Record<string, RestartSessionState>>({})
   const selectedRestartTargets = ref<Record<string, AgentSetupReference | null>>({})
   const setupOptionsBySessionId = ref<Record<string, SetupTargetOptions>>({})
@@ -187,10 +192,18 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
     }
   }
 
-  async function open(id: string, options: { loadTurns?: boolean } = {}): Promise<void> {
+  async function open(id: string, options: { loadTurns?: boolean; connectRunner?: boolean } = {}): Promise<void> {
     isLoading.value = true
     error.value = null
     try {
+      if (options.connectRunner !== false) {
+        try {
+          const connect = await workspaceService.connectWorkspace(id)
+          runnerReadiness.value = connect.state === 'READY' ? 'ready' : 'booting'
+        } catch {
+          runnerReadiness.value = 'failed'
+        }
+      }
       const detail = await workspaceService.getWorkspace(id)
       const preferredId = activeWorkspace.value?.id === id ? activeSessionId.value : readPreferredSession(id)
       activeWorkspace.value = withRepositoryList(detail.workspace)
@@ -231,15 +244,40 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
   async function newSession(kind: AgentKind): Promise<string | null> {
     const ws = activeWorkspace.value
     if (!ws) return null
+    const key = `${ws.id}:${kind}`
+    const inflight = startingSessionByKey.get(key)
+    if (inflight) return inflight
+    const promise = startNewSession(ws.id, kind)
+    startingSessionByKey.set(key, promise)
+    try {
+      return await promise
+    } finally {
+      startingSessionByKey.delete(key)
+    }
+  }
+
+  async function startNewSession(workspaceId: string, kind: AgentKind): Promise<string | null> {
     startingSession.value = true
     try {
-      const { sessionId } = await workspaceService.startSession(ws.id, kind, () => {
+      const { sessionId } = await workspaceService.startSession(workspaceId, kind, () => {
         startingSession.value = true
       })
       activeSessionId.value = sessionId
-      writePreferredSession(ws.id, sessionId)
-      await open(ws.id)
+      writePreferredSession(workspaceId, sessionId)
+      await open(workspaceId, { connectRunner: false })
       return sessionId
+    } catch (err) {
+      // A non-retryable 503 means the runner is unavailable in a way the
+      // retry loop does not handle; refresh the snapshot so the UI reflects
+      // the current session/runner state without triggering a new connect.
+      if (err instanceof ApiError && err.status === 503) {
+        try {
+          await open(workspaceId, { connectRunner: false, loadTurns: false })
+        } catch {
+          /* ignore */
+        }
+      }
+      throw err
     } finally {
       startingSession.value = false
     }
@@ -250,7 +288,7 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
     if (!ws) return
     await workspaceService.stopSession(ws.id, sessionId)
     if (activeSessionId.value === sessionId) activeSessionId.value = null
-    await open(ws.id)
+    await open(ws.id, { connectRunner: false })
   }
 
   async function restartSession(sessionId: string, expectedGeneration?: number): Promise<RestartSessionResponse | null> {
@@ -280,13 +318,13 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
       }
       markRestartReattaching(sessionId)
       clearSetupPreview(sessionId)
-      await open(ws.id, { loadTurns: false })
+      await open(ws.id, { loadTurns: false, connectRunner: false })
       return restarted
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         markRestartReattaching(sessionId)
         clearSetupPreview(sessionId)
-        await open(ws.id, { loadTurns: false })
+        await open(ws.id, { loadTurns: false, connectRunner: false })
         return null
       }
       markRestartFailed(sessionId)
@@ -343,7 +381,7 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
     const ws = activeWorkspace.value
     if (!ws) return
     await workspaceService.attachRepository(ws.id, repositoryId)
-    await open(ws.id)
+    await open(ws.id, { connectRunner: false })
   }
 
   async function detachRepository(repositoryId: string): Promise<void> {
@@ -354,7 +392,7 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
       ...ws,
       repositories: (ws.repositories ?? []).filter((r) => r.id !== repositoryId),
     }
-    await open(ws.id)
+    await open(ws.id, { connectRunner: false })
   }
 
   function selectSession(sessionId: string): void {
@@ -398,6 +436,7 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
     isLoading,
     error,
     startingSession,
+    runnerReadiness,
     restartStates,
     selectedRestartTargets,
     setupOptionsBySessionId,

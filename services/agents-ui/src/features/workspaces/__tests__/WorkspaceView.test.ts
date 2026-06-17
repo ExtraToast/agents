@@ -74,6 +74,7 @@ vi.mock('../services/sessionStatusStream', () => ({
 }))
 
 const getWorkspace = vi.fn<(id: string) => Promise<WorkspaceDetail>>()
+const connectWorkspace = vi.fn()
 const attachRepository = vi.fn()
 const detachRepository = vi.fn()
 const startSession = vi.fn()
@@ -89,6 +90,7 @@ const agentSetupValidationProblemFromError = vi.fn()
 vi.mock('../services/workspaceService', () => ({
   listWorkspaces: vi.fn(),
   getWorkspace: (id: string) => getWorkspace(id),
+  connectWorkspace: (...args: unknown[]) => connectWorkspace(...args),
   createWorkspace: vi.fn(),
   destroyWorkspace: vi.fn(),
   startSession: (...args: unknown[]) => startSession(...args),
@@ -301,6 +303,8 @@ describe('workspaceView terminal persistence', () => {
     statusStreamOptions = null
     openSessionStatusStream.mockClear()
     getWorkspace.mockReset()
+    connectWorkspace.mockReset()
+    connectWorkspace.mockResolvedValue({ workspaceId: 'ws-1', setupId: 'setup-current', setupVersion: 1, state: 'READY', reason: null, checkedAt: '2026-06-17T08:00:00Z' })
     attachRepository.mockReset()
     detachRepository.mockReset()
     startSession.mockReset()
@@ -819,6 +823,116 @@ describe('workspaceView terminal persistence', () => {
     expect(wrapper.find('[data-testid="workspace-repositories-panel"]').text()).toContain(
       'Could not remove the repository',
     )
+  })
+
+  it('disables the start button while the runner is booting after connect', async () => {
+    connectWorkspace.mockResolvedValue({ workspaceId: 'ws-1', setupId: 'setup-current', setupVersion: 1, state: 'STARTING', reason: null, checkedAt: '2026-06-17T08:00:00Z' })
+    getWorkspace.mockResolvedValue(detail([]))
+    const wrapper = await mountView()
+
+    expect(wrapper.get('[data-testid="workspace-new-agent"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[data-testid="workspace-new-agent"]').text()).toBe('Runner booting…')
+  })
+
+  it('enables the start button once the runner is ready', async () => {
+    connectWorkspace.mockResolvedValue({ workspaceId: 'ws-1', setupId: 'setup-current', setupVersion: 1, state: 'READY', reason: null, checkedAt: '2026-06-17T08:00:00Z' })
+    getWorkspace.mockResolvedValue(detail([]))
+    const wrapper = await mountView()
+
+    expect(wrapper.get('[data-testid="workspace-new-agent"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.get('[data-testid="workspace-new-agent"]').text()).toBe('Start Claude Code')
+  })
+
+  it('open does not POST a session when no sessions exist (no auto-spawn)', async () => {
+    getWorkspace.mockResolvedValue(detail([]))
+    await mountView()
+
+    expect(startSession).not.toHaveBeenCalled()
+  })
+
+  it('double-click on start spawns only one session', async () => {
+    let resolveStart: (value: { sessionId: string }) => void = () => {}
+    startSession.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveStart = resolve
+        }),
+    )
+    getWorkspace
+      .mockResolvedValueOnce(detail([]))
+      .mockResolvedValue(detail([fakeSession({ id: 'sess-new' })]))
+    const wrapper = await mountView()
+
+    const btn = wrapper.get('[data-testid="workspace-new-agent"]')
+    void btn.trigger('click')
+    void btn.trigger('click')
+    resolveStart({ sessionId: 'sess-new' })
+    await flush()
+
+    expect(startSession).toHaveBeenCalledTimes(1)
+  })
+
+  it('route change during start: navigating away does not spawn a session on the new workspace', async () => {
+    let resolveStart: (value: { sessionId: string }) => void = () => {}
+    startSession.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveStart = resolve
+        }),
+    )
+    getWorkspace.mockResolvedValue(detail([]))
+    const wrapper = await mountView()
+
+    void wrapper.get('[data-testid="workspace-new-agent"]').trigger('click')
+
+    // Navigate to a different workspace before the start resolves.
+    await router.push('/workspaces/ws-2')
+    await flush()
+
+    // ws-2 loaded without spawning.
+    expect(startSession).toHaveBeenCalledTimes(1)
+
+    // Resolve the pending start for ws-1.
+    resolveStart({ sessionId: 'sess-new' })
+    await flush()
+
+    // The second workspace should not have had a session spawned for it.
+    expect(startSession).toHaveBeenCalledTimes(1)
+
+    await router.push('/workspaces/ws-1')
+    wrapper.unmount()
+  })
+
+  it('non-retryable 503 from startSession refreshes the snapshot without calling connectWorkspace again', async () => {
+    startSession.mockRejectedValue(new ApiError({ type: 'about:blank', title: 'x', status: 503, runnerStatus: 'Failed' }))
+    getWorkspace
+      .mockResolvedValueOnce(detail([]))
+      .mockResolvedValue(detail([]))
+    const wrapper = await mountView()
+
+    const connectCallsBefore = connectWorkspace.mock.calls.length
+
+    void wrapper.get('[data-testid="workspace-new-agent"]').trigger('click')
+    await flush()
+
+    // getWorkspace called once for initial open + once for the 503 snapshot refresh
+    expect(getWorkspace).toHaveBeenCalledTimes(2)
+    // The refresh must not trigger a new connect
+    expect(connectWorkspace.mock.calls.length).toBe(connectCallsBefore)
+  })
+
+  it('connectWorkspace is called once on navigation and not again for internal refreshes', async () => {
+    getWorkspace
+      .mockResolvedValueOnce(detail([fakeSession({ id: 'sess-a' })]))
+      .mockResolvedValue(detail([fakeSession({ id: 'sess-a', status: 'STOPPED' })]))
+    const wrapper = await mountView()
+    const connectCallsAfterOpen = connectWorkspace.mock.calls.length
+
+    // Stop triggers an internal refresh
+    await wrapper.get('[data-testid="workspace-active-stop"]').trigger('click')
+    await flush()
+
+    expect(connectWorkspace.mock.calls.length).toBe(connectCallsAfterOpen)
   })
 })
 
