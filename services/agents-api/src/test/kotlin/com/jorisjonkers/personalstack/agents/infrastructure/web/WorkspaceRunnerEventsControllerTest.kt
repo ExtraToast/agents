@@ -86,7 +86,6 @@ class WorkspaceRunnerEventsControllerTest {
 
         verify(exactly = 0) { broadcaster.subscribe(any()) }
     }
-
 }
 
 class WorkspaceRunnerEventsBroadcasterTest {
