@@ -53,7 +53,8 @@ class RunnerSetupTargetResolverTest {
     fun `uses explicit setup when id and version are provided`() {
         val entry = catalogEntry(otherSetupId, otherVersion)
         every { setupSelection.requireSelectable(otherSetupId, otherVersion) } returns entry
-        every { setupValidation.requireValid(any()) } returns Unit
+        every { setupValidation.requireValid(any()) } returns
+            AgentSetupValidationResult(target = AgentSetupRef(defaultId, defaultVersion), valid = true)
 
         val target = resolver.resolve(workspace, WorkspaceAgentKind.CLAUDE, otherSetupId, otherVersion)
 
@@ -81,7 +82,8 @@ class RunnerSetupTargetResolverTest {
         val invalidRef = AgentSetupRef(defaultId, defaultVersion)
         every { setupValidation.validate(any()) } returns AgentSetupValidationResult(target = invalidRef, valid = false)
         every { setupSelection.defaultSelectable() } returns fallbackEntry
-        every { setupValidation.requireValid(any()) } returns Unit
+        every { setupValidation.requireValid(any()) } returns
+            AgentSetupValidationResult(target = AgentSetupRef(defaultId, defaultVersion), valid = true)
 
         val target = resolver.resolve(workspace, WorkspaceAgentKind.CLAUDE)
 
@@ -94,7 +96,8 @@ class RunnerSetupTargetResolverTest {
         val fallbackEntry = catalogEntry(AgentSetupId("fallback"), AgentSetupVersion(1L))
         every { setupSelection.requireSelectable(defaultId, defaultVersion) } throws NoSuchElementException("not found")
         every { setupSelection.defaultSelectable() } returns fallbackEntry
-        every { setupValidation.requireValid(any()) } returns Unit
+        every { setupValidation.requireValid(any()) } returns
+            AgentSetupValidationResult(target = AgentSetupRef(defaultId, defaultVersion), valid = true)
 
         val target = resolver.resolve(workspace, WorkspaceAgentKind.CLAUDE)
 

@@ -73,7 +73,7 @@ class CreateWorkspaceCommandHandlerTest {
     private val setup = setupEntry()
     private val tx =
         mockk<TransactionTemplate> {
-            every { execute(any()) } answers {
+            every { execute<Any?>(any()) } answers {
                 @Suppress("UNCHECKED_CAST")
                 (firstArg() as TransactionCallback<Any?>).doInTransaction(mockk(relaxed = true))
             }

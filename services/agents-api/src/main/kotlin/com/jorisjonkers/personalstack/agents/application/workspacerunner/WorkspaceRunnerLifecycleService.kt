@@ -165,6 +165,7 @@ class WorkspaceRunnerLifecycleService(
         if (released > 0) log.info("runner-boot-lease reconciler released {} workspace(s)", released)
     }
 
+    @Suppress("LongMethod")
     private fun provision(
         workspace: Workspace,
         target: RunnerSetupTarget,

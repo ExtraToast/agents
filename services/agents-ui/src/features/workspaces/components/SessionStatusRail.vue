@@ -4,7 +4,7 @@ import type { WorkspaceRunnerSetup } from '../types'
 import { computed, useSlots } from 'vue'
 import SessionStatusChip from './SessionStatusChip.vue'
 
-type ConnectionState = 'idle' | 'connecting' | 'open' | 'error'
+type ConnectionState = 'idle' | 'connecting' | 'open' | 'reconnecting' | 'error'
 
 interface RailSession extends SessionConsoleViewModel {
   lastStatusUpdate?: string | null
@@ -33,6 +33,7 @@ const slots = useSlots()
 const connectionCopy: Record<ConnectionState, { label: string; detail: string; shape: string }> = {
   idle: { label: 'Stream idle', detail: 'Status stream is idle', shape: 'ring' },
   connecting: { label: 'Connecting', detail: 'Status stream is connecting', shape: 'ring' },
+  reconnecting: { label: 'Reconnecting', detail: 'Status stream is reconnecting', shape: 'ring' },
   open: { label: 'Connected', detail: 'Status stream is connected', shape: 'dot' },
   error: { label: 'Disconnected', detail: 'Status stream is disconnected', shape: 'diamond' },
 }
@@ -40,6 +41,7 @@ const connectionCopy: Record<ConnectionState, { label: string; detail: string; s
 const connectionToneClass: Record<ConnectionState, string> = {
   idle: 'border-[var(--color-surface-border)] bg-white/5 text-[var(--color-text-muted)]',
   connecting: 'border-sky-500/35 bg-sky-500/15 text-sky-200',
+  reconnecting: 'border-amber-500/35 bg-amber-500/15 text-amber-200',
   open: 'border-emerald-500/35 bg-emerald-500/15 text-emerald-200',
   error: 'border-red-500/40 bg-red-500/15 text-red-200',
 }
