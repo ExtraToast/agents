@@ -48,7 +48,9 @@ class WorkspaceRunnerLifecycleService(
             val provisioning: BootProvisioningOutcome,
         ) : BootOutcome
 
-        data class Conflict(val reason: RunnerUnavailableReason) : BootOutcome
+        data class Conflict(
+            val reason: RunnerUnavailableReason,
+        ) : BootOutcome
     }
 
     sealed interface BootProvisioningOutcome {
