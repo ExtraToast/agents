@@ -1,9 +1,13 @@
 import type { Page, Route } from '@playwright/test'
 
 const now = '2026-06-12T12:00:00.000Z'
+const sseTs = '2026-06-12T12:00:01.000Z'
+const stopTs = '2026-06-12T12:00:02.000Z'
 
 interface MockOptions {
   authenticated?: boolean
+  /** Runner connect response state. Default: 'READY'. Use 'BOOTING' to test disabled spawn. */
+  runnerState?: 'READY' | 'BOOTING'
 }
 
 interface MockWorkspace {
@@ -142,6 +146,24 @@ export async function installAuthenticatedAppMocks(page: Page, options: MockOpti
 
 async function installBrowserConnectionMocks(page: Page): Promise<void> {
   await page.addInitScript(() => {
+    // SSE control surface — tests call window.__mockSseControl.closeAll() /
+    // reopenAll() to simulate native EventSource reconnect behaviour.
+    const sseInstances: any[] = []
+
+    Object.defineProperty(window, '__mockSseControl', {
+      configurable: true,
+      writable: true,
+      value: {
+        instances: sseInstances,
+        closeAll() {
+          sseInstances.forEach((inst) => inst._triggerClose())
+        },
+        reopenAll() {
+          sseInstances.forEach((inst) => inst._doOpen())
+        },
+      },
+    })
+
     class MockEventSource extends EventTarget {
       static readonly CONNECTING = 0
       static readonly OPEN = 1
@@ -152,17 +174,38 @@ async function installBrowserConnectionMocks(page: Page): Promise<void> {
       readyState = MockEventSource.CONNECTING
       onopen: ((event: Event) => void) | null = null
       onerror: ((event: Event) => void) | null = null
+      // Set by close() to prevent simulation-triggered reopens after deliberate close.
+      _manualClosed = false
 
       constructor(url: string | URL, init?: EventSourceInit) {
         super()
         this.url = String(url)
         this.withCredentials = init?.withCredentials ?? false
+        sseInstances.push(this)
         window.setTimeout(() => {
-          if (this.readyState === MockEventSource.CLOSED) return
-          this.readyState = MockEventSource.OPEN
-          const openEvent = new Event('open')
-          this.onopen?.(openEvent)
-          this.dispatchEvent(openEvent)
+          this._doOpen()
+        }, 0)
+      }
+
+      _doOpen(): void {
+        if (this._manualClosed) return
+        this.readyState = MockEventSource.OPEN
+        const openEvent = new Event('open')
+        this.onopen?.(openEvent)
+        this.dispatchEvent(openEvent)
+        this._emitInitialEvents()
+      }
+
+      _triggerClose(): void {
+        if (this.readyState === MockEventSource.CLOSED) return
+        this.readyState = MockEventSource.CLOSED
+        const errorEvent = new Event('error')
+        this.onerror?.(errorEvent)
+        this.dispatchEvent(errorEvent)
+      }
+
+      _emitInitialEvents(): void {
+        if (this.url.includes('/sessions/events')) {
           this.dispatchEvent(
             new MessageEvent('status', {
               data: JSON.stringify({
@@ -173,10 +216,11 @@ async function installBrowserConnectionMocks(page: Page): Promise<void> {
               }),
             }),
           )
-        }, 0)
+        }
       }
 
       close(): void {
+        this._manualClosed = true
         this.readyState = MockEventSource.CLOSED
       }
     }
@@ -250,6 +294,9 @@ async function installApiMocks(page: Page, options: MockOptions): Promise<void> 
   let nextSessionNumber = 2
   let nextMessageNumber = 3
   let chatMessages = baseChatMessages.map((candidate) => ({ ...candidate }))
+  // First connect returns the configured state; subsequent calls return BOOTING so
+  // tests can detect unwanted reconnects by observing the spawn-button label.
+  let connectCallCount = 0
 
   await page.route('**/api/v1/**', async (route) => {
     const request = route.request()
@@ -286,6 +333,23 @@ async function installApiMocks(page: Page, options: MockOptions): Promise<void> 
       })
       mockWorkspaces.unshift(created)
       await json(route, created, 201)
+      return
+    }
+
+    const connectMatch = path.match(/^\/workspaces\/([^/]+)\/connect$/)
+    if (connectMatch && method === 'POST') {
+      connectCallCount++
+      // Only the first connect uses the configured state. Subsequent calls return
+      // BOOTING so tests verifying "no reconnect on refresh" can detect regressions
+      // by observing the spawn-button label change to "Runner booting…".
+      const state = connectCallCount > 1 ? 'BOOTING' : (options.runnerState ?? 'READY')
+      await json(route, {
+        workspaceId: connectMatch[1]!,
+        setupId: 'setup-1',
+        setupVersion: 1,
+        state,
+        checkedAt: now,
+      })
       return
     }
 
@@ -345,6 +409,25 @@ async function installApiMocks(page: Page, options: MockOptions): Promise<void> 
       return
     }
 
+    const restartSessionMatch = path.match(/^\/workspaces\/([^/]+)\/sessions\/([^/]+)\/restart$/)
+    if (restartSessionMatch && method === 'POST') {
+      const sessionId = restartSessionMatch[2]!
+      const session = mockSessions.find((s) => s.id === sessionId)
+      if (session) {
+        session.epoch = (session.epoch ?? 1) + 1
+        session.generation = (session.generation ?? 1) + 1
+        session.status = 'STARTING'
+        session.updatedAt = sseTs
+      }
+      await json(route, {
+        sessionId,
+        epoch: session?.epoch ?? 2,
+        generation: session?.generation ?? 2,
+        status: 'STARTING',
+      })
+      return
+    }
+
     const stagedInputMatch = path.match(/^\/workspaces\/([^/]+)\/sessions\/([^/]+)\/staged-inputs$/)
     if (stagedInputMatch && method === 'POST') {
       await json(route, { path: '/workspace/source.txt', bytes: 24, name: 'source.txt' }, 201)
@@ -360,7 +443,12 @@ async function installApiMocks(page: Page, options: MockOptions): Promise<void> 
     const stopSessionMatch = path.match(/^\/workspaces\/([^/]+)\/sessions\/([^/]+)$/)
     if (stopSessionMatch && method === 'DELETE') {
       const session = mockSessions.find((candidate) => candidate.id === stopSessionMatch[2])
-      if (session) session.status = 'STOPPED'
+      if (session) {
+        session.status = 'STOPPED'
+        // Use a timestamp newer than the SSE event (sseTs = 01s) so that
+        // syncRestSessions drops the RUNNING overlay and shows STOPPED.
+        session.updatedAt = stopTs
+      }
       await empty(route)
       return
     }
