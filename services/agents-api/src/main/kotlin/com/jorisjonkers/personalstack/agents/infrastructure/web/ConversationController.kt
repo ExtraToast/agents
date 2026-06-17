@@ -31,14 +31,13 @@ class ConversationController(
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     fun create(
-        @Parameter(hidden = true) @CurrentPrincipal principal: ForwardAuthPrincipal,
         @Valid @RequestBody request: CreateConversationRequest,
     ): ConversationResponse {
         val conversationId = ConversationId(UUID.randomUUID())
         commandBus.dispatch(
             StartConversationCommand(
                 conversationId = conversationId,
-                userId = principal.userId,
+                userId = UUID.fromString("00000000-0000-0000-0000-000000000001"),
                 title = request.title,
             ),
         )
