@@ -104,13 +104,6 @@ springdoc:
     path: /api/v1/swagger-ui
 
 extratoast:
-  web:
-    problem-details:
-      # commons ValidationProblemDetailsAdvice is @Order(HIGHEST_PRECEDENCE) so it
-      # reliably wins over Spring Boot's built-in ProblemDetailsExceptionHandler;
-      # map bean-validation failures to 422 (its default is 400).
-      validation-enabled: true
-      validation-status: 422
   identity:
     enabled: true
     header-name: X-Agents-Verified-Jwt
