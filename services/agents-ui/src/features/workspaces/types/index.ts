@@ -160,6 +160,15 @@ export interface RestartSessionResponse {
   pendingSetup?: AgentSetupReference | null
 }
 
+export type WorkspaceConnectResponse = components['schemas']['WorkspaceConnectResponse']
+
+/**
+ * Tracks the readiness of the workspace runner after a connect call.
+ * `booting` means the runner is still starting up and new sessions would
+ * get a pre-bind 503; spawn controls should be disabled.
+ */
+export type RunnerReadiness = 'unknown' | 'booting' | 'ready' | 'failed'
+
 export interface WorkspaceDetail {
   workspace: WorkspaceDetailWorkspace
   sessions: AgentSession[]
