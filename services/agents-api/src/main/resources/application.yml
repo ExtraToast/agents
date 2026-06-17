@@ -1,12 +1,6 @@
 spring:
   application:
     name: agents-api
-  mvc:
-    # Let kotlin-commons-web GlobalExceptionHandler own RFC7807 error mapping
-    # (e.g. bean-validation -> 422). Boot's built-in ProblemDetailsExceptionHandler
-    # otherwise wins and maps MethodArgumentNotValidException to 400.
-    problemdetails:
-      enabled: false
   threads:
     virtual:
       enabled: true
@@ -110,6 +104,13 @@ springdoc:
     path: /api/v1/swagger-ui
 
 extratoast:
+  web:
+    problem-details:
+      # commons ValidationProblemDetailsAdvice is @Order(HIGHEST_PRECEDENCE) so it
+      # reliably wins over Spring Boot's built-in ProblemDetailsExceptionHandler;
+      # map bean-validation failures to 422 (its default is 400).
+      validation-enabled: true
+      validation-status: 422
   identity:
     enabled: true
     header-name: X-Agents-Verified-Jwt
