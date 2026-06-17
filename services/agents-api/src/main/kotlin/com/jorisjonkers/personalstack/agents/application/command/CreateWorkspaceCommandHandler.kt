@@ -90,18 +90,15 @@ class CreateWorkspaceCommandHandler(
         // Boot is best-effort: the workspace is already committed and must stay
         // visible even if the runner cannot come up yet (e.g. setup not yet
         // valid). Failures are recorded, never surfaced as a create error.
-        runCatching { lifecycleService.boot(workspaceId, WorkspaceAgentKind.CLAUDE) }
-            .onSuccess { outcome ->
-                when (outcome) {
-                    is BootOutcome.Ready ->
-                        log.info("workspace {} runner boot succeeded", workspaceId)
-                    is BootOutcome.Conflict ->
-                        log.warn("workspace {} boot conflict: {}", workspaceId, outcome.reason)
-                }
-            }
-            .onFailure { ex ->
-                log.warn("workspace {} runner boot failed; workspace remains visible: {}", workspaceId, ex.message)
-            }
+        val outcome = runCatching { lifecycleService.boot(workspaceId, WorkspaceAgentKind.CLAUDE) }.getOrNull()
+        when (outcome) {
+            is BootOutcome.Ready ->
+                log.info("workspace {} runner boot succeeded", workspaceId)
+            is BootOutcome.Conflict ->
+                log.warn("workspace {} boot conflict: {}", workspaceId, outcome.reason)
+            null ->
+                log.warn("workspace {} runner boot failed; workspace remains visible", workspaceId)
+        }
     }
 
     private fun warnDeprecatedGithubLink(command: CreateWorkspaceCommand) {
