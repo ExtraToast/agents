@@ -110,6 +110,11 @@ extratoast:
     audience: agents-api
     jwks-uri: ${AUTH_JWKS_URI:}
     issuer: ${AUTH_ISSUER:}
+  web:
+    problem-details:
+      # Map bean-validation failures (@Valid @RequestBody) to 422 ProblemDetail
+      # via kotlin-commons-web's ValidationProblemDetailsAdvice.
+      validation-enabled: true
 
 agent-runtime:
   namespace: ${AGENT_RUNTIME_NAMESPACE:agents-system}
