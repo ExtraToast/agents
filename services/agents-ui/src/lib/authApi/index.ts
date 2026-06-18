@@ -69,7 +69,7 @@ class AuthApiTransport {
 
   constructor(options: AuthApiClientOptions) {
     this.csrfTokenSource = options.csrfTokenSource ?? defaultCsrfTokenSource
-    this.fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis)
+    this.fetchImpl = options.fetchImpl ?? ((input, init) => globalThis.fetch(input, init))
     this.origins = options.origins
     this.tokenProvider = options.tokenProvider
   }
