@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.8.0](https://github.com/ExtraToast/agents/compare/v0.7.1...v0.8.0) (2026-06-18)
+
+
+### Features
+
+* **015:** decouple RAG retrieval/capture seam ([#62](https://github.com/ExtraToast/agents/issues/62)) ([bd83103](https://github.com/ExtraToast/agents/commit/bd8310370156e4c2dee0a510e377745bd6e49ffe))
+* **023:** decouple chat generation behind a port + multi-turn history ([#63](https://github.com/ExtraToast/agents/issues/63)) ([4b9b0de](https://github.com/ExtraToast/agents/commit/4b9b0de3391b6888ff852f83bd4fa74377fe90d3))
+* **024a:** stream headless job output incrementally over SSE ([#65](https://github.com/ExtraToast/agents/issues/65)) ([e17155a](https://github.com/ExtraToast/agents/commit/e17155a8d5e8e2cdc75ee7ce5df2402fdb09ecc8))
+* **024b:** runner-Pod chat generation backend (flag-gated, default off) ([#67](https://github.com/ExtraToast/agents/issues/67)) ([65416ad](https://github.com/ExtraToast/agents/commit/65416ad4f59804e7d6552d76aea8aca506c23761))
+* **024c:** true token-level streaming for runner-Pod chat ([#68](https://github.com/ExtraToast/agents/issues/68)) ([295365f](https://github.com/ExtraToast/agents/commit/295365f1a7ed0321a23eaef569b55d164df73bdc))
+* **native-app:** admin user-management feature ([#70](https://github.com/ExtraToast/agents/issues/70)) ([50d7660](https://github.com/ExtraToast/agents/commit/50d76608c3d87905f3e2200acbf043a363ed5c63))
+* **native-app:** auth-api client + account self-service feature ([#69](https://github.com/ExtraToast/agents/issues/69)) ([e700ec1](https://github.com/ExtraToast/agents/commit/e700ec1c3d15247f7babf03b7cb6e9519aea6459))
+* **native-app:** Capacitor scaffold for agents-ui (spec 016) ([#53](https://github.com/ExtraToast/agents/issues/53)) ([46cb3b7](https://github.com/ExtraToast/agents/commit/46cb3b7796d87dc8d25ed3b0c933fa2c22c2bac7))
+* **native-app:** env-driven runtime origins + credentials policy (spec 018) ([#61](https://github.com/ExtraToast/agents/issues/61)) ([6f78172](https://github.com/ExtraToast/agents/commit/6f78172977c22d6819b02f3bbf53f6ca8405b38f))
+* **native-app:** in-app login/TOTP + shell nav + guard to in-app login ([#72](https://github.com/ExtraToast/agents/issues/72)) ([8567fad](https://github.com/ExtraToast/agents/commit/8567fadf59495a71d025ae66e0cbd235230d9565))
+* **native-app:** native auth-session core — PKCE + secure token bridge (spec 021, gated) ([#66](https://github.com/ExtraToast/agents/issues/66)) ([90ddcc3](https://github.com/ExtraToast/agents/commit/90ddcc365399c1c0de8111bda497eb005d79ff47))
+* **native-app:** native build/release pipeline + mobile polish (spec 020) ([#73](https://github.com/ExtraToast/agents/issues/73)) ([ca5410b](https://github.com/ExtraToast/agents/commit/ca5410b0e31f2b18c8020cbcf4543a43d5acfd0e))
+* **native-app:** route-shell foundation (spec 022) ([#64](https://github.com/ExtraToast/agents/issues/64)) ([8a25188](https://github.com/ExtraToast/agents/commit/8a251883a0073b35aa836ad9bc1d7b4db0c8c255))
+* **native-app:** signup + account recovery (register/confirm/forgot/reset) ([#71](https://github.com/ExtraToast/agents/issues/71)) ([f42c4e9](https://github.com/ExtraToast/agents/commit/f42c4e9138ad53980f552c1ddc7c4339e2afc56a))
+
 ## [0.7.1](https://github.com/ExtraToast/agents/compare/v0.7.0...v0.7.1) (2026-06-18)
 
 
