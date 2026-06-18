@@ -2,6 +2,7 @@ import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 import { initFaro, useAuth } from '@/lib/vueWebCommons'
 import App from './App.vue'
+import { createPlatform, resolvePlatform } from './platform'
 import { router } from './router'
 import './index.css'
 
@@ -15,6 +16,11 @@ async function bootstrap(): Promise<void> {
 
   const app = createApp(App)
   app.use(createPinia())
+
+  // --- Scaffold platform plugin registration slots ---
+  app.use(createPlatform(await resolvePlatform()))
+  // Add app-wide platform plugins here before auth and router guards run.
+  // --- End scaffold platform plugin registration slots ---
 
   // Resolve the existing auth session before protected-route guards run.
   await useAuth().fetchUser()
