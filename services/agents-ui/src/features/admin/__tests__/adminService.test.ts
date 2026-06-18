@@ -84,7 +84,7 @@ describe('admin service', () => {
   })
 
   it('deletes users with an encoded id', async () => {
-    mockedAuthApi.del.mockResolvedValue()
+    mockedAuthApi.del.mockResolvedValue(undefined)
 
     await deleteUser('user/one')
 

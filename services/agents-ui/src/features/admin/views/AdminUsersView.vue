@@ -177,7 +177,7 @@ async function deleteUser(user: AdminUserResponse): Promise<void> {
         <template #body="{ data }">
           <Select
             :model-value="roleSelections[data.id] ?? data.role"
-            :options="assignableRoles"
+            :options="[...assignableRoles]"
             :disabled="isMutating(data.id)"
             class="min-w-32"
             :data-testid="`admin-role-${data.id}`"
