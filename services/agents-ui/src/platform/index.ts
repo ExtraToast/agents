@@ -1,5 +1,5 @@
-import type { AppUrlOpener, PlatformInfo, PlatformServices, SecureStorage } from './types'
 import type { App, InjectionKey, Plugin } from 'vue'
+import type { AppUrlOpener, PlatformInfo, PlatformServices, SecureStorage } from './types'
 import { inject } from 'vue'
 import { webAppUrlOpener, webPlatformInfo, webSecureStorage } from './web'
 
