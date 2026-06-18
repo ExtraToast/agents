@@ -96,12 +96,12 @@ class AuthApiTransport {
 
     const response = await this.fetchImpl(this.urlFor(path), init)
 
-    if (response.status === 204) return undefined as T
+    if (response.status === 204) return undefined as T // eslint-disable-line ts/consistent-type-assertions
 
     const parsed = await parseBody(response)
     if (!response.ok) throw new AuthApiError(response.status, problemMessage(parsed, response.statusText), parsed)
 
-    return parsed as T
+    return parsed as T // eslint-disable-line ts/consistent-type-assertions
   }
 
   private urlFor(path: string): string {
@@ -134,7 +134,7 @@ async function parseBody(response: Response): Promise<unknown> {
   if (!contentType.toLowerCase().includes('json')) return text
 
   try {
-    return JSON.parse(text) as unknown
+    return JSON.parse(text) as unknown // eslint-disable-line ts/consistent-type-assertions
   } catch {
     return text
   }

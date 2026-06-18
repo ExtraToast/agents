@@ -84,7 +84,7 @@ async function mountView() {
   return wrapper
 }
 
-describe('AccountView', () => {
+describe('accountView', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()

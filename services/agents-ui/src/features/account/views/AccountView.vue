@@ -425,6 +425,5 @@ function validationErrors(error: z.ZodError): Record<string, string> {
         </div>
       </section>
     </div>
-
   </div>
 </template>
