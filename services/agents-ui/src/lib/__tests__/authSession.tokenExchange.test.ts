@@ -64,6 +64,7 @@ describe('authSession token exchange', () => {
 
     const first = coordinator.refresh()
     const second = coordinator.refresh()
+    await vi.waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1))
     resolveFetch(jsonResponse({
       access_token: 'access-token-rotated',
       expires_in: 300,
