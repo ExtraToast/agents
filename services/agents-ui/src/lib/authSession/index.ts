@@ -50,10 +50,10 @@ function webAuthDelegateFromCommons(): WebAuthDelegate {
         const current = auth.user.value
         if (!current) return null
         return {
-          id: current.id,
-          username: current.username,
-          email: current.email,
-          role: current.role,
+          id: current.id ?? '',
+          username: current.username ?? '',
+          email: current.email ?? '',
+          role: current.role ?? 'USER',
         }
       },
     },
