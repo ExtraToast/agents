@@ -71,6 +71,7 @@ describe('route discovery', () => {
     expect(() => assembleRouteManifest({
       '../features/alpha/routes.ts': {
         default: routeModule('alpha', [
+          // eslint-disable-next-line ts/consistent-type-assertions -- intentionally inject an unsupported meta key
           { ...route('/alpha', 'alpha'), meta: { requiresAuth: true, unsupported: true } } as RouteRecordRaw,
         ]),
       },

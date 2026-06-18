@@ -76,7 +76,7 @@ describe('admin capability checks', () => {
   })
 })
 
-function authState(options: { authenticated: boolean, role: string | null }): ShellAuthState {
+function authState(options: { authenticated: boolean; role: string | null }): ShellAuthState {
   return {
     isAuthenticated: { value: options.authenticated },
     user: { value: options.role === null ? null : { role: options.role } },

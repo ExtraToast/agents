@@ -31,7 +31,7 @@ declare module 'vue-router' {
 }
 
 export function isAdminCapability(capability: string): capability is AdminCapability {
-  return (adminCapabilities as readonly string[]).includes(capability)
+  return (adminCapabilities as readonly string[]).includes(capability) // eslint-disable-line ts/consistent-type-assertions
 }
 
 export function createCapabilityQuery(role: AuthRole | string | undefined): CapabilityQuery {

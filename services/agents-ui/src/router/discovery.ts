@@ -52,7 +52,7 @@ export function assertNoDuplicateSiblingPaths(routes: RouteRecordRaw[], context:
 }
 
 function validateFeatureRouteModule(path: string, moduleExport: unknown): FeatureRouteModule {
-  const candidate = (moduleExport as RouteModuleExport | null)?.default
+  const candidate = (moduleExport as RouteModuleExport | null)?.default // eslint-disable-line ts/consistent-type-assertions
 
   if (!isFeatureRouteModuleRecord(candidate)) {
     throw new Error(`Invalid route module ${path}: default export must be a feature route module`)
@@ -63,7 +63,7 @@ function validateFeatureRouteModule(path: string, moduleExport: unknown): Featur
   }
 
   if (!Array.isArray(candidate.routes)) {
-    throw new Error(`Invalid route module ${path}: routes must be an array`)
+    throw new TypeError(`Invalid route module ${path}: routes must be an array`)
   }
 
   if (candidate.routes.length === 0) {
@@ -74,7 +74,7 @@ function validateFeatureRouteModule(path: string, moduleExport: unknown): Featur
 
   if (candidate.navigation !== undefined) {
     if (!Array.isArray(candidate.navigation)) {
-      throw new Error(`Invalid route module ${path}: navigation must be an array when provided`)
+      throw new TypeError(`Invalid route module ${path}: navigation must be an array when provided`)
     }
 
     candidate.navigation.forEach((item, index) => validateNavigationItem(path, item, `navigation[${index}]`))

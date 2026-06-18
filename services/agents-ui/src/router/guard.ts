@@ -41,8 +41,7 @@ export function createProtectedRouteGuard(
     if (isUnknownAuthState(auth) && auth.fetchUser) {
       try {
         await auth.fetchUser()
-      }
-      catch {
+      } catch {
         // Keep protected routes closed when session restoration cannot be confirmed.
       }
     }
