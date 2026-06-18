@@ -1,0 +1,8 @@
+# Capacitor native projects are generated in CI and local workspaces.
+/android
+/ios
+.capacitor/
+
+# Capacitor build outputs
+/dist
+/build
