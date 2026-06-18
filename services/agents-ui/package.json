@@ -27,6 +27,8 @@
     "@capacitor/core": "^7.0.0",
     "@capacitor/ios": "^7.0.0",
     "@capacitor/preferences": "^7.0.0",
+    "@capacitor/splash-screen": "^7.0.0",
+    "@capacitor/status-bar": "^7.0.0",
     "@extratoast/vue-web-commons": "^0.3.0",
     "@grafana/faro-web-sdk": "^2.7.1",
     "@grafana/faro-web-tracing": "^2.7.1",
