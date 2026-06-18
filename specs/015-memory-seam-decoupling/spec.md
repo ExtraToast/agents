@@ -79,10 +79,10 @@ As the operator, I can split the recall and write responsibilities into separate
 - **FR-002**: System MUST retain `rag.enabled` for one release as a deprecated master toggle whose `false` value disables both concerns (rollback path).
 - **FR-003**: System MUST separate recall and write responsibilities into distinct components such that exactly one `KnowledgeWritePort` exists and recall sources are individually toggleable.
 - **FR-004**: System MUST guard each `RetrievalPort` implementation with a per-bean conditional so any source can be enabled/disabled without removing code.
-- **FR-005**: System MUST apply a documented precedence/coexistence ranking rule when multiple retrieval sources are active, so a fixed-score-1.0 source does not dominate the score floor.
+- **FR-005**: System MUST apply a documented precedence/coexistence ranking rule when multiple retrieval sources are active, so a fixed-score-1.0 source does not dominate the score floor. **The default two-source ordering in effect today MUST be preserved** — the rule governs new multi-source configurations; any unavoidable ordering change at defaults MUST be recorded as an explicit before/after in `data-model.md`, never shipped silently. This is the single qualification on FR-007.
 - **FR-006**: System MUST preserve capture duplicate-suppression behavior (threshold `0.86`) across the recall/write split, or record an explicitly accepted regression.
 - **FR-007**: System MUST NOT change externally observable behavior in the default (all-enabled) configuration — this is a refactor.
-- **FR-008**: Existing test suites (`KnowledgeMcpClientTest`, `LessonAutoCaptureTest`, `ContextBuilderTest`, `ScopeInferenceTest`) MUST be **extended** to pin the new contract, not duplicated.
+- **FR-008**: Existing test suites (`KnowledgeMcpClientTest`, `LessonAutoCaptureTest`, `ContextBuilderTest`) MUST be **extended** to pin the new contract, not duplicated. (`ScopeInferenceTest` is unaffected — this refactor does not touch the capture extractor/scope-inference path.)
 - **FR-009**: The change MUST be delivered as sequenced sub-changes (flag-split + config compatibility first; then dual-port split + per-bean conditional), serialized on the shared files (`RagProperties.kt`, `ContextBuilder.kt`, `application.yml`).
 
 ### Out of Scope
