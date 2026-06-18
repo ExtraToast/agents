@@ -97,6 +97,93 @@ jobs:
       - name: Check generated UI client
         run: pnpm --filter @extratoast/agents-ui contract:check
 
+  app-web-check:
+    name: App Web Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: services/agents-ui/package.json
+      - name: Install app dependencies
+        run: |
+          pnpm config set //npm.pkg.github.com/:_authToken "$NODE_AUTH_TOKEN"
+          pnpm install --no-frozen-lockfile
+      - name: Typecheck app
+        run: pnpm --filter @extratoast/agents-ui typecheck
+      - name: Lint app
+        run: pnpm --filter @extratoast/agents-ui lint
+      - name: Test app
+        run: pnpm --filter @extratoast/agents-ui test
+      - name: Build app
+        run: pnpm --filter @extratoast/agents-ui build
+
+  app-contract:
+    name: App Contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: services/agents-ui/package.json
+      - name: Install app dependencies
+        run: |
+          pnpm config set //npm.pkg.github.com/:_authToken "$NODE_AUTH_TOKEN"
+          pnpm install --no-frozen-lockfile
+      - name: Check app contract
+        run: pnpm --filter @extratoast/agents-ui contract:check
+
+  app-android-smoke:
+    name: App Android Smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: services/agents-ui/package.json
+      - name: Install app dependencies
+        run: |
+          pnpm config set //npm.pkg.github.com/:_authToken "$NODE_AUTH_TOKEN"
+          pnpm install --no-frozen-lockfile
+      - name: Build web app
+        run: pnpm --filter @extratoast/agents-ui build
+      - name: Add Android project
+        working-directory: services/agents-ui
+        run: npx cap add android
+      - name: Sync Android project
+        working-directory: services/agents-ui
+        run: npx cap sync android
+      - name: Assemble Android debug build
+        working-directory: services/agents-ui/android
+        run: ./gradlew assembleDebug
+
+  app-native-e2e:
+    name: App Native E2E
+    runs-on: ubuntu-latest
+    steps:
+      - name: Native E2E placeholder
+        run: echo "TODO(spec 020): replace placeholder with native end-to-end coverage."
+
   docker-build:
     name: Docker Build
     runs-on: ubuntu-latest
@@ -136,7 +223,16 @@ jobs:
   pipeline-complete:
     name: Pipeline Complete
     if: always()
-    needs: [workflow-lint, jvm-check, ui-check, openapi-contract, docker-build]
+    needs:
+      - workflow-lint
+      - jvm-check
+      - ui-check
+      - openapi-contract
+      - app-web-check
+      - app-contract
+      - app-android-smoke
+      - app-native-e2e
+      - docker-build
     runs-on: ubuntu-latest
     steps:
       - name: Verify all gating jobs succeeded
