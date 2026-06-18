@@ -110,6 +110,10 @@ extratoast:
     audience: agents-api
     jwks-uri: ${AUTH_JWKS_URI:}
     issuer: ${AUTH_ISSUER:}
+  web:
+    problem-details:
+      validation-enabled: true
+      validation-status: 422
 
 agent-runtime:
   namespace: ${AGENT_RUNTIME_NAMESPACE:agents-system}
