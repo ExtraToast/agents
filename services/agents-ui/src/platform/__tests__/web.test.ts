@@ -1,7 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { initializeNativeChrome } from '..'
 import { webAppUrlOpener } from '../web/appUrlOpener'
 import { webPlatformInfo } from '../web/platformInfo'
 import { webSecureStorage } from '../web/secureStorage'
+
+vi.mock('@capacitor/core', () => ({
+  Capacitor: {
+    isNativePlatform: () => false,
+  },
+}))
+
+vi.mock('@capacitor/splash-screen', () => {
+  throw new Error('SplashScreen should not load on web')
+})
+
+vi.mock('@capacitor/status-bar', () => {
+  throw new Error('StatusBar should not load on web')
+})
 
 function createLocalStorageStub(): Storage {
   const values = new Map<string, string>()
@@ -61,5 +76,9 @@ describe('web platform adapters', () => {
     await registration.remove()
 
     expect(listener).not.toHaveBeenCalled()
+  })
+
+  it('does not load native chrome plugins on web', async () => {
+    await expect(initializeNativeChrome()).resolves.toBeUndefined()
   })
 })
