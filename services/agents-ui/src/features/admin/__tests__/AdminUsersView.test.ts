@@ -4,8 +4,8 @@ import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
-import AdminUsersView from '../views/AdminUsersView.vue'
 import { useAdminStore } from '../stores/admin'
+import AdminUsersView from '../views/AdminUsersView.vue'
 
 const confirmMock = vi.hoisted(() => ({ require: vi.fn() }))
 const toastMock = vi.hoisted(() => ({
@@ -59,7 +59,7 @@ const DataTableStub = defineComponent({
       if (props.loading) return h('div', { 'data-testid': 'table-loading' }, slots.loading?.())
       if (props.value.length === 0) return h('div', { 'data-testid': 'table-empty' }, slots.empty?.())
 
-      const columns = (slots.default?.() ?? []) as VNode[]
+      const columns = (slots.default?.() ?? []) as VNode[] // eslint-disable-line ts/consistent-type-assertions
       return h(
         'div',
         { 'data-testid': 'admin-users-table-stub' },

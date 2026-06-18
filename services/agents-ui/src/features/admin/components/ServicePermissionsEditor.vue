@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
 import Chip from 'primevue/chip'
 import MultiSelect from 'primevue/multiselect'
+import { computed, ref, watch } from 'vue'
 
 const props = defineProps<{
   disabled?: boolean
