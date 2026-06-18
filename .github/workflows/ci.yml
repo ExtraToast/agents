@@ -182,7 +182,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Native E2E placeholder
-        run: echo "TODO(spec 020): replace placeholder with native end-to-end coverage."
+        run: |
+          echo "TODO(spec 020): replace placeholder with native end-to-end coverage."
 
   docker-build:
     name: Docker Build
