@@ -1,5 +1,5 @@
-import { Capacitor } from '@capacitor/core'
 import type { PlatformInfo, PlatformName } from '../types'
+import { Capacitor } from '@capacitor/core'
 
 function normalizePlatform(platform: string): PlatformName {
   return platform === 'android' || platform === 'ios' ? platform : 'web'

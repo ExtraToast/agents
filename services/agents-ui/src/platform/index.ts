@@ -1,7 +1,7 @@
 import type { App, InjectionKey, Plugin } from 'vue'
 import { inject } from 'vue'
-import { webAppUrlOpener, webPlatformInfo, webSecureStorage } from './web'
 import type { AppUrlOpener, PlatformInfo, PlatformServices, SecureStorage } from './types'
+import { webAppUrlOpener, webPlatformInfo, webSecureStorage } from './web'
 
 export const secureStorageKey: InjectionKey<SecureStorage> = Symbol('secureStorage')
 export const appUrlOpenerKey: InjectionKey<AppUrlOpener> = Symbol('appUrlOpener')

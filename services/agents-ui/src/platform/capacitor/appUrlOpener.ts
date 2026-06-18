@@ -1,5 +1,5 @@
-import { App } from '@capacitor/app'
 import type { AppUrlOpener } from '../types'
+import { App } from '@capacitor/app'
 
 export const capacitorAppUrlOpener: AppUrlOpener = {
   async openDeepLink(url) {

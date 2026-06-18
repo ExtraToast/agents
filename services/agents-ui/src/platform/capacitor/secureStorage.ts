@@ -1,5 +1,5 @@
-import { Preferences } from '@capacitor/preferences'
 import type { SecureStorage } from '../types'
+import { Preferences } from '@capacitor/preferences'
 
 export const capacitorSecureStorage: SecureStorage = {
   async getItem(key) {

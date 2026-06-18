@@ -1,5 +1,5 @@
-import process from 'node:process'
 import type { CapacitorConfig } from '@capacitor/cli'
+import process from 'node:process'
 
 const serverUrl = process.env.CAP_SERVER_URL
 
