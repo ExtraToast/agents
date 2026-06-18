@@ -678,6 +678,17 @@ describe('useWorkspacesStore', () => {
     expect(connectCallCount).toBe(0)
   })
 
+  it('newSession clears startingSession to false after a failed start', async () => {
+    mocked.startSession.mockRejectedValue(apiError(503))
+    mocked.getWorkspace.mockResolvedValue({ workspace: fakeWorkspace(), sessions: [] })
+    const store = useWorkspacesStore()
+    store.activeWorkspace = fakeWorkspace()
+
+    await expect(store.newSession('CLAUDE')).rejects.toBeDefined()
+
+    expect(store.startingSession).toBe(false)
+  })
+
   it('internal refreshes from endSession do not call connectWorkspace', async () => {
     mocked.getWorkspace
       .mockResolvedValueOnce({ workspace: fakeWorkspace(), sessions: [fakeSession()] })

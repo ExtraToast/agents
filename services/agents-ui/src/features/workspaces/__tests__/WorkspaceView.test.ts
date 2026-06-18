@@ -116,6 +116,12 @@ vi.mock('@/features/repositories/services/repositoriesService', () => ({
   verifyRepositoryAccess: vi.fn(),
 }))
 
+const toastMock = { success: vi.fn(), errorFromCatch: vi.fn() }
+vi.mock('@/lib/vueWebCommons', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/vueWebCommons')>()
+  return { ...actual, useToast: () => toastMock }
+})
+
 function fakeSession(over: Partial<AgentSession> = {}): AgentSession {
   return {
     id: 'sess-a',
@@ -334,6 +340,8 @@ describe('workspaceView terminal persistence', () => {
       if (err instanceof ApiError && err.status === 422) return err.problem as AgentSetupValidationProblem
       return null
     })
+    toastMock.success.mockReset()
+    toastMock.errorFromCatch.mockReset()
     vi.stubGlobal(
       'ResizeObserver',
       class {
@@ -904,7 +912,7 @@ describe('workspaceView terminal persistence', () => {
   })
 
   it('non-retryable 503 from startSession refreshes the snapshot without calling connectWorkspace again', async () => {
-    startSession.mockRejectedValue(new ApiError({ type: 'about:blank', title: 'x', status: 503, runnerStatus: 'Failed' }))
+    startSession.mockRejectedValue(new ApiError({ type: 'about:blank', title: 'x', status: 503, runnerStatus: 'provision_failed' }))
     getWorkspace
       .mockResolvedValueOnce(detail([]))
       .mockResolvedValue(detail([]))
@@ -919,6 +927,23 @@ describe('workspaceView terminal persistence', () => {
     expect(getWorkspace).toHaveBeenCalledTimes(2)
     // The refresh must not trigger a new connect
     expect(connectWorkspace.mock.calls.length).toBe(connectCallsBefore)
+  })
+
+  it('shows a toast instead of letting an ApiError from startSession escape the view', async () => {
+    startSession.mockRejectedValue(new ApiError({ type: 'about:blank', title: 'Runner unavailable', status: 503, runnerStatus: 'provision_failed' }))
+    getWorkspace
+      .mockResolvedValueOnce(detail([]))
+      .mockResolvedValue(detail([]))
+    const wrapper = await mountView()
+
+    void wrapper.get('[data-testid="workspace-new-agent"]').trigger('click')
+    // The store re-fetches the snapshot inside its 503 catch before rethrowing,
+    // so the rejection reaches onSpawn a few microtasks later — drain fully.
+    await flush()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    await flush()
+
+    expect(toastMock.errorFromCatch).toHaveBeenCalledWith('Could not start session', expect.any(ApiError))
   })
 
   it('connectWorkspace is called once on navigation and not again for internal refreshes', async () => {
