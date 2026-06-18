@@ -32,7 +32,7 @@ describe('authApi client', () => {
   })
 
   it('sends credentials and CSRF on mutations but not on GET', async () => {
-    fetchImpl.mockResolvedValue(jsonResponse({ ok: true }))
+    fetchImpl.mockImplementation(async () => jsonResponse({ ok: true }))
     const client = createAuthApiClient({
       csrfTokenSource: () => 'csrf-token',
       fetchImpl,
@@ -77,7 +77,7 @@ describe('authApi client', () => {
   })
 
   it('throws AuthApiError with problem detail on non-2xx responses', async () => {
-    fetchImpl.mockResolvedValue(jsonResponse({ detail: 'Current password is wrong' }, { status: 400 }))
+    fetchImpl.mockImplementation(async () => jsonResponse({ detail: 'Current password is wrong' }, { status: 400 }))
     const client = createAuthApiClient({ fetchImpl, origins: { authOrigin: 'https://auth.example.test' } })
 
     await expect(client.post('/auth/change-password', {})).rejects.toMatchObject({
