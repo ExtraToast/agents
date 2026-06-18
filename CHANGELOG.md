@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.1](https://github.com/ExtraToast/agents/compare/v0.7.0...v0.7.1) (2026-06-18)
+
+
+### Bug Fixes
+
+* **agents-api:** eliminate 409 session-generation-conflict on new-session create ([#59](https://github.com/ExtraToast/agents/issues/59)) ([7237e5d](https://github.com/ExtraToast/agents/commit/7237e5d7432e5768780f6f081f33efed2a1b7378))
+* **agents-ui:** re-fit terminal when console layout changes ([#50](https://github.com/ExtraToast/agents/issues/50)) ([9898436](https://github.com/ExtraToast/agents/commit/9898436d8491b6e7b51a5f33830129989b0b0b83))
+
 ## [0.7.0](https://github.com/ExtraToast/agents/compare/v0.6.0...v0.7.0) (2026-06-16)
 
 
