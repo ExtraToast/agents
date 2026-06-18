@@ -1,3 +1,5 @@
+import type { RefreshTokenStore } from './refreshTokenStore'
+import type { AuthFetch } from './tokenExchange'
 import type {
   AccessTokenLease,
   AuthPlatform,
@@ -8,11 +10,9 @@ import type {
   NativeAuthConfig,
   TokenProvider,
 } from './types'
-import type { AuthFetch } from './tokenExchange'
-import type { RefreshTokenStore } from './refreshTokenStore'
 import { useAuth } from '../vueWebCommons'
 import { createRefreshTokenStore } from './refreshTokenStore'
-import { ReLoginRequiredError, createRefreshCoordinator } from './tokenExchange'
+import { createRefreshCoordinator, ReLoginRequiredError } from './tokenExchange'
 
 const ACCESS_TOKEN_REFRESH_SKEW_MS = 30_000
 
@@ -185,6 +185,15 @@ function defaultPlatform(): AuthPlatform {
 }
 
 export type {
+  RefreshTokenRecord,
+  RefreshTokenStore,
+} from './refreshTokenStore'
+export type {
+  AuthFetch,
+  RefreshCoordinator,
+  TokenExchangeResult,
+} from './tokenExchange'
+export type {
   AccessTokenLease,
   AuthPlatform,
   AuthRestoreState,
@@ -200,28 +209,19 @@ export type {
   SecureStorage,
   TokenProvider,
 } from './types'
-export type {
-  RefreshTokenRecord,
-  RefreshTokenStore,
-} from './refreshTokenStore'
-export type {
-  AuthFetch,
-  RefreshCoordinator,
-  TokenExchangeResult,
-} from './tokenExchange'
 
+export { parseDeepLinkCallback } from './deepLink'
 export {
   buildAuthorizeUrl,
   createS256CodeChallenge,
   generateCodeVerifier,
   generateState,
 } from './pkce'
-export { parseDeepLinkCallback } from './deepLink'
 export { createRefreshTokenStore, createRefreshTokenStoreFromStorage } from './refreshTokenStore'
 export {
-  ReLoginRequiredError,
-  TokenExchangeError,
   createRefreshCoordinator,
   exchangeCode,
   refresh,
+  ReLoginRequiredError,
+  TokenExchangeError,
 } from './tokenExchange'

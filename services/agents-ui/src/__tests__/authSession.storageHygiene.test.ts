@@ -44,15 +44,12 @@ describe('native auth storage hygiene', () => {
         return {}
       }),
     }
-    // eslint-disable-next-line no-console
     const consoleLog = vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
       writes.push(args)
     })
-    // eslint-disable-next-line no-console
     const consoleWarn = vi.spyOn(console, 'warn').mockImplementation((...args: unknown[]) => {
       writes.push(args)
     })
-    // eslint-disable-next-line no-console
     const consoleError = vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
       writes.push(args)
     })

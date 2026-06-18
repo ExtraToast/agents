@@ -1,5 +1,5 @@
-import type { NativeAuthConfig } from './types'
 import type { RefreshTokenStore } from './refreshTokenStore'
+import type { NativeAuthConfig } from './types'
 
 const TOKEN_PATH = '/api/oauth2/token'
 

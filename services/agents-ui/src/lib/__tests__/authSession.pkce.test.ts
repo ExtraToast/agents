@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildAuthorizeUrl, createS256CodeChallenge, generateCodeVerifier, generateState } from '../authSession'
 
-const UNRESERVED = /^[A-Za-z0-9._~-]+$/u
+const UNRESERVED = /^[\w.~-]+$/u
 
 describe('authSession PKCE helpers', () => {
   it('generates verifier values in the PKCE length and charset bounds', () => {

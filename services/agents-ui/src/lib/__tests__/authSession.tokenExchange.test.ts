@@ -1,7 +1,7 @@
 import type { NativeAuthConfig, RefreshTokenStore } from '../authSession'
 import type { AuthFetch } from '../authSession/tokenExchange'
 import { describe, expect, it, vi } from 'vitest'
-import { ReLoginRequiredError, createRefreshCoordinator, exchangeCode, refresh } from '../authSession'
+import { createRefreshCoordinator, exchangeCode, refresh, ReLoginRequiredError } from '../authSession'
 
 const config: NativeAuthConfig = {
   authBaseUrl: 'https://auth.example.test',
