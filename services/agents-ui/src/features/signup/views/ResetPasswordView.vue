@@ -30,7 +30,9 @@ const resetFormSchema = resetPasswordRequestSchema.extend({
   message: 'Passwords must match',
   path: ['confirmPassword'],
 })
-const canSubmit = computed(() => form.newPassword.length > 0 && form.confirmPassword.length > 0 && token.value.length > 0)
+const canSubmit = computed(
+  () => form.newPassword.length > 0 && form.confirmPassword.length > 0 && token.value.length > 0,
+)
 
 function clearErrors(): void {
   formErrors.clear()
