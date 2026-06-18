@@ -91,7 +91,7 @@ class HeadlessOutputStreamer private constructor(
 
         private fun poll() {
             if (stopped.get()) return
-            try {
+            runCatching {
                 val current = currentJob(job.id) ?: job
                 drainCompleteLines(job.outputFile)
                 if (current.status != HeadlessJobStatus.RUNNING && isFullyRead(job.outputFile)) {
@@ -99,7 +99,7 @@ class HeadlessOutputStreamer private constructor(
                     sink.complete()
                     stop()
                 }
-            } catch (ex: Exception) {
+            }.onFailure { ex ->
                 log.warn("headless output stream for job {} failed: {}", job.id, ex.message)
                 sink.completeWithError(ex)
                 stop()
