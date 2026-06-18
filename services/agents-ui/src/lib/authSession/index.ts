@@ -184,14 +184,29 @@ function defaultPlatform(): AuthPlatform {
   }
 }
 
+export { parseDeepLinkCallback } from './deepLink'
+export {
+  buildAuthorizeUrl,
+  createS256CodeChallenge,
+  generateCodeVerifier,
+  generateState,
+} from './pkce'
 export type {
   RefreshTokenRecord,
   RefreshTokenStore,
 } from './refreshTokenStore'
+export { createRefreshTokenStore, createRefreshTokenStoreFromStorage } from './refreshTokenStore'
 export type {
   AuthFetch,
   RefreshCoordinator,
   TokenExchangeResult,
+} from './tokenExchange'
+export {
+  createRefreshCoordinator,
+  exchangeCode,
+  refresh,
+  ReLoginRequiredError,
+  TokenExchangeError,
 } from './tokenExchange'
 export type {
   AccessTokenLease,
@@ -209,19 +224,3 @@ export type {
   SecureStorage,
   TokenProvider,
 } from './types'
-
-export { parseDeepLinkCallback } from './deepLink'
-export {
-  buildAuthorizeUrl,
-  createS256CodeChallenge,
-  generateCodeVerifier,
-  generateState,
-} from './pkce'
-export { createRefreshTokenStore, createRefreshTokenStoreFromStorage } from './refreshTokenStore'
-export {
-  createRefreshCoordinator,
-  exchangeCode,
-  refresh,
-  ReLoginRequiredError,
-  TokenExchangeError,
-} from './tokenExchange'
