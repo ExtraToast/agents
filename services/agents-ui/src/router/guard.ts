@@ -3,23 +3,23 @@ import type { AdminCapability, AuthRole, CapabilityQuery } from './types'
 import { createCapabilityQuery, isAdminCapability } from './types'
 
 interface ReadableRef<T> {
-  value: T;
+  value: T
 }
 
 export interface ShellAuthUser {
-  role?: AuthRole | string;
+  role?: AuthRole | string
 }
 
 export interface ShellAuthState {
-  isAuthenticated: ReadableRef<boolean>;
-  user: ReadableRef<ShellAuthUser | null | undefined>;
-  fetchUser?: () => Promise<unknown>;
+  isAuthenticated: ReadableRef<boolean>
+  user: ReadableRef<ShellAuthUser | null | undefined>
+  fetchUser?: () => Promise<unknown>
 }
 
 interface ProtectedRouteGuardTarget {
-  fullPath: string;
-  meta: RouteMeta;
-  name?: string | symbol | null | undefined;
+  fullPath: string
+  meta: RouteMeta
+  name?: string | symbol | null | undefined
 }
 
 export type ProtectedRouteGuard = (to: ProtectedRouteGuardTarget) => Promise<boolean | RouteLocationRaw>

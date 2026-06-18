@@ -56,8 +56,8 @@ vi.mock('@/lib/vueWebCommons', async () => {
       setup(props) {
         return () => h('button', {
           'data-testid': 'login-submit',
-          disabled: props.disabled,
-          type: 'submit',
+          'disabled': props.disabled,
+          'type': 'submit',
         }, props.label)
       },
     }),

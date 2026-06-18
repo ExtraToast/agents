@@ -1,25 +1,25 @@
 import { createCredentialsPolicy, createUrlBuilder } from '@/lib/runtimeOrigins'
 
 export interface SessionLoginInput {
-  username: string;
-  password: string;
-  totpCode?: string | undefined;
+  username: string
+  password: string
+  totpCode?: string | undefined
 }
 
 export interface SessionLoginUser {
-  id: string;
-  username: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: string;
-  roles: string[];
+  id: string
+  username: string
+  email: string
+  firstName: string
+  lastName: string
+  role: string
+  roles: string[]
 }
 
 export interface SessionLoginResponse {
-  success: boolean;
-  totpRequired: boolean;
-  user?: SessionLoginUser | undefined;
+  success: boolean
+  totpRequired: boolean
+  user?: SessionLoginUser | undefined
 }
 
 export class AuthApiError extends Error {
