@@ -3,7 +3,7 @@ import type { ZodIssue } from 'zod'
 import { computed, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { z } from 'zod'
-import { FormErrors, SubmitButton, useMutationState, useToast } from '@/lib/vueWebCommons'
+import { FormErrors, SubmitButton, useFormErrors, useMutationState, useToast } from '@/lib/vueWebCommons'
 import AuthCard from '../components/AuthCard.vue'
 import PasswordFields from '../components/PasswordFields.vue'
 import { resetPassword } from '../services/signupService'
@@ -14,10 +14,10 @@ const form = reactive({
   newPassword: '',
   confirmPassword: '',
 })
-const fieldErrors = reactive<Record<string, string>>({})
-const generalError = ref<string | null>(null)
+const validationErrors = ref<Record<string, string>>({})
 const success = ref(false)
 const submit = useMutationState<void>()
+const formErrors = useFormErrors()
 const toast = useToast()
 
 const token = computed(() => {
@@ -33,26 +33,17 @@ const resetFormSchema = resetPasswordRequestSchema.extend({
 const canSubmit = computed(() => form.newPassword.length > 0 && form.confirmPassword.length > 0 && token.value.length > 0)
 
 function clearErrors(): void {
-  generalError.value = null
-  Object.keys(fieldErrors).forEach((key) => {
-    delete fieldErrors[key]
-  })
-}
-
-function fieldErrorFor(name: string): string | null {
-  return fieldErrors[name] ?? null
+  formErrors.clear()
+  validationErrors.value = {}
 }
 
 function captureIssues(issues: ZodIssue[]): void {
+  const errors: Record<string, string> = {}
   issues.forEach((issue) => {
     const [path] = issue.path
-    if (typeof path === 'string' && fieldErrors[path] === undefined) fieldErrors[path] = issue.message
+    if (typeof path === 'string' && errors[path] === undefined) errors[path] = issue.message
   })
-}
-
-function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message
-  return 'Password reset failed.'
+  validationErrors.value = errors
 }
 
 async function onSubmit(): Promise<void> {
@@ -71,8 +62,8 @@ async function onSubmit(): Promise<void> {
     await submit.run(() => resetPassword(parsed.data.token, parsed.data.newPassword))
     success.value = true
   } catch (e) {
-    generalError.value = errorMessage(e)
-    toast.error('Password reset failed', generalError.value)
+    formErrors.captureFromCatch(e)
+    toast.errorFromCatch('Password reset failed', e)
   }
 }
 </script>
@@ -85,21 +76,26 @@ async function onSubmit(): Promise<void> {
     </div>
 
     <div v-else-if="!token" class="space-y-4" data-testid="reset-missing-token">
-      <FormErrors error="Reset token is missing." />
+      <p class="rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+        Reset token is missing.
+      </p>
       <RouterLink to="/forgot-password" class="text-sm text-[var(--color-accent-light)] underline">
         Request a new reset link
       </RouterLink>
     </div>
 
     <form v-else class="space-y-4" data-testid="reset-form" @submit.prevent="onSubmit">
-      <FormErrors :error="generalError" />
+      <FormErrors :error="formErrors.general.value" />
       <PasswordFields
         v-model:password="form.newPassword"
         v-model:confirm-password="form.confirmPassword"
         password-label="New password"
-        :password-error="fieldErrorFor('newPassword')"
-        :confirm-password-error="fieldErrorFor('confirmPassword')"
+        :password-error="formErrors.fieldErrorFor('newPassword')"
+        :confirm-password-error="formErrors.fieldErrorFor('confirmPassword')"
       />
+      <p v-if="validationErrors.newPassword || validationErrors.confirmPassword" class="-mt-2 text-xs text-red-300">
+        {{ validationErrors.newPassword ?? validationErrors.confirmPassword }}
+      </p>
       <SubmitButton
         label="Reset password"
         :status="submit.status.value"

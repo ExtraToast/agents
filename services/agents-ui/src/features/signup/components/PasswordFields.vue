@@ -2,8 +2,8 @@
 import { FormField } from '@/lib/vueWebCommons'
 
 defineProps<{
-  passwordError?: string | null
-  confirmPasswordError?: string | null
+  passwordError?: string
+  confirmPasswordError?: string
   passwordLabel?: string
 }>()
 

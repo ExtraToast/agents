@@ -1,28 +1,23 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { FormErrors, FormField, SubmitButton, useMutationState, useToast } from '@/lib/vueWebCommons'
+import { FormErrors, FormField, SubmitButton, useFormErrors, useMutationState, useToast } from '@/lib/vueWebCommons'
 import AuthCard from '../components/AuthCard.vue'
 import { forgotPassword } from '../services/signupService'
 import { forgotPasswordRequestSchema } from '../types'
 
 const email = ref('')
-const fieldError = ref<string | null>(null)
-const generalError = ref<string | null>(null)
+const validationEmailError = ref<string>()
 const sent = ref(false)
 const submit = useMutationState<void>()
+const formErrors = useFormErrors()
 const toast = useToast()
 
-function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message
-  return 'The reset request could not be completed.'
-}
-
 async function onSubmit(): Promise<void> {
-  fieldError.value = null
-  generalError.value = null
+  validationEmailError.value = undefined
+  formErrors.clear()
   const parsed = forgotPasswordRequestSchema.safeParse({ email: email.value })
   if (!parsed.success) {
-    fieldError.value = parsed.error.issues[0]?.message ?? 'Enter a valid email address'
+    validationEmailError.value = parsed.error.issues[0]?.message ?? 'Enter a valid email address'
     return
   }
 
@@ -30,8 +25,8 @@ async function onSubmit(): Promise<void> {
     await submit.run(() => forgotPassword(parsed.data.email))
     sent.value = true
   } catch (e) {
-    generalError.value = errorMessage(e)
-    toast.error('Reset request failed', generalError.value)
+    formErrors.captureFromCatch(e)
+    toast.errorFromCatch('Reset request failed', e)
   }
 }
 </script>
@@ -47,8 +42,8 @@ async function onSubmit(): Promise<void> {
     </div>
 
     <form v-else class="space-y-4" data-testid="forgot-form" @submit.prevent="onSubmit">
-      <FormErrors :error="generalError" />
-      <FormField label="Email" required :error="fieldError">
+      <FormErrors :error="formErrors.general.value" />
+      <FormField label="Email" required :error="formErrors.fieldErrorFor('email')">
         <template #default="{ id, invalid }">
           <input
             :id="id"
@@ -62,6 +57,9 @@ async function onSubmit(): Promise<void> {
           />
         </template>
       </FormField>
+      <p v-if="validationEmailError" class="-mt-2 text-xs text-red-300">
+        {{ validationEmailError }}
+      </p>
       <SubmitButton
         label="Send reset link"
         :status="submit.status.value"

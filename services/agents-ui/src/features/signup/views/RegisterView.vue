@@ -2,7 +2,7 @@
 import type { ZodIssue } from 'zod'
 import { computed, reactive, ref } from 'vue'
 import { z } from 'zod'
-import { FormErrors, FormField, SubmitButton, useMutationState, useToast } from '@/lib/vueWebCommons'
+import { FormErrors, FormField, SubmitButton, useFormErrors, useMutationState, useToast } from '@/lib/vueWebCommons'
 import AuthCard from '../components/AuthCard.vue'
 import PasswordFields from '../components/PasswordFields.vue'
 import { register, resendConfirmation } from '../services/signupService'
@@ -16,12 +16,12 @@ const form = reactive({
   password: '',
   confirmPassword: '',
 })
-const fieldErrors = reactive<Record<string, string>>({})
-const generalError = ref<string | null>(null)
+const validationErrors = ref<Record<string, string>>({})
 const submittedEmail = ref('')
 const resendMessage = ref<string | null>(null)
 const submit = useMutationState<void>()
 const resend = useMutationState<void>()
+const formErrors = useFormErrors()
 const toast = useToast()
 
 const registerFormSchema = registerUserRequestSchema.extend({
@@ -41,26 +41,17 @@ const canSubmit = computed(() =>
 )
 
 function clearErrors(): void {
-  generalError.value = null
-  Object.keys(fieldErrors).forEach((key) => {
-    delete fieldErrors[key]
-  })
-}
-
-function fieldErrorFor(name: string): string | null {
-  return fieldErrors[name] ?? null
+  formErrors.clear()
+  validationErrors.value = {}
 }
 
 function captureIssues(issues: ZodIssue[]): void {
+  const errors: Record<string, string> = {}
   issues.forEach((issue) => {
     const [path] = issue.path
-    if (typeof path === 'string' && fieldErrors[path] === undefined) fieldErrors[path] = issue.message
+    if (typeof path === 'string' && errors[path] === undefined) errors[path] = issue.message
   })
-}
-
-function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message
-  return 'The request could not be completed.'
+  validationErrors.value = errors
 }
 
 async function onSubmit(): Promise<void> {
@@ -81,20 +72,21 @@ async function onSubmit(): Promise<void> {
     }))
     submittedEmail.value = parsed.data.email
   } catch (e) {
-    generalError.value = errorMessage(e)
-    toast.error('Registration failed', generalError.value)
+    formErrors.captureFromCatch(e)
+    toast.errorFromCatch('Registration failed', e)
   }
 }
 
 async function onResend(): Promise<void> {
+  formErrors.clear()
   resendMessage.value = null
   try {
     await resend.run(() => resendConfirmation(submittedEmail.value))
     resendMessage.value = 'Confirmation email sent.'
     toast.success('Confirmation email sent', 'Check your inbox for the latest link.')
   } catch (e) {
-    generalError.value = errorMessage(e)
-    toast.error('Could not resend confirmation', generalError.value)
+    formErrors.captureFromCatch(e)
+    toast.errorFromCatch('Could not resend confirmation', e)
   }
 }
 </script>
@@ -105,7 +97,7 @@ async function onResend(): Promise<void> {
     title="Check your email"
     :subtitle="`We sent a confirmation link to ${submittedEmail}. Confirm your email before signing in.`"
   >
-    <FormErrors :error="generalError" />
+    <FormErrors :error="formErrors.general.value" />
     <p v-if="resendMessage" class="mb-4 text-sm text-green-400" data-testid="register-resend-success">
       {{ resendMessage }}
     </p>
@@ -120,9 +112,9 @@ async function onResend(): Promise<void> {
 
   <AuthCard v-else title="Create account" subtitle="Register, then confirm your email to activate the account.">
     <form class="space-y-4" data-testid="register-form" @submit.prevent="onSubmit">
-      <FormErrors :error="generalError" />
+      <FormErrors :error="formErrors.general.value" />
 
-      <FormField label="Username" required :error="fieldErrorFor('username')">
+      <FormField label="Username" required :error="formErrors.fieldErrorFor('username')">
         <template #default="{ id, invalid }">
           <input
             :id="id"
@@ -136,8 +128,11 @@ async function onResend(): Promise<void> {
           />
         </template>
       </FormField>
+      <p v-if="validationErrors.username" class="-mt-2 text-xs text-red-300">
+        {{ validationErrors.username }}
+      </p>
 
-      <FormField label="Email" required :error="fieldErrorFor('email')">
+      <FormField label="Email" required :error="formErrors.fieldErrorFor('email')">
         <template #default="{ id, invalid }">
           <input
             :id="id"
@@ -151,9 +146,12 @@ async function onResend(): Promise<void> {
           />
         </template>
       </FormField>
+      <p v-if="validationErrors.email" class="-mt-2 text-xs text-red-300">
+        {{ validationErrors.email }}
+      </p>
 
       <div class="grid gap-4 sm:grid-cols-2">
-        <FormField label="First name" required :error="fieldErrorFor('firstName')">
+        <FormField label="First name" required :error="formErrors.fieldErrorFor('firstName')">
           <template #default="{ id, invalid }">
             <input
               :id="id"
@@ -168,7 +166,7 @@ async function onResend(): Promise<void> {
           </template>
         </FormField>
 
-        <FormField label="Last name" required :error="fieldErrorFor('lastName')">
+        <FormField label="Last name" required :error="formErrors.fieldErrorFor('lastName')">
           <template #default="{ id, invalid }">
             <input
               :id="id"
@@ -183,13 +181,19 @@ async function onResend(): Promise<void> {
           </template>
         </FormField>
       </div>
+      <p v-if="validationErrors.firstName || validationErrors.lastName" class="-mt-2 text-xs text-red-300">
+        {{ validationErrors.firstName ?? validationErrors.lastName }}
+      </p>
 
       <PasswordFields
         v-model:password="form.password"
         v-model:confirm-password="form.confirmPassword"
-        :password-error="fieldErrorFor('password')"
-        :confirm-password-error="fieldErrorFor('confirmPassword')"
+        :password-error="formErrors.fieldErrorFor('password')"
+        :confirm-password-error="formErrors.fieldErrorFor('confirmPassword')"
       />
+      <p v-if="validationErrors.password || validationErrors.confirmPassword" class="-mt-2 text-xs text-red-300">
+        {{ validationErrors.password ?? validationErrors.confirmPassword }}
+      </p>
 
       <div class="flex items-center justify-between gap-3">
         <RouterLink to="/forgot-password" class="text-sm text-[var(--color-accent-light)] underline">
