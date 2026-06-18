@@ -265,12 +265,10 @@ async function focusConsoleSurface(): Promise<void> {
 }
 
 async function onSpawn(): Promise<void> {
-  // newSession surfaces failure through store state (runner readiness / error);
-  // swallow here so a non-retryable 503 does not bubble as an unhandled rejection.
   try {
     await store.newSession(pickerKind.value)
-  } catch {
-    /* handled via store state */
+  } catch (e) {
+    toast.errorFromCatch('Could not start session', e)
   }
   statuses.syncRestSessions()
   await focusConsoleSurface()

@@ -28,11 +28,16 @@ const SESSION_START_BUDGET_MS = 180_000
 const DEFAULT_RETRY_AFTER_S = 5
 const AGENT_SETUP_VALIDATION_TYPE = 'https://jorisjonkers.dev/errors/agent-setup-validation'
 
-// runnerStatus values in a 503 that indicate a pre-bind transient state:
-// the runner pod exists but is still initialising; retrying is safe.
-// Statuses that are absent from this set (e.g. 'Failed', 'Terminating')
-// signal a terminal condition — we surface the error immediately.
-const RETRYABLE_RUNNER_STATUSES = new Set(['Pending', 'ContainerCreating', 'PodInitializing'])
+// RunnerUnavailableReason values emitted by the backend for transient boot-time
+// 503s. Retrying these is safe because the runner is still warming up.
+// Reasons absent from this set (e.g. 'provision_failed', 'workspace_not_found')
+// signal deterministic failures — surfacing them immediately avoids burning
+// SESSION_START_BUDGET_MS and minting duplicate sessions.
+const RETRYABLE_RUNNER_STATUSES = new Set([
+  'boot_lease_held',
+  'setup_operation_in_progress',
+  'not_ready_after_provision',
+])
 
 function isRetryable503(err: ApiError): boolean {
   const runnerStatus = err.problem.runnerStatus

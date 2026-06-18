@@ -17,6 +17,16 @@ function err(status: number, retryAfterSeconds?: number): ApiError {
   })
 }
 
+function err503(runnerStatus: string, retryAfterSeconds?: number): ApiError {
+  return new ApiError({
+    type: 'about:blank',
+    title: 'x',
+    status: 503,
+    runnerStatus,
+    ...(retryAfterSeconds === undefined ? {} : { retryAfterSeconds }),
+  })
+}
+
 describe('startSession cold-start retry', () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -55,6 +65,30 @@ describe('startSession cold-start retry', () => {
 
   it('does not retry a non-503 error', async () => {
     post.mockRejectedValueOnce(err(500))
+    await expect(startSession('ws-1', 'CLAUDE')).rejects.toBeInstanceOf(ApiError)
+    expect(post).toHaveBeenCalledTimes(1)
+  })
+
+  it('retries a 503 with a retryable RunnerUnavailableReason', async () => {
+    post
+      .mockRejectedValueOnce(err503('boot_lease_held', 1))
+      .mockResolvedValueOnce({ sessionId: 'sess-1' })
+
+    const promise = startSession('ws-1', 'CLAUDE')
+    await vi.advanceTimersByTimeAsync(1000)
+
+    await expect(promise).resolves.toEqual({ sessionId: 'sess-1' })
+    expect(post).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not retry a 503 with a non-retryable RunnerUnavailableReason', async () => {
+    post.mockRejectedValueOnce(err503('provision_failed'))
+    await expect(startSession('ws-1', 'CLAUDE')).rejects.toBeInstanceOf(ApiError)
+    expect(post).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not retry a 409', async () => {
+    post.mockRejectedValueOnce(err(409))
     await expect(startSession('ws-1', 'CLAUDE')).rejects.toBeInstanceOf(ApiError)
     expect(post).toHaveBeenCalledTimes(1)
   })
