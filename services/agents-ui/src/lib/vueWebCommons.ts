@@ -13,10 +13,10 @@ import {
   useAuth as useCommonsAuth,
   useTheme as useCommonsTheme,
 } from '@extratoast/vue-web-commons'
+import { CredentialsModePolicy, UrlBuilder } from './runtimeOrigins'
 
 export * from '@extratoast/vue-web-commons'
 
-const authBaseUrl: string = import.meta.env.VITE_AUTH_URL ?? 'http://localhost:5174'
 const validRoles = ['ADMIN', 'USER', 'READONLY'] as const
 type AgentsRole = (typeof validRoles)[number]
 
@@ -38,9 +38,11 @@ export const agentsThemeOptions = {
 } satisfies UseThemeOptions<ThemeMode>
 
 export function useAuth(): AuthApi<User<AgentsRole>> {
+  const urlBuilder = new UrlBuilder()
+  const currentUserUrl = new URL(urlBuilder.authCurrentUserUrl())
   return useCommonsAuth<SessionUserPayload, User<AgentsRole>>({
-    baseUrl: authBaseUrl,
-    currentUserUrl: '/api/v1/auth/me',
+    baseUrl: currentUserUrl.origin,
+    currentUserUrl: currentUserUrl.pathname,
     credentials: 'include',
     csrfTokenSource,
     mapUser,
@@ -48,9 +50,13 @@ export function useAuth(): AuthApi<User<AgentsRole>> {
 }
 
 export function useApiWithAuth(options: ApiWithAuthOptions = {}): ApiClient {
+  const urlBuilder = new UrlBuilder()
+  const policy = new CredentialsModePolicy({ csrfTokenSource })
+  if (policy.mode === 'native-bearer') return createBearerApiClient(urlBuilder.agentsApiBaseUrl(), policy)
+
   const { getCsrfToken, logout } = useAuth()
   return useCommonsApiWithAuth({
-    baseUrl: '/api/v1',
+    baseUrl: urlBuilder.agentsApiBaseUrl(),
     credentials: 'include',
     csrfTokenSource: getCsrfToken,
     csrfHeaderName: 'X-XSRF-TOKEN',
@@ -66,6 +72,33 @@ export function useTheme(): ThemeApi<ThemeMode> {
 function csrfTokenSource(): string | null {
   if (typeof document === 'undefined') return null
   return cookieCsrfTokenSource('XSRF-TOKEN', document)()
+}
+
+function createBearerApiClient(baseUrl: string, policy: CredentialsModePolicy): ApiClient {
+  async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+    const init = await policy.restRequestInit({
+      method,
+      headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    })
+    const response = await fetch(`${baseUrl}${path}`, init)
+    if (!response.ok) throw new Error(`API request failed (${response.status})`)
+    if (response.status === 204) return undefined as T // eslint-disable-line ts/consistent-type-assertions
+
+    const contentType = response.headers.get('content-type') ?? ''
+    if (contentType.includes('application/json')) {
+      return await response.json() as T // eslint-disable-line ts/consistent-type-assertions
+    }
+    return await response.text() as T // eslint-disable-line ts/consistent-type-assertions
+  }
+
+  return {
+    get: <T>(path: string) => request<T>('GET', path),
+    post: <T>(path: string, body?: unknown) => request<T>('POST', path, body),
+    put: <T>(path: string, body?: unknown) => request<T>('PUT', path, body),
+    patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, body),
+    del: <T>(path: string) => request<T>('DELETE', path),
+  } as unknown as ApiClient // eslint-disable-line ts/consistent-type-assertions
 }
 
 function mapUser(payload: SessionUserPayload): User<AgentsRole> {

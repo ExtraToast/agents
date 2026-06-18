@@ -64,6 +64,7 @@ describe('sessionSocket', () => {
     sock?.close()
     sock = null
     vi.useRealTimers()
+    vi.unstubAllEnvs()
     vi.unstubAllGlobals()
   })
 
@@ -72,6 +73,15 @@ describe('sessionSocket', () => {
     expect(MockWebSocket.instances).toHaveLength(1)
     expect(latest().url).toContain('/api/v1/ws/sessions/s1/attach')
     expect(latest().url).not.toContain('?')
+  })
+
+  it('uses a configured websocket origin as-is without the legacy host rewrite', () => {
+    vi.stubEnv('VITE_AGENTS_WS_ORIGIN', 'wss://agents.example.com')
+
+    sock = attachSessionSocket({ sessionId: 's1', attachToken: 'attach-token', onOutput: () => {} })
+
+    expect(MockWebSocket.instances).toHaveLength(1)
+    expect(latest().url).toBe('wss://agents.example.com/api/v1/ws/sessions/s1/attach?attach-token=attach-token')
   })
 
   it('queues input typed before open and flushes it once open', () => {

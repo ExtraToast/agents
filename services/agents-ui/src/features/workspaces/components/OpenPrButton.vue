@@ -16,7 +16,7 @@ async function submit(): Promise<void> {
   busy.value = true
   message.value = null
   try {
-    await useApiWithAuth({ baseUrl: '/api/v1' }).post(`/workspaces/${props.workspaceId}/git/open-pr`, {
+    await useApiWithAuth().post(`/workspaces/${props.workspaceId}/git/open-pr`, {
       repoDir: repoDir.value,
       title: title.value,
       body: body.value,
