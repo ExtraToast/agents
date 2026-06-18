@@ -33,7 +33,7 @@ jobs:
       # place for real outside contributors. The step is best-effort: if the
       # RELEASE_APP_ID / RELEASE_APP_PRIVATE_KEY secrets are not yet present
       # the token falls back to GITHUB_TOKEN and the workflow still runs.
-      - uses: actions/create-github-app-token@v2
+      - uses: actions/create-github-app-token@v3
         id: app-token
         continue-on-error: true
         with:
