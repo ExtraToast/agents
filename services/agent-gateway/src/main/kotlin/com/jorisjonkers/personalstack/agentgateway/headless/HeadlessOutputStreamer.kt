@@ -174,8 +174,8 @@ class HeadlessOutputStreamer private constructor(
 
     companion object {
         const val DEFAULT_INTERVAL_MS = 100L
-        const val TIMEOUT_MILLIS = (HeadlessJobManager.DEFAULT_TIMEOUT_SECONDS + TIMEOUT_MARGIN_SECONDS) * 1_000L
         private const val TIMEOUT_MARGIN_SECONDS = 30L
+        const val TIMEOUT_MILLIS = (HeadlessJobManager.DEFAULT_TIMEOUT_SECONDS + TIMEOUT_MARGIN_SECONDS) * 1_000L
         private const val MAX_READ_BYTES = 64 * 1024
         private const val NEWLINE_BYTE: Byte = 10
         private val EMPTY = ByteArray(0)
