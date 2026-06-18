@@ -59,8 +59,6 @@ export function createAuthApiClient(options: AuthApiClientOptions = {}): AuthApi
   }
 }
 
-export const authApi = createAuthApiClient()
-
 class AuthApiTransport {
   private readonly csrfTokenSource: () => string | null
   private readonly fetchImpl: typeof fetch
@@ -162,3 +160,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function stringValue(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value : null
 }
+
+// Declared after the class/helpers it depends on so the module-load singleton
+// does not hit a temporal-dead-zone on AuthApiTransport.
+export const authApi = createAuthApiClient()
