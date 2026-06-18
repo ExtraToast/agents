@@ -1,4 +1,4 @@
-import type { RouteMeta } from 'vue-router'
+import type { RouteLocationRaw, RouteMeta } from 'vue-router'
 import type { AdminCapability, AuthRole, CapabilityQuery } from './types'
 import { createCapabilityQuery, isAdminCapability } from './types'
 
@@ -16,21 +16,15 @@ export interface ShellAuthState {
   fetchUser?: () => Promise<unknown>
 }
 
-interface ProtectedRouteGuardOptions {
-  currentHref?: () => string
-  redirect?: (url: string) => void
-}
-
 interface ProtectedRouteGuardTarget {
+  fullPath: string
   meta: RouteMeta
+  name?: string | symbol | null | undefined
 }
 
-export type ProtectedRouteGuard = (to: ProtectedRouteGuardTarget) => Promise<boolean>
+export type ProtectedRouteGuard = (to: ProtectedRouteGuardTarget) => Promise<boolean | RouteLocationRaw>
 
-export function createProtectedRouteGuard(
-  getAuth: () => ShellAuthState,
-  options: ProtectedRouteGuardOptions = {},
-): ProtectedRouteGuard {
+export function createProtectedRouteGuard(getAuth: () => ShellAuthState): ProtectedRouteGuard {
   return async (to) => {
     const auth = getAuth()
 
@@ -47,10 +41,12 @@ export function createProtectedRouteGuard(
     }
 
     if (!auth.isAuthenticated.value) {
-      const currentHref = options.currentHref?.() ?? window.location.href
-      const redirect = options.redirect ?? redirectToLogin
-      redirect(loginRedirectUrl(currentHref))
-      return false
+      if (to.name === 'login') return true
+
+      return {
+        name: 'login',
+        query: { redirect: to.fullPath || '/' },
+      }
     }
 
     if (!canAccessAdminCapability(to.meta.adminCapability, createCapabilityQuery(auth.user.value?.role))) {
@@ -59,14 +55,6 @@ export function createProtectedRouteGuard(
 
     return true
   }
-}
-
-export function loginRedirectUrl(currentHref: string): string {
-  return `${import.meta.env.VITE_AUTH_URL ?? 'http://localhost:5174'}/login?redirect=${encodeURIComponent(currentHref)}`
-}
-
-export function redirectToLogin(url: string): void {
-  window.location.href = url
 }
 
 export function requiresAuthentication(target: Pick<RouteMeta, 'requiresAuth' | 'adminCapability'>): boolean {

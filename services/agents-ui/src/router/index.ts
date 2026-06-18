@@ -23,4 +23,5 @@ export const router = createRouter({
   routes,
 })
 
-router.beforeEach(createProtectedRouteGuard(() => useAuth()))
+const protectedRouteGuard = createProtectedRouteGuard(() => useAuth())
+router.beforeEach((to) => protectedRouteGuard(to))
