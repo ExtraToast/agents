@@ -13,7 +13,7 @@ const excluded = [
 const forbidden = [
   { name: 'feature-owned api base', pattern: /['"`]\/api\/v1/ },
   { name: 'client user id header', pattern: /X-User-Id/ },
-  { name: 'window location backend discovery', pattern: /window\.location\.(?:host|hostname|protocol)/ },
+  { name: 'window location backend discovery', pattern: /window\.location\.(?:host(?:name)?|protocol)/ },
 ]
 
 describe('native networking static guard', () => {

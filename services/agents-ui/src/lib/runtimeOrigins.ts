@@ -42,7 +42,7 @@ function currentEnv(): RuntimeOriginEnv {
 
 function valueOrUndefined(value: string | undefined): string | undefined {
   const trimmed = value?.trim()
-  return trimmed ? trimmed : undefined
+  return trimmed || undefined
 }
 
 export function parseHttpOrigin(value: string, envName = 'origin'): string {

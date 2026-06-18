@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   CredentialsModePolicy,
-  RuntimeOrigins,
-  UrlBuilder,
   parseHttpOrigin,
   parseWsOrigin,
+  RuntimeOrigins,
+  UrlBuilder,
 } from '../runtimeOrigins'
 
 function header(init: RequestInit, name: string): string | null {
@@ -75,7 +75,7 @@ describe('runtimeOrigins', () => {
     })
     const init = await policy.restRequestInit({
       headers: {
-        Authorization: 'Bearer old',
+        'Authorization': 'Bearer old',
         'X-User-Id': 'user-1',
       },
     })

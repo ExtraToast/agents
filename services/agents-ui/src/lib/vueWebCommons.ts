@@ -93,13 +93,15 @@ function createBearerApiClient(baseUrl: string, policy: CredentialsModePolicy): 
     return await response.text() as T // eslint-disable-line ts/consistent-type-assertions
   }
 
-  return {
+  const client = {
     get: <T>(path: string) => request<T>('GET', path),
     post: <T>(path: string, body?: unknown) => request<T>('POST', path, body),
     put: <T>(path: string, body?: unknown) => request<T>('PUT', path, body),
     patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, body),
     del: <T>(path: string) => request<T>('DELETE', path),
-  } as unknown as ApiClient // eslint-disable-line ts/consistent-type-assertions
+  }
+  // eslint-disable-next-line ts/consistent-type-assertions -- shape matches ApiClient; generics differ structurally
+  return client as unknown as ApiClient
 }
 
 function mapUser(payload: SessionUserPayload): User<AgentsRole> {
