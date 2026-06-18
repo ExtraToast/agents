@@ -19,7 +19,7 @@ export interface ShellAuthState {
 interface ProtectedRouteGuardTarget {
   fullPath: string;
   meta: RouteMeta;
-  name?: string | symbol | null;
+  name?: string | symbol | null | undefined;
 }
 
 export type ProtectedRouteGuard = (to: ProtectedRouteGuardTarget) => Promise<boolean | RouteLocationRaw>
