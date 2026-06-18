@@ -1,7 +1,7 @@
 import type { RouteMeta } from 'vue-router'
 import type { ShellAuthState } from '../guard'
 import { describe, expect, it, vi } from 'vitest'
-import { canAccessAdminCapability, createProtectedRouteGuard, loginRedirectUrl } from '../guard'
+import { canAccessAdminCapability, createProtectedRouteGuard } from '../guard'
 
 describe('protected route guard', () => {
   it('restores unknown auth state before allowing a protected route', async () => {
@@ -30,19 +30,25 @@ describe('protected route guard', () => {
   })
 
   it('redirects failed restoration to login with the attempted destination', async () => {
-    const redirect = vi.fn()
-    const currentHref = 'http://localhost:5173/projects?filter=open'
     const auth = authState({ authenticated: false, role: null })
     auth.fetchUser = vi.fn(async () => {})
 
-    const guard = createProtectedRouteGuard(() => auth, {
-      currentHref: () => currentHref,
-      redirect,
-    })
+    const guard = createProtectedRouteGuard(() => auth)
 
-    await expect(guard(to({ requiresAuth: true }))).resolves.toBe(false)
-    expect(redirect).toHaveBeenCalledWith(loginRedirectUrl(currentHref))
-    expect(redirect.mock.calls[0]?.[0]).toContain(encodeURIComponent(currentHref))
+    await expect(guard(to({ requiresAuth: true }, '/projects?filter=open'))).resolves.toEqual({
+      name: 'login',
+      query: { redirect: '/projects?filter=open' },
+    })
+  })
+
+  it('does not redirect-loop while navigating to login', async () => {
+    const guard = createProtectedRouteGuard(() => authState({ authenticated: false, role: null }))
+
+    await expect(guard({
+      fullPath: '/login',
+      meta: { requiresAuth: true },
+      name: 'login',
+    })).resolves.toBe(true)
   })
 
   it('does not restore public routes', async () => {
@@ -83,6 +89,6 @@ function authState(options: { authenticated: boolean; role: string | null }): Sh
   }
 }
 
-function to(meta: RouteMeta) {
-  return { meta }
+function to(meta: RouteMeta, fullPath = '/sessions') {
+  return { fullPath, meta }
 }
