@@ -1,5 +1,6 @@
 package com.jorisjonkers.personalstack.agents.infrastructure.integration
 
+import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.jorisjonkers.personalstack.agents.config.ChatGenerationProperties
@@ -112,8 +113,7 @@ class RunnerPodChatGenerator(
         jobId: String,
         onChunk: (String) -> Unit,
     ): String {
-        val answer = StringBuilder()
-        var resultOverride: String? = null
+        val accumulator = SseChatAccumulator(onChunk)
         runCatching {
             restClient
                 .get()
@@ -121,57 +121,53 @@ class RunnerPodChatGenerator(
                 .accept(MediaType.TEXT_EVENT_STREAM)
                 .exchange { _, response ->
                     response.body.bufferedReader(Charsets.UTF_8).use { reader ->
-                        var currentEvent: String? = null
-                        reader.forEachLine { line ->
-                            when {
-                                line.startsWith(SSE_EVENT_PREFIX) -> {
-                                    currentEvent = line.removePrefix(SSE_EVENT_PREFIX).trim()
-                                }
-                                line.startsWith(SSE_DATA_PREFIX) -> {
-                                    val data = line.removePrefix(SSE_DATA_PREFIX)
-                                    val event = currentEvent
-                                    when (event) {
-                                        SSE_EVENT_LINE -> {
-                                            val (text, result) = parseStreamJsonLine(data)
-                                            text?.let {
-                                                answer.append(it)
-                                                onChunk(it)
-                                            }
-                                            result?.let { resultOverride = it }
-                                        }
-                                        SSE_EVENT_DONE -> {
-                                            // done — stop consuming; forEachLine drains the rest but
-                                            // the stream will close after the gateway sends this event
-                                        }
-                                        else -> {
-                                            // unknown event type — skip
-                                        }
-                                    }
-                                }
-                                line.isBlank() -> {
-                                    // blank separator line between SSE events — reset current event name
-                                    currentEvent = null
-                                }
-                                else -> {
-                                    // comment or unexpected line format — skip
-                                }
-                            }
-                        }
+                        reader.forEachLine(accumulator::consume)
                     }
                 }
         }.onFailure { ex ->
             log.warn("RunnerPodChatGenerator: SSE stream for job {} failed: {}", jobId, ex.message)
         }
-        return resultOverride ?: answer.toString()
+        return accumulator.answer()
     }
 
-    private companion object {
-        const val SSE_EVENT_PREFIX = "event:"
-        const val SSE_DATA_PREFIX = "data:"
-        const val SSE_EVENT_LINE = "line"
-        const val SSE_EVENT_DONE = "done"
+    /**
+     * Accumulates a Spring SSE stream (event:/data: line pairs). For `line`
+     * events it parses the claude stream-json payload, streams assistant text
+     * via [onChunk], and tracks the authoritative `result`. Other events and
+     * blank separators are ignored.
+     */
+    private class SseChatAccumulator(
+        private val onChunk: (String) -> Unit,
+    ) {
+        private val answer = StringBuilder()
+        private var resultOverride: String? = null
+        private var currentEvent: String? = null
+
+        fun consume(line: String) {
+            when {
+                line.startsWith(SSE_EVENT_PREFIX) -> currentEvent = line.removePrefix(SSE_EVENT_PREFIX).trim()
+                line.startsWith(SSE_DATA_PREFIX) -> handleData(line.removePrefix(SSE_DATA_PREFIX))
+                line.isBlank() -> currentEvent = null
+            }
+        }
+
+        private fun handleData(data: String) {
+            if (currentEvent != SSE_EVENT_LINE) return
+            val (text, result) = parseStreamJsonLine(data)
+            text?.let {
+                answer.append(it)
+                onChunk(it)
+            }
+            result?.let { resultOverride = it }
+        }
+
+        fun answer(): String = resultOverride ?: answer.toString()
     }
 }
+
+private const val SSE_EVENT_PREFIX = "event:"
+private const val SSE_DATA_PREFIX = "data:"
+private const val SSE_EVENT_LINE = "line"
 
 /**
  * Parses one NDJSON line from the claude stream-json format.
@@ -194,31 +190,25 @@ internal fun parseStreamJsonLine(
         // Tolerate a JSON-string-wrapped object (defensive against any SSE layer
         // that re-encodes the already-JSON line as a quoted string).
         val tree = if (parsed.isTextual) objectMapper.readTree(parsed.asText()) else parsed
-        val type = tree.path("type").asText(null) ?: return@runCatching null to null
-
-        when (type) {
-            "assistant" -> {
-                val contentArray = tree.path("message").path("content")
-                if (!contentArray.isArray) return@runCatching null to null
-                val text =
-                    contentArray
-                        .filter { it.path("type").asText(null) == "text" }
-                        .mapNotNull { node ->
-                            node.path("text").asText(null)?.takeIf { t -> t.isNotEmpty() }
-                        }.joinToString("")
-                        .takeIf { it.isNotEmpty() }
-                text to null
-            }
-            "result" -> {
-                val subtype = tree.path("subtype").asText(null)
-                if (subtype == "success") {
-                    val result = tree.path("result").asText(null)?.takeIf { it.isNotEmpty() }
-                    null to result
-                } else {
-                    null to null
-                }
-            }
+        when (tree.path("type").asText(null)) {
+            "assistant" -> extractAssistantText(tree) to null
+            "result" -> null to extractResultText(tree)
             else -> null to null
         }
     }.getOrElse { null to null }
+}
+
+private fun extractAssistantText(tree: JsonNode): String? {
+    val content = tree.path("message").path("content")
+    if (!content.isArray) return null
+    return content
+        .filter { it.path("type").asText(null) == "text" }
+        .mapNotNull { node -> node.path("text").asText(null)?.takeIf { it.isNotEmpty() } }
+        .joinToString("")
+        .takeIf { it.isNotEmpty() }
+}
+
+private fun extractResultText(tree: JsonNode): String? {
+    if (tree.path("subtype").asText(null) != "success") return null
+    return tree.path("result").asText(null)?.takeIf { it.isNotEmpty() }
 }
