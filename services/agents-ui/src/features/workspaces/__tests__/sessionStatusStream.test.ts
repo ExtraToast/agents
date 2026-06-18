@@ -66,6 +66,7 @@ describe('sessionStatusStream', () => {
   afterEach(() => {
     stream?.close()
     stream = null
+    vi.unstubAllEnvs()
     vi.unstubAllGlobals()
   })
 
@@ -74,6 +75,26 @@ describe('sessionStatusStream', () => {
     expect(MockEventSource.instances).toHaveLength(1)
     expect(latest().url).toBe('/api/v1/sessions/events')
     expect(latest().init).toEqual({ withCredentials: true })
+  })
+
+  it('uses configured absolute origins with bearer fetch-SSE and no EventSource host rewrite', async () => {
+    vi.stubEnv('VITE_AGENTS_API_ORIGIN', 'https://api.example.com')
+    const open = vi.fn()
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+      new Response(new ReadableStream<Uint8Array>({ start: (controller) => controller.close() }), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    stream = openSessionStatusStream({
+      tokenProvider: { getAccessToken: () => 'token' },
+      onOpen: open,
+    })
+
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+
+    expect(MockEventSource.instances).toHaveLength(0)
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('https://api.example.com/api/v1/sessions/events')
+    expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get('Authorization')).toBe('Bearer token')
+    await vi.waitFor(() => expect(open).toHaveBeenCalledTimes(1))
   })
 
   it('calls onOpen when connection is established', () => {

@@ -8,7 +8,7 @@ import type {
 import { useApiWithAuth } from '@/lib/vueWebCommons'
 
 function api(): ReturnType<typeof useApiWithAuth> {
-  return useApiWithAuth({ baseUrl: '/api/v1' })
+  return useApiWithAuth()
 }
 
 export async function listRepositories(): Promise<Repository[]> {

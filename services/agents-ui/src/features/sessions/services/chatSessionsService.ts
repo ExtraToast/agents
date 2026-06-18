@@ -5,7 +5,9 @@ import type {
   ChatSessionDetail,
   StartChatSessionInput,
 } from '../types'
-import { cookieCsrfTokenSource, useApiWithAuth } from '@/lib/vueWebCommons'
+import type { TokenProvider } from '@/lib/runtimeOrigins'
+import { CredentialsModePolicy, UrlBuilder } from '@/lib/runtimeOrigins'
+import { useApiWithAuth } from '@/lib/vueWebCommons'
 
 export interface ChatStreamHandlers {
   onChunk: (text: string) => void
@@ -14,7 +16,7 @@ export interface ChatStreamHandlers {
 }
 
 function api(): ReturnType<typeof useApiWithAuth> {
-  return useApiWithAuth({ baseUrl: '/api/v1' })
+  return useApiWithAuth()
 }
 
 export async function listChatSessions(): Promise<ChatSession[]> {
@@ -38,19 +40,19 @@ export async function streamChatAnswer(
   body: string,
   h: ChatStreamHandlers,
   signal?: AbortSignal,
+  tokenProvider?: TokenProvider,
 ): Promise<void> {
-  const token = typeof document !== 'undefined' ? cookieCsrfTokenSource('XSRF-TOKEN', document)() : null
   try {
-    const res = await fetch(`/api/v1/chat-sessions/${id}/messages/stream`, {
+    const policy = new CredentialsModePolicy({ tokenProvider })
+    const init = await policy.streamRequestInit({
       method: 'POST',
-      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
-        ...(token ? { 'X-XSRF-TOKEN': token } : {}),
       },
       body: JSON.stringify({ body }),
       signal: signal ?? null,
     })
+    const res = await fetch(new UrlBuilder().chatMessageStreamUrl(id), init)
 
     if (!res.ok || !res.body) {
       h.onError(`Chat stream failed (${res.status})`)

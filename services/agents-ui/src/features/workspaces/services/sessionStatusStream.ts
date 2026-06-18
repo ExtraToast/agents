@@ -1,4 +1,6 @@
 import type { AgentSessionStatus } from '../types'
+import type { TokenProvider } from '@/lib/runtimeOrigins'
+import { CredentialsModePolicy, UrlBuilder } from '@/lib/runtimeOrigins'
 
 export interface SessionStatusEvent {
   sessionId: string
@@ -18,6 +20,7 @@ export interface SessionKeepaliveEvent {
 
 export interface SessionStatusStreamOptions {
   url?: string
+  tokenProvider?: TokenProvider
   onOpen?: () => void
   /** Fired when onerror fires while the browser is still reconnecting (readyState CONNECTING). */
   onReconnecting?: () => void
@@ -34,7 +37,6 @@ export interface SessionStatusStream {
   readyState: () => number
 }
 
-const DEFAULT_URL = '/api/v1/sessions/events'
 const STATUSES = new Set<AgentSessionStatus>(['STARTING', 'RUNNING', 'STOPPED', 'FAILED'])
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -89,7 +91,11 @@ function messageData(ev: Event): string {
 }
 
 export function openSessionStatusStream(opts: SessionStatusStreamOptions = {}): SessionStatusStream {
-  const source = new EventSource(opts.url ?? DEFAULT_URL, { withCredentials: true })
+  const policy = new CredentialsModePolicy({ tokenProvider: opts.tokenProvider })
+  const url = opts.url ?? new UrlBuilder().sessionsEventsUrl()
+  if (policy.statusStreamStrategy() === 'fetch-sse') return openFetchSessionStatusStream(url, policy, opts)
+
+  const source = new EventSource(url, { withCredentials: true })
 
   source.onopen = () => {
     opts.onOpen?.()
@@ -141,5 +147,108 @@ export function openSessionStatusStream(opts: SessionStatusStreamOptions = {}): 
     readyState() {
       return source.readyState
     },
+  }
+}
+
+function openFetchSessionStatusStream(
+  url: string,
+  policy: CredentialsModePolicy,
+  opts: SessionStatusStreamOptions,
+): SessionStatusStream {
+  const controller = new AbortController()
+  let state = 0
+  let closed = false
+
+  void (async () => {
+    try {
+      const init = await policy.streamRequestInit({
+        headers: { Accept: 'text/event-stream' },
+        signal: controller.signal,
+      })
+      const response = await fetch(url, init)
+      if (!response.ok || !response.body) throw new Error(`session status stream failed (${response.status})`)
+      state = 1
+      opts.onOpen?.()
+      await readSse(response.body, (event, data) => dispatchSessionStatusEvent(event, data, opts))
+      state = 2
+    } catch {
+      if (!closed) {
+        state = 2
+        opts.onError?.()
+      }
+    }
+  })()
+
+  return {
+    close() {
+      closed = true
+      state = 2
+      controller.abort()
+    },
+    readyState() {
+      return state
+    },
+  }
+}
+
+async function readSse(
+  body: ReadableStream<Uint8Array>,
+  dispatch: (event: string, data: string) => void,
+): Promise<void> {
+  const reader = body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    buffer = processSseFrames(buffer, dispatch)
+  }
+
+  buffer += decoder.decode()
+  if (buffer.trim()) dispatchSseFrame(buffer, dispatch)
+}
+
+function processSseFrames(buffer: string, dispatch: (event: string, data: string) => void): string {
+  const frames = buffer.split(/\r?\n\r?\n/)
+  const partial = frames.pop() ?? ''
+  for (const frame of frames) dispatchSseFrame(frame, dispatch)
+  return partial
+}
+
+function dispatchSseFrame(frame: string, dispatch: (event: string, data: string) => void): void {
+  const lines = frame.split(/\r?\n/)
+  const event = lines.find((line) => line.startsWith('event:'))?.slice('event:'.length).trim()
+  const data = lines
+    .filter((line) => line.startsWith('data:'))
+    .map((line) => line.slice('data:'.length).trim())
+    .join('\n')
+  if (event) dispatch(event, data)
+}
+
+function dispatchSessionStatusEvent(event: string, data: string, opts: SessionStatusStreamOptions): void {
+  if (event === 'status') {
+    try {
+      const parsed = parseStatus(data)
+      if (parsed) opts.onStatus?.(parsed)
+      else opts.onMalformed?.('status', data)
+    } catch {
+      opts.onMalformed?.('status', data)
+    }
+  } else if (event === 'remove') {
+    try {
+      const parsed = parseRemove(data)
+      if (parsed) opts.onRemove?.(parsed)
+      else opts.onMalformed?.('remove', data)
+    } catch {
+      opts.onMalformed?.('remove', data)
+    }
+  } else if (event === 'keepalive') {
+    try {
+      opts.onKeepalive?.(parseKeepalive(data))
+    } catch {
+      opts.onMalformed?.('keepalive', data)
+    }
   }
 }

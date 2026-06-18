@@ -17,7 +17,7 @@ import type { components } from '@/api/generated'
 import { ApiError, useApiWithAuth } from '@/lib/vueWebCommons'
 
 function getApi(): ReturnType<typeof useApiWithAuth> {
-  return useApiWithAuth({ baseUrl: '/api/v1' })
+  return useApiWithAuth()
 }
 
 // A freshly-provisioned runner's gateway needs a JVM cold start before
