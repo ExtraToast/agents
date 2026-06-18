@@ -1,49 +1,29 @@
-import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { join, relative } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
-const sourceRoot = fileURLToPath(new URL('../', import.meta.url))
+// Load feature + lib sources as raw strings via Vite so the guard needs no
+// Node filesystem types at typecheck time.
+const featureSources = import.meta.glob<string>('../features/**/*.{ts,vue}', { query: '?raw', import: 'default', eager: true })
+const libSources = import.meta.glob<string>('../lib/**/*.{ts,vue}', { query: '?raw', import: 'default', eager: true })
+const sources: Record<string, string> = { ...featureSources, ...libSources }
 
-const roots = [
-  join(sourceRoot, 'features'),
-  join(sourceRoot, 'lib'),
+const excluded = [
+  '../lib/runtimeOrigins.ts',
 ]
-
-const excluded = new Set([
-  'lib/runtimeOrigins.ts',
-])
 
 const forbidden = [
   { name: 'feature-owned api base', pattern: /['"`]\/api\/v1/ },
   { name: 'client user id header', pattern: /X-User-Id/ },
-  { name: 'window location backend discovery', pattern: /window\.location\.(host|hostname|protocol)/ },
+  { name: 'window location backend discovery', pattern: /window\.location\.(?:host|hostname|protocol)/ },
 ]
-
-function filesUnder(dir: string): string[] {
-  const found: string[] = []
-  for (const entry of readdirSync(dir)) {
-    const path = join(dir, entry)
-    const stat = statSync(path)
-    if (stat.isDirectory()) {
-      if (entry !== '__tests__') found.push(...filesUnder(path))
-    } else if (/\.(ts|vue)$/.test(entry)) {
-      found.push(path)
-    }
-  }
-  return found
-}
 
 describe('native networking static guard', () => {
   it('keeps backend URL and credential discovery centralized', () => {
     const violations: string[] = []
-    for (const file of roots.flatMap(filesUnder)) {
-      const rel = relative(sourceRoot, file)
-      if (excluded.has(rel)) continue
-
-      const source = readFileSync(file, 'utf8')
+    for (const [path, source] of Object.entries(sources)) {
+      if (path.includes('/__tests__/')) continue
+      if (excluded.includes(path)) continue
       for (const rule of forbidden) {
-        if (rule.pattern.test(source)) violations.push(`${rel}: ${rule.name}`)
+        if (rule.pattern.test(source)) violations.push(`${path}: ${rule.name}`)
       }
     }
 

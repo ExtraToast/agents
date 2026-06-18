@@ -76,11 +76,12 @@ function csrfTokenSource(): string | null {
 
 function createBearerApiClient(baseUrl: string, policy: CredentialsModePolicy): ApiClient {
   async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
-    const init = await policy.restRequestInit({
-      method,
-      headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    })
+    const requestInit: RequestInit = { method }
+    if (body !== undefined) {
+      requestInit.headers = { 'Content-Type': 'application/json' }
+      requestInit.body = JSON.stringify(body)
+    }
+    const init = await policy.restRequestInit(requestInit)
     const response = await fetch(`${baseUrl}${path}`, init)
     if (!response.ok) throw new Error(`API request failed (${response.status})`)
     if (response.status === 204) return undefined as T // eslint-disable-line ts/consistent-type-assertions
