@@ -2,7 +2,7 @@ import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 import { initFaro, useAuth } from '@/lib/vueWebCommons'
 import App from './App.vue'
-import { createPlatform, resolvePlatform } from './platform'
+import { createPlatform, initializeNativeChrome, resolvePlatform } from './platform'
 import { router } from './router'
 import './index.css'
 
@@ -28,6 +28,7 @@ async function bootstrap(): Promise<void> {
   app.use(router)
   await router.isReady()
   app.mount('#app')
+  await initializeNativeChrome()
 }
 
 void bootstrap()

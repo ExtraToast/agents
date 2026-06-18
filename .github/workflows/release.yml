@@ -99,3 +99,112 @@ jobs:
           build-args: |
             NODE_AUTH_TOKEN=${{ secrets.GITHUB_TOKEN }}
             GIT_SHA=${{ needs.release-please.outputs.tag_name || github.sha }}
+
+  native-android:
+    needs: release-please
+    if: ${{ always() && (needs.release-please.outputs.release_created == 'true' || github.event_name == 'workflow_dispatch') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name || github.sha }}
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - name: Install app dependencies
+        run: |
+          pnpm config set //npm.pkg.github.com/:_authToken "$NODE_AUTH_TOKEN"
+          pnpm install --no-frozen-lockfile
+      - name: Build web app
+        run: pnpm --filter @extratoast/agents-ui build
+      - name: Add Android project
+        working-directory: services/agents-ui
+        run: npx cap add android
+      - name: Sync Android project
+        working-directory: services/agents-ui
+        run: npx cap sync android
+      - name: Build Android release bundle
+        working-directory: services/agents-ui/android
+        run: ./gradlew bundleRelease
+      - name: Check Android signing secrets
+        id: android-signing
+        run: echo "has_keystore=${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}" >> "$GITHUB_OUTPUT"
+      - name: Decode Android keystore
+        if: ${{ steps.android-signing.outputs.has_keystore == 'true' }}
+        id: android-keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          keystore_path="$RUNNER_TEMP/agents-ui-release.keystore"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore_path"
+          chmod 600 "$keystore_path"
+          echo "keystore_path=$keystore_path" >> "$GITHUB_OUTPUT"
+      - name: Sign Android release bundle
+        if: ${{ steps.android-signing.outputs.has_keystore == 'true' }}
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ steps.android-keystore.outputs.keystore_path }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          aab_path="services/agents-ui/android/app/build/outputs/bundle/release/app-release.aab"
+          key_password="${ANDROID_KEY_PASSWORD:-$ANDROID_KEYSTORE_PASSWORD}"
+          jarsigner -sigalg SHA256withRSA -digestalg SHA-256 -keystore "$ANDROID_KEYSTORE_PATH" -storepass "$ANDROID_KEYSTORE_PASSWORD" -keypass "$key_password" "$aab_path" "$ANDROID_KEY_ALIAS"
+          jarsigner -verify "$aab_path"
+      - name: Upload Android release bundle artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: agents-ui-android-release-bundle
+          path: services/agents-ui/android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: warn
+      - name: Check Google Play credentials
+        id: google-play
+        run: echo "has_credentials=${{ secrets.ANDROID_PLAY_SERVICE_ACCOUNT_JSON != '' }}" >> "$GITHUB_OUTPUT"
+      - name: Upload Android release bundle to Google Play internal track
+        if: ${{ steps.google-play.outputs.has_credentials == 'true' && steps.android-signing.outputs.has_keystore == 'true' }}
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.ANDROID_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: dev.extratoast.agents
+          releaseFiles: services/agents-ui/android/app/build/outputs/bundle/release/app-release.aab
+          track: internal
+
+  native-ios:
+    needs: release-please
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.release-please.outputs.release_created == 'true' }}
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name || github.sha }}
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - name: Install app dependencies
+        run: |
+          pnpm config set //npm.pkg.github.com/:_authToken "$NODE_AUTH_TOKEN"
+          pnpm install --no-frozen-lockfile
+      - name: Build web app
+        run: pnpm --filter @extratoast/agents-ui build
+      - name: Add iOS project
+        working-directory: services/agents-ui
+        run: npx cap add ios
+      - name: Sync iOS project
+        working-directory: services/agents-ui
+        run: npx cap sync ios
+      # Signed IPA archive + TestFlight upload require operator-provided Apple signing secrets and are intentionally not run without them.
+      - name: Build iOS simulator smoke
+        working-directory: services/agents-ui
+        run: xcodebuild -workspace ios/App/App.xcworkspace -scheme App -sdk iphonesimulator -configuration Release CODE_SIGNING_ALLOWED=NO build

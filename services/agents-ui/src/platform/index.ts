@@ -36,6 +36,24 @@ export async function resolvePlatform(): Promise<PlatformServices> {
   }
 }
 
+export async function initializeNativeChrome(): Promise<void> {
+  const { Capacitor } = await import('@capacitor/core')
+
+  if (!Capacitor.isNativePlatform()) {
+    return
+  }
+
+  const [{ SplashScreen }, { StatusBar, Style }] = await Promise.all([
+    import('@capacitor/splash-screen'),
+    import('@capacitor/status-bar'),
+  ])
+
+  await Promise.allSettled([
+    StatusBar.setStyle({ style: Style.Light }),
+    SplashScreen.hide(),
+  ])
+}
+
 export function createPlatform(services: PlatformServices): Plugin {
   return {
     install(app: App) {
