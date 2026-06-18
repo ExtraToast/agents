@@ -134,6 +134,9 @@ jobs:
       - name: Build Android release bundle
         working-directory: services/agents-ui/android
         run: ./gradlew bundleRelease
+      - name: Assemble installable debug APK
+        working-directory: services/agents-ui/android
+        run: ./gradlew assembleDebug
       - name: Check Android signing secrets
         id: android-signing
         run: echo "has_keystore=${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}" >> "$GITHUB_OUTPUT"
@@ -166,6 +169,16 @@ jobs:
           name: agents-ui-android-release-bundle
           path: services/agents-ui/android/app/build/outputs/bundle/release/*.aab
           if-no-files-found: warn
+      - name: Upload installable debug APK artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: agents-app-android-apk
+          path: services/agents-ui/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: warn
+      - name: Attach installable APK to release
+        if: ${{ needs.release-please.outputs.release_created == 'true' }}
+        run: gh release upload "${{ needs.release-please.outputs.tag_name }}" services/agents-ui/android/app/build/outputs/apk/debug/app-debug.apk --clobber
       - name: Check Google Play credentials
         id: google-play
         run: echo "has_credentials=${{ secrets.ANDROID_PLAY_SERVICE_ACCOUNT_JSON != '' }}" >> "$GITHUB_OUTPUT"
