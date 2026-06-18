@@ -8,6 +8,9 @@ const sources: Record<string, string> = { ...featureSources, ...libSources }
 
 const excluded = [
   '../lib/runtimeOrigins.ts',
+  // The auth-api client is the single intentional home of the auth-origin base + /api/v1 prefix,
+  // mirroring runtimeOrigins.ts for the agents API.
+  '../lib/authApi/index.ts',
 ]
 
 const forbidden = [
