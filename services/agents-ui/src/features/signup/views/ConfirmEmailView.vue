@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { FormErrors, FormField, SubmitButton, useMutationState, useToast } from '@/lib/vueWebCommons'
+import { FormErrors, FormField, SubmitButton, useFormErrors, useMutationState, useToast } from '@/lib/vueWebCommons'
 import AuthCard from '../components/AuthCard.vue'
 import { confirmEmail, resendConfirmation } from '../services/signupService'
 import { resendConfirmationRequestSchema } from '../types'
@@ -11,10 +11,10 @@ type ConfirmationState = 'confirming' | 'success' | 'failure'
 const route = useRoute()
 const state = ref<ConfirmationState>('confirming')
 const email = ref('')
-const fieldError = ref<string | null>(null)
-const generalError = ref<string | null>(null)
+const validationEmailError = ref<string>()
 const resendMessage = ref<string | null>(null)
 const resend = useMutationState<void>()
+const formErrors = useFormErrors()
 const toast = useToast()
 
 const token = computed(() => {
@@ -22,15 +22,10 @@ const token = computed(() => {
   return typeof value === 'string' ? value : ''
 })
 
-function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message
-  return 'Email confirmation failed.'
-}
-
 onMounted(async () => {
   if (!token.value) {
     state.value = 'failure'
-    generalError.value = 'Confirmation token is missing.'
+    formErrors.captureFromCatch(new Error('Confirmation token is missing.'))
     return
   }
 
@@ -39,17 +34,17 @@ onMounted(async () => {
     state.value = 'success'
   } catch (e) {
     state.value = 'failure'
-    generalError.value = errorMessage(e)
+    formErrors.captureFromCatch(e)
   }
 })
 
 async function onResend(): Promise<void> {
-  fieldError.value = null
-  generalError.value = null
+  validationEmailError.value = undefined
+  formErrors.clear()
   resendMessage.value = null
   const parsed = resendConfirmationRequestSchema.safeParse({ email: email.value })
   if (!parsed.success) {
-    fieldError.value = parsed.error.issues[0]?.message ?? 'Enter a valid email address'
+    validationEmailError.value = parsed.error.issues[0]?.message ?? 'Enter a valid email address'
     return
   }
 
@@ -58,8 +53,8 @@ async function onResend(): Promise<void> {
     resendMessage.value = 'Confirmation email sent.'
     toast.success('Confirmation email sent', 'Check your inbox for the latest link.')
   } catch (e) {
-    generalError.value = errorMessage(e)
-    toast.error('Could not resend confirmation', generalError.value)
+    formErrors.captureFromCatch(e)
+    toast.errorFromCatch('Could not resend confirmation', e)
   }
 }
 </script>
@@ -76,12 +71,12 @@ async function onResend(): Promise<void> {
     </div>
 
     <div v-else class="space-y-4" data-testid="confirm-failure">
-      <FormErrors :error="generalError" />
+      <FormErrors :error="formErrors.general.value" />
       <p class="text-sm text-[var(--color-text-muted)]">
         The confirmation link is invalid or expired. Enter your email to receive a new link.
       </p>
       <form class="space-y-4" @submit.prevent="onResend">
-        <FormField label="Email" required :error="fieldError">
+        <FormField label="Email" required :error="formErrors.fieldErrorFor('email')">
           <template #default="{ id, invalid }">
             <input
               :id="id"
@@ -94,6 +89,9 @@ async function onResend(): Promise<void> {
             />
           </template>
         </FormField>
+        <p v-if="validationEmailError" class="-mt-2 text-xs text-red-300">
+          {{ validationEmailError }}
+        </p>
         <p v-if="resendMessage" class="text-sm text-green-400" data-testid="confirm-resend-success">
           {{ resendMessage }}
         </p>

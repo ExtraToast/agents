@@ -9,7 +9,7 @@ import ResetPasswordView from '../views/ResetPasswordView.vue'
 
 const mocks = vi.hoisted(() => ({
   toastSuccess: vi.fn(),
-  toastError: vi.fn(),
+  toastErrorFromCatch: vi.fn(),
   register: vi.fn(),
   confirmEmail: vi.fn(),
   resendConfirmation: vi.fn(),
@@ -17,30 +17,49 @@ const mocks = vi.hoisted(() => ({
   resetPassword: vi.fn(),
 }))
 
-vi.mock('@/lib/vueWebCommons', () => ({
-  FormErrors: {
-    props: ['error'],
-    template: '<p v-if="error" data-testid="form-error">{{ error }}</p>',
-  },
-  FormField: {
-    props: ['label', 'error'],
-    template: '<label><span>{{ label }}</span><slot :id="label" :invalid="Boolean(error)" /><small v-if="error">{{ error }}</small></label>',
-  },
-  SubmitButton: {
-    props: ['disabled', 'label', 'status', 'type'],
-    emits: ['click'],
-    template: '<button v-bind="$attrs" :type="type || \'submit\'" :disabled="disabled" @click="$emit(\'click\')">{{ label }}</button>',
-  },
-  useMutationState: () => ({
-    pending: { value: false },
-    status: { value: 'idle' },
-    run: async (fn: () => Promise<void>) => fn(),
-  }),
-  useToast: () => ({
-    success: mocks.toastSuccess,
-    error: mocks.toastError,
-  }),
-}))
+vi.mock('@/lib/vueWebCommons', async () => {
+  const { ref } = await vi.importActual<typeof import('vue')>('vue')
+
+  return {
+    FormErrors: {
+      props: ['error'],
+      template: '<p v-if="error" data-testid="form-error">{{ typeof error === "string" ? error : error.message }}</p>',
+    },
+    FormField: {
+      props: ['label', 'error'],
+      template: '<label><span>{{ label }}</span><slot :id="label" :invalid="Boolean(error)" /><small v-if="error">{{ error }}</small></label>',
+    },
+    SubmitButton: {
+      props: ['disabled', 'label', 'status', 'type'],
+      emits: ['click'],
+      template: '<button v-bind="$attrs" :type="type || \'submit\'" :disabled="disabled" @click="$emit(\'click\')">{{ label }}</button>',
+    },
+    useFormErrors: () => {
+      const general = ref<string | null>(null)
+      const fields = ref<Record<string, string>>({})
+      return {
+        general,
+        clear: () => {
+          general.value = null
+          fields.value = {}
+        },
+        fieldErrorFor: (name: string) => fields.value[name],
+        captureFromCatch: (error: unknown) => {
+          general.value = error instanceof Error ? error.message : 'The request could not be completed.'
+        },
+      }
+    },
+    useMutationState: () => ({
+      pending: { value: false },
+      status: { value: 'idle' },
+      run: async (fn: () => Promise<void>) => fn(),
+    }),
+    useToast: () => ({
+      success: mocks.toastSuccess,
+      errorFromCatch: mocks.toastErrorFromCatch,
+    }),
+  }
+})
 
 vi.mock('../services/signupService', () => ({
   register: (...args: unknown[]) => mocks.register(...args),
@@ -71,7 +90,7 @@ async function mountWithRouter(component: Component, path: string) {
 describe('signup views', () => {
   beforeEach(() => {
     mocks.toastSuccess.mockReset()
-    mocks.toastError.mockReset()
+    mocks.toastErrorFromCatch.mockReset()
     mocks.register.mockReset()
     mocks.confirmEmail.mockReset()
     mocks.resendConfirmation.mockReset()
@@ -133,7 +152,7 @@ describe('signup views', () => {
     await flush()
 
     expect(wrapper.text()).toContain('email already exists')
-    expect(mocks.toastError).toHaveBeenCalledWith('Registration failed', 'email already exists')
+    expect(mocks.toastErrorFromCatch).toHaveBeenCalledWith('Registration failed', expect.any(Error))
   })
 
   it('confirms email from route query and renders success', async () => {
