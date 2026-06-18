@@ -46,7 +46,8 @@ class KnowledgeWriteClient(
     ): KnowledgeWritePort.DuplicateEvidence? =
         // Dedup recall is write-side: bypasses retrievalEnabled so duplicate
         // suppression stays active even when retrieval is toggled off.
-        transport.recall(query, limit = 1)
+        transport
+            .recall(query, limit = 1)
             .firstOrNull { it.score >= minScore }
             ?.let { hit ->
                 KnowledgeWritePort.DuplicateEvidence(

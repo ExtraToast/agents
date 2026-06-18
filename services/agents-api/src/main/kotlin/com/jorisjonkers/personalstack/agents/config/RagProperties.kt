@@ -43,7 +43,11 @@ data class RagProperties(
     val retrievalEnabled: Boolean get() = enabled && retrieval.enabled
     val captureEnabled: Boolean get() = enabled && capture.enabled
 
-    data class RetrievalFlags(val enabled: Boolean = true)
+    data class RetrievalFlags(
+        val enabled: Boolean = true,
+    )
 
-    data class CaptureFlags(val enabled: Boolean = true)
+    data class CaptureFlags(
+        val enabled: Boolean = true,
+    )
 }
