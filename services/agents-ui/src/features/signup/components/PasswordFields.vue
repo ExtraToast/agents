@@ -2,9 +2,9 @@
 import { FormField } from '@/lib/vueWebCommons'
 
 defineProps<{
-  passwordError?: string
-  confirmPasswordError?: string
-  passwordLabel?: string
+  passwordError?: string | undefined
+  confirmPasswordError?: string | undefined
+  passwordLabel?: string | undefined
 }>()
 
 const password = defineModel<string>('password', { required: true })
