@@ -39,7 +39,27 @@ export function createAuthSession(options: CreateAuthSessionOptions = {}): AuthS
     return createNativeBearerSession(platform, nativeConfig, options)
   }
 
-  return createWebCookieSession(options.webAuth ?? useAuth())
+  return createWebCookieSession(options.webAuth ?? webAuthDelegateFromCommons())
+}
+
+function webAuthDelegateFromCommons(): WebAuthDelegate {
+  const auth = useAuth()
+  return {
+    user: {
+      get value(): AuthUser | null {
+        const current = auth.user.value
+        if (!current) return null
+        return {
+          id: current.id,
+          username: current.username,
+          email: current.email,
+          role: current.role,
+        }
+      },
+    },
+    fetchUser: () => auth.fetchUser(),
+    logout: () => auth.logout(),
+  }
 }
 
 export function createTokenProvider(session: AuthSessionPort): TokenProvider {
