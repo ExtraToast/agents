@@ -1,9 +1,10 @@
 import type { GithubLink, Project, ProjectDetail } from '../types'
 import type { Repository } from '@/features/repositories'
+import { CredentialsModePolicy, UrlBuilder } from '@/lib/runtimeOrigins'
 import { useApiWithAuth } from '@/lib/vueWebCommons'
 
 function getApi(): ReturnType<typeof useApiWithAuth> {
-  return useApiWithAuth({ baseUrl: '/api/v1' })
+  return useApiWithAuth()
 }
 
 export async function listProjects(): Promise<Project[]> {
@@ -65,12 +66,21 @@ export async function unlinkRepository(projectId: string, repositoryId: string):
  */
 export async function getSetupGuide(projectId: string, linkId: string): Promise<string> {
   // useApiWithAuth's `get` defaults to JSON; for a text body the
-  // simplest fallback is a raw fetch that reuses the same cookie-
-  // based session (forward-auth runs in front of the API).
-  const resp = await fetch(`/api/v1/projects/${projectId}/links/${linkId}/setup-guide`, {
-    credentials: 'include',
+  // simplest fallback is a raw fetch with the shared credential policy.
+  const init = await new CredentialsModePolicy().restRequestInit({
     headers: { Accept: 'text/markdown,text/plain' },
   })
+  const path = [
+    'projects',
+    encodeURIComponent(projectId),
+    'links',
+    encodeURIComponent(linkId),
+    'setup-guide',
+  ].join('/')
+  const resp = await fetch(
+    `${new UrlBuilder().agentsApiBaseUrl()}/${path}`,
+    init,
+  )
   if (!resp.ok) throw new Error(`setup-guide fetch failed: ${resp.status}`)
   return await resp.text()
 }

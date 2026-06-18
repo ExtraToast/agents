@@ -1,6 +1,6 @@
 /**
  * Thin wrapper around the browser WebSocket for the
- * `/api/v1/ws/sessions/{id}/attach` endpoint. The agents-api
+ * session attach endpoint. The agents-api
  * handler speaks these envelope shapes:
  *
  *   inbound  -> `{ "input": "...", "enter": true }`
@@ -26,8 +26,11 @@
  * small application-level heartbeat because browsers cannot emit WS
  * ping frames and quiet terminals otherwise look idle to proxies.
  */
+import { CredentialsModePolicy, UrlBuilder } from '@/lib/runtimeOrigins'
+
 export interface SessionSocketOptions {
   sessionId: string
+  attachToken?: string | null
   onOutput: (text: string) => void
   onControl?: (epoch: number, snapshot: boolean) => void
   onReplayComplete?: (cursor: number | null) => void
@@ -54,13 +57,8 @@ const MAX_QUEUED_FRAMES = 200
 const HEARTBEAT_INTERVAL_MS = 30_000
 
 export function attachSessionSocket(opts: SessionSocketOptions): SessionSocket {
-  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  // The terminal WS uses the dedicated `agents-ws` host, which a
-  // co-located Enschede agents-api replica answers (split-DNS keeps
-  // on-site keystrokes local instead of detouring through Frankfurt).
-  // Other hosts (e.g. localhost in dev) are left unchanged.
-  const wsHost = window.location.host.replace(/^agents\./, 'agents-ws.')
-  const baseUrl = `${proto}//${wsHost}/api/v1/ws/sessions/${opts.sessionId}/attach`
+  const urlBuilder = new UrlBuilder()
+  const policy = new CredentialsModePolicy()
 
   let ws: WebSocket | null = null
   let closedByCaller = false
@@ -74,9 +72,13 @@ export function attachSessionSocket(opts: SessionSocketOptions): SessionSocket {
   const queue: string[] = []
 
   function connectUrl(): string {
-    if (lastEpoch === null || lastOff === null) return baseUrl
-    const params = new URLSearchParams({ epoch: String(lastEpoch), offset: String(lastOff) })
-    return `${baseUrl}?${params}`
+    const hasCursor = lastEpoch !== null && lastOff !== null
+    return urlBuilder.sessionAttachWsUrl(policy.wsAttach({
+      sessionId: opts.sessionId,
+      attachToken: opts.attachToken,
+      epoch: hasCursor ? lastEpoch : null,
+      offset: hasCursor ? lastOff : null,
+    }))
   }
 
   function clearTimer(): void {
