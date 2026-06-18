@@ -13,6 +13,16 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      server_url:
+        description: >-
+          Optional absolute URL for the WebView to load (hosted mode). Set to a
+          deployed site (e.g. https://agents.jorisjonkers.dev) to get an APK that
+          runs the live web app with working cookie auth + APIs. Leave blank for a
+          bundled APK (offline assets; backend calls need native-bearer + backend G2-G6).
+        required: false
+        default: ''
+        type: string
   release:
     types: [published]
 
@@ -28,6 +38,9 @@ env:
   GITHUB_ACTOR: ${{ github.actor }}
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  # When set (hosted mode), capacitor.config.ts points the native WebView at this
+  # URL instead of the bundled assets, so the APK runs the live web app.
+  CAP_SERVER_URL: ${{ github.event.inputs.server_url }}
 
 jobs:
   build-apk:
