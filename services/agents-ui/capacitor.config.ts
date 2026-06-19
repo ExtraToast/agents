@@ -22,14 +22,16 @@ const config: CapacitorConfig = {
       backgroundColor: '#1a1a2e',
     },
   },
-  ...(serverUrl
-    ? {
-        server: {
-          url: serverUrl,
-          cleartext: true,
-        },
-      }
-    : {}),
+  server: {
+    // Keep navigation to all jorisjonkers.dev subdomains INSIDE the app's
+    // WebView: sign-in on auth.jorisjonkers.dev and launching the other apps
+    // (agents./grafana./etc.) from the app launcher. Without this, Capacitor
+    // hands cross-host navigation to an external browser, which breaks the
+    // shared session cookie (sign-in) and makes the other apps unreachable
+    // from within the app.
+    allowNavigation: ['*.jorisjonkers.dev', 'jorisjonkers.dev'],
+    ...(serverUrl ? { url: serverUrl, cleartext: true } : {}),
+  },
 }
 
 export default config
