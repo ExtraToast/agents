@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.8.1](https://github.com/ExtraToast/agents/compare/v0.8.0...v0.8.1) (2026-06-19)
+
+
+### Bug Fixes
+
+* **agents-ui:** delegate sign-in to auth-ui (fixes cross-origin 400) + move logout into rail bottom ([#76](https://github.com/ExtraToast/agents/issues/76)) ([e048599](https://github.com/ExtraToast/agents/commit/e04859965de326e90418e352373670b01646fff1))
+* **sessions:** resume the prior Claude & Codex conversation on revival ([#78](https://github.com/ExtraToast/agents/issues/78)) ([3aab4a3](https://github.com/ExtraToast/agents/commit/3aab4a379758eee9a728d93989078320e90abfcd))
+
 ## [0.8.0](https://github.com/ExtraToast/agents/compare/v0.7.1...v0.8.0) (2026-06-18)
 
 
