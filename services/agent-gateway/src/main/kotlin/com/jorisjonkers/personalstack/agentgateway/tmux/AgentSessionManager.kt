@@ -152,6 +152,7 @@ class AgentSessionManager(
         stableSessionId: String? = null,
         epoch: Long? = null,
         continuation: AgentContinuation? = null,
+        resumeCliSessionId: String? = null,
     ): AgentSession {
         val startedAt = Instant.now()
         val telemetryKind = kind.toTelemetryKind()
@@ -190,7 +191,7 @@ class AgentSessionManager(
                     throw e
                 }
 
-            val (command, cliSessionId) = commandAndSessionIdFor(kind)
+            val (command, cliSessionId) = commandAndSessionIdFor(kind, resumeCliSessionId)
             try {
                 tmux.newSession(tmuxSession, command, cwd)
                 tmux.startPipeToFile(tmuxSession, logFile)
@@ -513,24 +514,36 @@ class AgentSessionManager(
     /**
      * Build the CLI command and return the native session id alongside it.
      *
-     * For Claude: a fresh UUID is generated and passed as `--session-id
+     * For Claude: on a fresh start a new UUID is passed as `--session-id
      * <uuid>` so the CLI process has a stable native identity without
-     * inheriting another conversation.
+     * inheriting another conversation. On revival ([resumeCliSessionId]
+     * set) the prior conversation is resumed via `--resume <id>` and that
+     * same id is returned, keeping the persisted cliSessionId stable across
+     * epochs — otherwise the terminal replays old bytes while the model
+     * starts blank.
      *
-     * For Codex: launch the interactive CLI directly. `codex resume --last`
-     * is intentionally not used here because it can attach a new gateway
-     * agent to a different saved Codex session on the shared credentials PVC.
+     * For Codex: launch the interactive CLI directly. Resume is not wired
+     * yet — Codex's native rollout id is not captured at spawn, and
+     * `codex resume --last` is intentionally avoided because it can attach a
+     * new gateway agent to a different saved Codex session on the shared
+     * credentials PVC. Resuming Codex by explicit id is a follow-up.
      *
      * Shell has no session id.
      */
-    private fun commandAndSessionIdFor(kind: AgentKind): Pair<List<String>, String?> =
+    private fun commandAndSessionIdFor(
+        kind: AgentKind,
+        resumeCliSessionId: String? = null,
+    ): Pair<List<String>, String?> =
         when (kind) {
             AgentKind.CLAUDE -> {
-                val cliSessionId = UUID.randomUUID().toString()
-                val cmd =
-                    listOf(props.cli.claude) + props.cli.claudeArgs +
+                val cliSessionId = resumeCliSessionId ?: UUID.randomUUID().toString()
+                val sessionArgs =
+                    if (resumeCliSessionId != null) {
+                        listOf("--resume", resumeCliSessionId)
+                    } else {
                         listOf("--session-id", cliSessionId)
-                cmd to cliSessionId
+                    }
+                (listOf(props.cli.claude) + props.cli.claudeArgs + sessionArgs) to cliSessionId
             }
             AgentKind.CODEX -> (listOf(props.cli.codex) + props.cli.codexArgs) to null
             AgentKind.SHELL -> listOf("/bin/bash", "-l") to null

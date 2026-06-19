@@ -181,6 +181,29 @@ class AgentSessionManagerTest {
     }
 
     @Test
+    fun `spawn resumes claude from the prior cliSessionId on revival`(
+        @TempDir tmp: Path,
+    ) {
+        val mgr = manager(tmp)
+        val prior = "11111111-2222-4333-8444-555555555555"
+        val s = mgr.spawn(AgentKind.CLAUDE, resumeCliSessionId = prior)
+        // The persisted id stays stable across epochs so the next revival
+        // resumes the same conversation.
+        assertThat(s.cliSessionId).isEqualTo(prior)
+        verify {
+            tmux.newSession(
+                s.tmuxSession,
+                match { cmd ->
+                    cmd.contains("--resume") &&
+                        cmd[cmd.indexOf("--resume") + 1] == prior &&
+                        !cmd.contains("--session-id")
+                },
+                tmp.resolve("workspace").toString(),
+            )
+        }
+    }
+
+    @Test
     fun `spawn never resumes codex last session`(
         @TempDir tmp: Path,
     ) {
