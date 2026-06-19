@@ -40,7 +40,7 @@ env:
   NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   # When set (hosted mode), capacitor.config.ts points the native WebView at this
   # URL instead of the bundled assets, so the APK runs the live web app.
-  CAP_SERVER_URL: ${{ github.event.inputs.server_url }}
+  CAP_SERVER_URL: ${{ github.event.inputs.server_url || 'https://jorisjonkers.dev' }}
 
 jobs:
   build-apk:
@@ -80,14 +80,14 @@ jobs:
         run: |
           mkdir -p dist-apk
           cp services/agents-ui/android/app/build/outputs/apk/debug/app-debug.apk \
-            "dist-apk/agents-app-debug.apk"
+            "dist-apk/jorisjonkers.apk"
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: agents-app-android-apk
-          path: dist-apk/agents-app-debug.apk
+          name: jorisjonkers-app-apk
+          path: dist-apk/jorisjonkers.apk
           if-no-files-found: error
           retention-days: 30
       - name: Attach APK to release
         if: github.event_name == 'release'
-        run: gh release upload "${{ github.event.release.tag_name }}" dist-apk/agents-app-debug.apk --clobber
+        run: gh release upload "${{ github.event.release.tag_name }}" dist-apk/jorisjonkers.apk --clobber

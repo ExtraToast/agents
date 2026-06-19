@@ -4,8 +4,8 @@ import process from 'node:process'
 const serverUrl = process.env.CAP_SERVER_URL
 
 const config: CapacitorConfig = {
-  appId: 'dev.extratoast.agents',
-  appName: 'ExtraToast Agents',
+  appId: 'dev.jorisjonkers.app',
+  appName: 'Joris Jonkers',
   webDir: 'dist',
   plugins: {
     SplashScreen: {
