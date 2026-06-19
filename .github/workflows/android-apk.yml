@@ -73,6 +73,16 @@ jobs:
       - name: Sync Android project
         working-directory: services/agents-ui
         run: npx cap sync android
+      - name: Opt out of forced edge-to-edge (status bar overlap)
+        working-directory: services/agents-ui/android
+        run: |
+          # Android 15 (targetSdk 35) forces edge-to-edge, so the WebView draws
+          # under the OS status bar and StatusBar.overlaysWebView=false is
+          # ignored. Target SDK 34 (compile stays 35) so the status bar is its
+          # own space and content starts below it — a native fix that needs no
+          # change to the web content.
+          sed -i -E 's/targetSdkVersion = 3[0-9]+/targetSdkVersion = 34/' variables.gradle || true
+          echo "--- variables.gradle ---"; cat variables.gradle
       - name: Assemble debug APK
         working-directory: services/agents-ui/android
         run: ./gradlew assembleDebug
