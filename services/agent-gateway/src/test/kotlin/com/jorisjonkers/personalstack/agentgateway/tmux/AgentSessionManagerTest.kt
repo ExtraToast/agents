@@ -292,11 +292,20 @@ class AgentSessionManagerTest {
         verify {
             tmux.newSession(
                 s.tmuxSession,
-                listOf(
-                    "/usr/local/bin/codex",
-                    "--dangerously-bypass-approvals-and-sandbox",
-                    "--dangerously-bypass-hook-trust",
-                ),
+                // Codex launches under an isolated CODEX_HOME (env prefix), so
+                // the command is no longer an exact list — assert the bin +
+                // both bypass flags are present alongside the env prefix.
+                match { cmd ->
+                    cmd.containsAll(
+                        listOf(
+                            "/usr/local/bin/codex",
+                            "--dangerously-bypass-approvals-and-sandbox",
+                            "--dangerously-bypass-hook-trust",
+                        ),
+                    ) &&
+                        cmd.first() == "env" &&
+                        cmd.any { it.startsWith("CODEX_HOME=") }
+                },
                 tmp.resolve("workspace").toString(),
             )
         }
