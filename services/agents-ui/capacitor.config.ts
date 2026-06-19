@@ -15,6 +15,9 @@ const config: CapacitorConfig = {
       showSpinner: false,
     },
     StatusBar: {
+      // Don't let the WebView render under the OS status bar (clock/battery);
+      // show a solid bar and start the web content below it.
+      overlaysWebView: false,
       style: 'LIGHT',
       backgroundColor: '#1a1a2e',
     },
