@@ -1,4 +1,4 @@
-import type { RouteLocationRaw, RouteMeta } from 'vue-router'
+import type { RouteMeta } from 'vue-router'
 import type { AdminCapability, AuthRole, CapabilityQuery } from './types'
 import { createCapabilityQuery, isAdminCapability } from './types'
 
@@ -22,9 +22,32 @@ interface ProtectedRouteGuardTarget {
   name?: string | symbol | null | undefined
 }
 
-export type ProtectedRouteGuard = (to: ProtectedRouteGuardTarget) => Promise<boolean | RouteLocationRaw>
+export interface ProtectedRouteGuardOptions {
+  // Origin of the auth-ui sign-in surface (auth.<domain>). Login happens there,
+  // same-origin, and the session cookie is shared across the parent domain — the
+  // proven model used by the other apps. Defaults to the runtime auth origin.
+  authOrigin?: string
+  currentHref?: () => string
+  redirect?: (url: string) => void
+}
 
-export function createProtectedRouteGuard(getAuth: () => ShellAuthState): ProtectedRouteGuard {
+export type ProtectedRouteGuard = (to: ProtectedRouteGuardTarget) => Promise<boolean>
+
+function resolveAuthOrigin(): string {
+  const env = import.meta.env
+  return (env.VITE_AUTH_ORIGIN ?? env.VITE_AUTH_URL ?? 'http://localhost:5174').replace(/\/+$/u, '')
+}
+
+export function createProtectedRouteGuard(
+  getAuth: () => ShellAuthState,
+  options: ProtectedRouteGuardOptions = {},
+): ProtectedRouteGuard {
+  const authOrigin = options.authOrigin ?? resolveAuthOrigin()
+  const currentHref = options.currentHref ?? (() => (typeof window === 'undefined' ? '/' : window.location.href))
+  const redirect = options.redirect ?? ((url: string) => {
+    if (typeof window !== 'undefined') window.location.href = url
+  })
+
   return async (to) => {
     const auth = getAuth()
 
@@ -41,12 +64,8 @@ export function createProtectedRouteGuard(getAuth: () => ShellAuthState): Protec
     }
 
     if (!auth.isAuthenticated.value) {
-      if (to.name === 'login') return true
-
-      return {
-        name: 'login',
-        query: { redirect: to.fullPath || '/' },
-      }
+      redirect(`${authOrigin}/login?redirect=${encodeURIComponent(currentHref())}`)
+      return false
     }
 
     if (!canAccessAdminCapability(to.meta.adminCapability, createCapabilityQuery(auth.user.value?.role))) {
@@ -55,6 +74,10 @@ export function createProtectedRouteGuard(getAuth: () => ShellAuthState): Protec
 
     return true
   }
+}
+
+export function buildAuthLogoutUrl(): string {
+  return `${resolveAuthOrigin()}/api/v1/auth/logout`
 }
 
 export function requiresAuthentication(target: Pick<RouteMeta, 'requiresAuth' | 'adminCapability'>): boolean {

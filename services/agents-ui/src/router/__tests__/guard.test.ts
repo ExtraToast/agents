@@ -29,26 +29,21 @@ describe('protected route guard', () => {
     await expect(guard(to({ requiresAuth: true }))).resolves.toBe(true)
   })
 
-  it('redirects failed restoration to login with the attempted destination', async () => {
+  it('redirects unauthenticated users to the auth-ui login with the attempted destination', async () => {
     const auth = authState({ authenticated: false, role: null })
     auth.fetchUser = vi.fn(async () => {})
+    const redirect = vi.fn()
 
-    const guard = createProtectedRouteGuard(() => auth)
-
-    await expect(guard(to({ requiresAuth: true }, '/projects?filter=open'))).resolves.toEqual({
-      name: 'login',
-      query: { redirect: '/projects?filter=open' },
+    const guard = createProtectedRouteGuard(() => auth, {
+      authOrigin: 'https://auth.example.test',
+      currentHref: () => 'https://agents.example.test/projects?filter=open',
+      redirect,
     })
-  })
 
-  it('does not redirect-loop while navigating to login', async () => {
-    const guard = createProtectedRouteGuard(() => authState({ authenticated: false, role: null }))
-
-    await expect(guard({
-      fullPath: '/login',
-      meta: { requiresAuth: true },
-      name: 'login',
-    })).resolves.toBe(true)
+    await expect(guard(to({ requiresAuth: true }, '/projects?filter=open'))).resolves.toBe(false)
+    expect(redirect).toHaveBeenCalledWith(
+      'https://auth.example.test/login?redirect=https%3A%2F%2Fagents.example.test%2Fprojects%3Ffilter%3Dopen',
+    )
   })
 
   it('does not restore public routes', async () => {
