@@ -2,13 +2,12 @@
 import type { AppShellNavItem } from '@/lib/vueWebCommons'
 import type { NavigationItem } from '@/router/types'
 import { computed } from 'vue'
-import { useRouter } from 'vue-router'
 import * as commons from '@/lib/vueWebCommons'
 import { routeManifest } from '@/router/discovery'
+import { buildAuthLogoutUrl } from '@/router/guard'
 import { filterNavigation, navigationItems } from '@/router/navigation'
 
 const { agentsThemeOptions, AppShell: CommonsAppShell } = commons
-const router = useRouter()
 const hasAuthApi = typeof commons.useAuth === 'function'
 const auth = hasAuthApi
   ? commons.useAuth()
@@ -37,9 +36,10 @@ const navItems = computed<AppShellNavItem[]>(() =>
   }).map(toAppShellNavItem),
 )
 
-async function onLogout(): Promise<void> {
-  await auth.logout()
-  await router.push({ name: 'login' })
+function onLogout(): void {
+  // Sign out through the auth-ui surface; it clears the shared session cookie
+  // and redirects back to the sign-in page (same model as the other apps).
+  if (typeof window !== 'undefined') window.location.href = buildAuthLogoutUrl()
 }
 
 function toAppShellNavItem(item: NavigationItem): AppShellNavItem {
@@ -97,18 +97,19 @@ const legacyNavItems: AppShellNavItem[] = [
     new-action-to="/sessions?tab=workspace&new=1"
     :nav-items="hasAuthApi ? navItems : legacyNavItems"
     :theme-options="agentsThemeOptions"
-    @logout="onLogout"
   >
-    <div v-if="auth.isAuthenticated.value" class="fixed right-4 top-4 z-50">
+    <template v-if="auth.isAuthenticated.value" #extras>
       <button
         type="button"
-        class="rounded border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] px-3 py-2 text-sm"
+        class="flex h-11 w-full items-center gap-3 rounded-md px-3 font-mono text-sm text-[var(--color-text-muted)]
+          transition-colors hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-terminal-amber)]"
         data-testid="nav-logout"
         @click="onLogout"
       >
-        Logout
+        <span aria-hidden="true">⏻</span>
+        <span class="truncate">Sign out</span>
       </button>
-    </div>
+    </template>
     <slot />
   </CommonsAppShell>
 </template>
