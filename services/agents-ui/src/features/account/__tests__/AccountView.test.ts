@@ -12,6 +12,9 @@ import {
 import AccountView from '../views/AccountView.vue'
 
 vi.mock('@/lib/vueWebCommons', () => ({
+  Card: {
+    template: '<div><slot /></div>',
+  },
   FormErrors: {
     props: ['error'],
     template: '<div v-if="error" data-testid="form-error">{{ error }}</div>',
@@ -96,6 +99,17 @@ describe('accountView', () => {
 
     expect(wrapper.get('[data-testid="account-profile-name"]').text()).toBe('Ada Lovelace')
     expect(wrapper.get('[data-testid="account-email"]').text()).toBe('ada@example.test')
+  })
+
+  it('shows the credential login cards on the Credentials tab', async () => {
+    const wrapper = await mountView()
+
+    expect(wrapper.find('[data-testid="credentials-card-claude"]').exists()).toBe(false)
+
+    await wrapper.get('[data-testid="account-tab-credentials"]').trigger('click')
+
+    expect(wrapper.find('[data-testid="credentials-card-claude"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="credentials-card-codex"]').exists()).toBe(true)
   })
 
   it('submits profile edits', async () => {

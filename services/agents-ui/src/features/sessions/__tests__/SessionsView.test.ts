@@ -118,7 +118,7 @@ describe('sessions home', () => {
     expect(shell.props('layout')).toBe('rail')
     expect(shell.props('newActionLabel')).toBe('New session')
     expect(shell.props('newActionTo')).toBe('/sessions?tab=workspace&new=1')
-    expect(navItems.map((item) => item.icon)).toEqual(['terminal', 'folder', 'git', 'user', 'user'])
+    expect(navItems.map((item) => item.icon)).toEqual(['terminal', 'folder', 'git', 'user'])
     expect(sessions?.children?.map((item) => [item.label, item.to, item.icon])).toEqual([
       ['Workspace', '/sessions?tab=workspace', 'window'],
       ['Scratch', '/sessions?tab=scratch', 'terminal'],
