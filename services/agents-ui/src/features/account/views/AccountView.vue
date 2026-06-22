@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { z } from 'zod'
+import CredentialsPanel from '@/features/credentials/components/CredentialsPanel.vue'
 import { FormErrors, FormField, SubmitButton, useFormErrors, useMutationState, useToast } from '@/lib/vueWebCommons'
 import { useAccountStore } from '../stores/account'
 import { changePasswordRequestSchema, totpVerifyRequestSchema, updateProfileRequestSchema } from '../types'
 
 const store = useAccountStore()
 const toast = useToast()
+
+const activeTab = ref<'profile' | 'credentials'>('profile')
 
 const profileForm = reactive({
   firstName: '',
@@ -193,7 +196,41 @@ function validationErrors(error: z.ZodError): Record<string, string> {
       </p>
     </header>
 
-    <FormErrors :error="loadErrors.general.value" />
+    <nav
+      class="mb-6 flex gap-1 border-b border-[var(--color-surface-border)]"
+      role="tablist"
+      aria-label="Account sections"
+    >
+      <button
+        type="button"
+        role="tab"
+        :aria-selected="activeTab === 'profile'"
+        class="-mb-px border-b-2 px-3 py-2 text-sm font-medium"
+        :class="activeTab === 'profile'
+          ? 'border-[var(--color-accent)] text-[var(--color-text)]'
+          : 'border-transparent text-[var(--color-text-muted)]'"
+        data-testid="account-tab-profile"
+        @click="activeTab = 'profile'"
+      >
+        Profile
+      </button>
+      <button
+        type="button"
+        role="tab"
+        :aria-selected="activeTab === 'credentials'"
+        class="-mb-px border-b-2 px-3 py-2 text-sm font-medium"
+        :class="activeTab === 'credentials'
+          ? 'border-[var(--color-accent)] text-[var(--color-text)]'
+          : 'border-transparent text-[var(--color-text-muted)]'"
+        data-testid="account-tab-credentials"
+        @click="activeTab = 'credentials'"
+      >
+        Credentials
+      </button>
+    </nav>
+
+    <div v-show="activeTab === 'profile'">
+      <FormErrors :error="loadErrors.general.value" />
 
     <div v-if="store.isLoading" class="text-sm text-[var(--color-text-muted)]">Loading…</div>
 
@@ -425,5 +462,8 @@ function validationErrors(error: z.ZodError): Record<string, string> {
         </div>
       </section>
     </div>
+    </div>
+
+    <CredentialsPanel v-if="activeTab === 'credentials'" />
   </div>
 </template>
