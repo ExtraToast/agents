@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.1](https://github.com/ExtraToast/agents/compare/v0.9.0...v0.9.1) (2026-06-22)
+
+
+### Bug Fixes
+
+* **agents-ui:** label the credential paste-back as the authorization code ([#86](https://github.com/ExtraToast/agents/issues/86)) ([39a81d4](https://github.com/ExtraToast/agents/commit/39a81d49320e3f881cc30845b0b12d881205fcbd))
+
 ## [0.9.0](https://github.com/ExtraToast/agents/compare/v0.8.1...v0.9.0) (2026-06-22)
 
 
