@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { z } from 'zod'
+import CredentialsPanel from '@/features/credentials/components/CredentialsPanel.vue'
 import { FormErrors, FormField, SubmitButton, useFormErrors, useMutationState, useToast } from '@/lib/vueWebCommons'
 import { useAccountStore } from '../stores/account'
 import { changePasswordRequestSchema, totpVerifyRequestSchema, updateProfileRequestSchema } from '../types'
-import CredentialsPanel from '@/features/credentials/components/CredentialsPanel.vue'
 
 const store = useAccountStore()
 const toast = useToast()

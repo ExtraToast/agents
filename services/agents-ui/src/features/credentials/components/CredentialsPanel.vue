@@ -2,13 +2,13 @@
 import type { CredentialProvider } from '../types'
 import { onUnmounted, ref } from 'vue'
 import { Card, useToast } from '@/lib/vueWebCommons'
-import { isTerminalPhase } from '../types'
 import { useCredentialsStore } from '../stores/credentials'
+import { isTerminalPhase } from '../types'
 
 const store = useCredentialsStore()
 const toast = useToast()
 
-const providers: { id: CredentialProvider, label: string, blurb: string }[] = [
+const providers: { id: CredentialProvider; label: string; blurb: string }[] = [
   { id: 'claude', label: 'Claude Code', blurb: 'claude /login — paste the redirect URL back after approving.' },
   { id: 'codex', label: 'Codex', blurb: 'codex login --device — enter the code on the OpenAI device page.' },
 ]
