@@ -9,7 +9,7 @@ const store = useCredentialsStore()
 const toast = useToast()
 
 const providers: { id: CredentialProvider; label: string; blurb: string }[] = [
-  { id: 'claude', label: 'Claude Code', blurb: 'claude /login — paste the redirect URL back after approving.' },
+  { id: 'claude', label: 'Claude Code', blurb: 'claude setup-token — approve in the browser, then paste the code back.' },
   { id: 'codex', label: 'Codex', blurb: 'codex login --device — enter the code on the OpenAI device page.' },
 ]
 
@@ -17,7 +17,7 @@ const redirectUrl = ref<Record<CredentialProvider, string>>({ claude: '', codex:
 
 const phaseLabels: Record<string, string> = {
   starting: 'Starting the CLI…',
-  awaiting_url: 'Waiting for you to approve and paste the redirect URL',
+  awaiting_url: 'Waiting for you to approve and paste the authorization code',
   awaiting_device: 'Waiting for you to enter the code and approve',
   finalizing: 'Capturing credentials and writing to Vault…',
   succeeded: 'Credentials renewed',
@@ -94,12 +94,12 @@ onUnmounted(() => store.dispose())
             </div>
 
             <div v-if="store.states[p.id].session!.needsRedirectUrl" class="mt-3">
-              <label class="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">Redirect URL</label>
+              <label class="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">Authorization code</label>
               <div class="mt-1 flex items-center gap-2">
                 <input
                   v-model="redirectUrl[p.id]"
                   type="text"
-                  placeholder="https://claude.ai/oauth/callback?code=…"
+                  placeholder="paste the code from the approval page"
                   class="flex-1 rounded border border-[var(--color-surface-border)] bg-transparent px-2 py-1 text-sm"
                   :data-testid="`credentials-redirect-input-${p.id}`"
                   @keyup.enter="submit(p.id)"
