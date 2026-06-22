@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.9.0](https://github.com/ExtraToast/agents/compare/v0.8.1...v0.9.0) (2026-06-22)
+
+
+### Features
+
+* **agents-ui:** remove the admin users-management page ([#84](https://github.com/ExtraToast/agents/issues/84)) ([dcccf19](https://github.com/ExtraToast/agents/commit/dcccf19b4d6bd1b94e06a5b36df9ecd562080c14))
+* **agents:** add the Credentials page for CLI re-authentication ([#83](https://github.com/ExtraToast/agents/issues/83)) ([e323b33](https://github.com/ExtraToast/agents/commit/e323b331004617fa0911437219f36b70115d7e4b))
+
+
+### Bug Fixes
+
+* **app:** allow in-WebView navigation to jorisjonkers.dev subdomains ([#80](https://github.com/ExtraToast/agents/issues/80)) ([2a338ec](https://github.com/ExtraToast/agents/commit/2a338ec6698310b48068c107a0c9211a2a7cd9d2))
+* **app:** opt out of Android forced edge-to-edge so the status bar doesn't overlap ([#82](https://github.com/ExtraToast/agents/issues/82)) ([bb97988](https://github.com/ExtraToast/agents/commit/bb9798853af6bac4cd6b5918ce9edb044a4bed41))
+
 ## [0.8.1](https://github.com/ExtraToast/agents/compare/v0.8.0...v0.8.1) (2026-06-19)
 
 
