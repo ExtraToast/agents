@@ -566,6 +566,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/credentials/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Report what credentials are currently stored in Vault for each provider */
+        get: operations["storedStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/credentials/sessions/{id}": {
         parameters: {
             query?: never;
@@ -2298,6 +2315,26 @@ export interface operations {
                     "*/*": {
                         [key: string]: string;
                     };
+                };
+            };
+        };
+    };
+    storedStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": Record<string, never>;
                 };
             };
         };

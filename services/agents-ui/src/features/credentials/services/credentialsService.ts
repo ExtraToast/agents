@@ -1,8 +1,12 @@
-import type { CredentialAction, CredentialProvider, CredentialSession } from '../types'
+import type { CredentialAction, CredentialProvider, CredentialSession, CredentialStatusResponse } from '../types'
 import { useApiWithAuth } from '@/lib/vueWebCommons'
 
 function api(): ReturnType<typeof useApiWithAuth> {
   return useApiWithAuth()
+}
+
+export async function getStoredStatus(): Promise<CredentialStatusResponse> {
+  return api().get<CredentialStatusResponse>('/credentials/status')
 }
 
 export async function startSession(provider: CredentialProvider): Promise<CredentialSession> {

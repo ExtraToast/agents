@@ -1,7 +1,7 @@
-import type { CredentialProvider, CredentialSession } from '../types'
+import type { CredentialProvider, CredentialSession, CredentialStatus } from '../types'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { cancelSession, getSession, startSession, submitRedirectUrl } from '../services/credentialsService'
+import { cancelSession, getSession, getStoredStatus, startSession, submitRedirectUrl } from '../services/credentialsService'
 import { isTerminalPhase } from '../types'
 
 const POLL_INTERVAL_MS = 2000
@@ -23,6 +23,23 @@ export const useCredentialsStore = defineStore('credentials', () => {
     claude: emptyState(),
     codex: emptyState(),
   })
+
+  // The "check": what is currently stored in Vault per provider, independent of
+  // any active login. Refreshed on mount and after a login succeeds.
+  const stored = ref<Record<CredentialProvider, CredentialStatus | null>>({
+    claude: null,
+    codex: null,
+  })
+
+  async function fetchStored(): Promise<void> {
+    try {
+      const status = await getStoredStatus()
+      stored.value.claude = status.claude
+      stored.value.codex = status.codex
+    } catch {
+      // Non-fatal: the check is best-effort and must not block a login.
+    }
+  }
 
   function stopPolling(provider: CredentialProvider): void {
     const state = states.value[provider]
@@ -46,7 +63,12 @@ export const useCredentialsStore = defineStore('credentials', () => {
     try {
       const session = await getSession(id)
       state.session = session
-      if (isTerminalPhase(session.phase)) stopPolling(provider)
+      if (isTerminalPhase(session.phase)) {
+        stopPolling(provider)
+        // A completed login changes what is stored — refresh the check so the
+        // card confirms the new credentials landed.
+        if (session.phase === 'succeeded') void fetchStored()
+      }
     } catch (e) {
       state.error = e instanceof Error ? e.message : 'Failed to refresh session'
       stopPolling(provider)
@@ -117,5 +139,5 @@ export const useCredentialsStore = defineStore('credentials', () => {
     stopPolling('codex')
   }
 
-  return { states, start, submitRedirect, cancel, reset, dispose, poll }
+  return { states, stored, fetchStored, start, submitRedirect, cancel, reset, dispose, poll }
 })
