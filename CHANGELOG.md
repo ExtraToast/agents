@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/ExtraToast/agents/compare/v0.9.2...v0.10.0) (2026-06-23)
+
+
+### Features
+
+* **credentials:** redesign sign-in cards, add a stored-credential check, surface success ([#90](https://github.com/ExtraToast/agents/issues/90)) ([947a454](https://github.com/ExtraToast/agents/commit/947a4548dc6623adb474db3096606bc4b660b78e))
+
 ## [0.9.2](https://github.com/ExtraToast/agents/compare/v0.9.1...v0.9.2) (2026-06-23)
 
 
