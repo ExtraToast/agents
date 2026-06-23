@@ -16,7 +16,7 @@ function awaitingUrl(authorizeUrl: string): CredentialSession {
   return { id: 's1', provider: 'claude', phase: 'awaiting_url', needsRedirectUrl: true, authorizeUrl }
 }
 
-describe('CredentialsPanel', () => {
+describe('credentials panel', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
   it('renders one card per provider with a connection pill from stored status', async () => {
