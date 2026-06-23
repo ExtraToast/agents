@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.2](https://github.com/ExtraToast/agents/compare/v0.9.1...v0.9.2) (2026-06-23)
+
+
+### Bug Fixes
+
+* **agents-api:** relay credential-worker errors as problem+json ([#88](https://github.com/ExtraToast/agents/issues/88)) ([99cfe63](https://github.com/ExtraToast/agents/commit/99cfe6311371340615db8e08af4b9423969c274a))
+
 ## [0.9.1](https://github.com/ExtraToast/agents/compare/v0.9.0...v0.9.1) (2026-06-22)
 
 
