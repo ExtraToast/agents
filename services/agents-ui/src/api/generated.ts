@@ -1185,6 +1185,10 @@ export interface components {
             updatedAt: string;
             verification?: components["schemas"]["AccessVerificationResponse"] | null;
         };
+        WorkspaceRunnerImageResponse: {
+            digest?: string | null;
+            upgradeAvailable: boolean;
+        };
         WorkspaceWithRepositoriesResponse: {
             /** Format: uuid */
             id: string;
@@ -1203,6 +1207,7 @@ export interface components {
             githubLinkId?: string | null;
             repositories: components["schemas"]["WorkspaceRepositoryResponse"][];
             runnerSetup: components["schemas"]["WorkspaceRunnerSetupResponse"];
+            runnerImage?: components["schemas"]["WorkspaceRunnerImageResponse"] | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
