@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/ExtraToast/agents/compare/v0.10.0...v0.11.0) (2026-06-23)
+
+
+### Features
+
+* **agent-runner:** inject CLAUDE_CODE_OAUTH_TOKEN from the portal-managed Secret ([#92](https://github.com/ExtraToast/agents/issues/92)) ([d3d4b55](https://github.com/ExtraToast/agents/commit/d3d4b5549f09f4ab6ab1d8e0281a816811675a69))
+
 ## [0.10.0](https://github.com/ExtraToast/agents/compare/v0.9.2...v0.10.0) (2026-06-23)
 
 
