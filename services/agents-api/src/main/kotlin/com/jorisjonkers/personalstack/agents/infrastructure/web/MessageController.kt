@@ -8,13 +8,15 @@ import com.jorisjonkers.personalstack.agents.domain.model.MessageRole
 import com.jorisjonkers.personalstack.agents.infrastructure.web.dto.MessageResponse
 import com.jorisjonkers.personalstack.agents.infrastructure.web.dto.SendMessageRequest
 import com.jorisjonkers.personalstack.common.command.CommandBus
+import com.jorisjonkers.personalstack.common.identity.CurrentPrincipal
+import com.jorisjonkers.personalstack.common.identity.ForwardAuthPrincipal
+import io.swagger.v3.oas.annotations.Parameter
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
@@ -30,7 +32,7 @@ class MessageController(
     @ResponseStatus(HttpStatus.CREATED)
     fun send(
         @PathVariable conversationId: UUID,
-        @RequestHeader("X-User-Id") userId: String,
+        @Parameter(hidden = true) @CurrentPrincipal principal: ForwardAuthPrincipal,
         @Valid @RequestBody request: SendMessageRequest,
     ): MessageResponse {
         val convId = ConversationId(conversationId)
@@ -39,7 +41,7 @@ class MessageController(
             SendMessageCommand(
                 messageId = messageId,
                 conversationId = convId,
-                userId = userId,
+                userId = principal.userId.toString(),
                 content = request.content,
                 role = MessageRole.USER,
             ),

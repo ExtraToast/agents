@@ -4,10 +4,12 @@ import com.jorisjonkers.personalstack.agents.application.query.GetWorkspaceQuery
 import com.jorisjonkers.personalstack.agents.application.workspacerunner.RunnerReadinessSnapshot
 import com.jorisjonkers.personalstack.agents.application.workspacerunner.RunnerReadinessState
 import com.jorisjonkers.personalstack.agents.application.workspacerunner.events.WorkspaceRunnerEventsBroadcaster
-import com.jorisjonkers.personalstack.agents.config.XUserIdFilter
 import com.jorisjonkers.personalstack.agents.domain.model.AgentSetupId
 import com.jorisjonkers.personalstack.agents.domain.model.AgentSetupVersion
 import com.jorisjonkers.personalstack.agents.domain.model.WorkspaceId
+import com.jorisjonkers.personalstack.common.identity.CredentialSource
+import com.jorisjonkers.personalstack.common.identity.CurrentPrincipalArgumentResolver
+import com.jorisjonkers.personalstack.common.identity.ForwardAuthPrincipal
 import com.jorisjonkers.personalstack.common.web.GlobalExceptionHandler
 import io.mockk.every
 import io.mockk.mockk
@@ -24,7 +26,6 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.request
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
-import org.springframework.test.web.servlet.setup.StandaloneMockMvcBuilder
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
 import java.time.Instant
 import java.util.UUID
@@ -40,10 +41,18 @@ class WorkspaceRunnerEventsControllerTest {
         mockMvc =
             MockMvcBuilders
                 .standaloneSetup(WorkspaceRunnerEventsController(broadcaster, getQuery))
+                .setCustomArgumentResolvers(CurrentPrincipalArgumentResolver())
                 .setControllerAdvice(GlobalExceptionHandler())
-                .addFilters<StandaloneMockMvcBuilder>(XUserIdFilter())
                 .build()
     }
+
+    private fun principal(): ForwardAuthPrincipal =
+        ForwardAuthPrincipal(
+            userId = UUID.fromString("00000000-0000-0000-0000-000000000001"),
+            roles = emptySet(),
+            username = null,
+            credentialSource = CredentialSource.EDGE_ASSERTION,
+        )
 
     @Test
     fun `GET workspace events returns SSE response headers`() {
@@ -52,8 +61,10 @@ class WorkspaceRunnerEventsControllerTest {
         every { broadcaster.subscribe(WorkspaceId(id)) } returns SseEmitter()
 
         mockMvc
-            .perform(get("/api/v1/workspaces/$id/runner-events").header("X-User-Id", "user-1"))
-            .andExpect(status().isOk)
+            .perform(
+                get("/api/v1/workspaces/$id/runner-events")
+                    .requestAttr(ForwardAuthPrincipal::class.java.name, principal()),
+            ).andExpect(status().isOk)
             .andExpect(request().asyncStarted())
             .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_EVENT_STREAM))
             .andExpect(header().string("Cache-Control", "no-cache"))
@@ -68,17 +79,12 @@ class WorkspaceRunnerEventsControllerTest {
         every { getQuery.getSummary(WorkspaceId(id)) } returns null
 
         mockMvc
-            .perform(get("/api/v1/workspaces/$id/runner-events").header("X-User-Id", "user-1"))
-            .andExpect(status().isNotFound)
+            .perform(
+                get("/api/v1/workspaces/$id/runner-events")
+                    .requestAttr(ForwardAuthPrincipal::class.java.name, principal()),
+            ).andExpect(status().isNotFound)
 
         verify(exactly = 0) { broadcaster.subscribe(any()) }
-    }
-
-    @Test
-    fun `GET workspace events without X-User-Id returns 401`() {
-        mockMvc
-            .perform(get("/api/v1/workspaces/${UUID.randomUUID()}/runner-events"))
-            .andExpect(status().isUnauthorized)
     }
 }
 

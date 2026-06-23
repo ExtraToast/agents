@@ -12,9 +12,6 @@
     "url" : "http://localhost:8082",
     "description" : "Local development"
   } ],
-  "security" : [ {
-    "xUserId" : [ ]
-  } ],
   "paths" : {
     "/api/v1/workspaces" : {
       "get" : {
@@ -750,14 +747,6 @@
       "get" : {
         "tags" : [ "conversation-controller" ],
         "operationId" : "listByUser",
-        "parameters" : [ {
-          "name" : "X-User-Id",
-          "in" : "header",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -777,14 +766,6 @@
       "post" : {
         "tags" : [ "conversation-controller" ],
         "operationId" : "create_3",
-        "parameters" : [ {
-          "name" : "X-User-Id",
-          "in" : "header",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -849,13 +830,6 @@
             "type" : "string",
             "format" : "uuid"
           }
-        }, {
-          "name" : "X-User-Id",
-          "in" : "header",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
         } ],
         "requestBody" : {
           "content" : {
@@ -885,14 +859,6 @@
       "get" : {
         "tags" : [ "chat-session-controller" ],
         "operationId" : "list_4",
-        "parameters" : [ {
-          "name" : "X-User-Id",
-          "in" : "header",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -912,14 +878,6 @@
       "post" : {
         "tags" : [ "chat-session-controller" ],
         "operationId" : "create_4",
-        "parameters" : [ {
-          "name" : "X-User-Id",
-          "in" : "header",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -1488,13 +1446,6 @@
             "type" : "string",
             "format" : "uuid"
           }
-        }, {
-          "name" : "X-User-Id",
-          "in" : "header",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
         } ],
         "responses" : {
           "204" : {
@@ -1540,13 +1491,6 @@
           "schema" : {
             "type" : "string",
             "format" : "uuid"
-          }
-        }, {
-          "name" : "X-User-Id",
-          "in" : "header",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
           }
         } ],
         "responses" : {
@@ -3173,14 +3117,6 @@
           }
         },
         "required" : [ "claudeCredentialsPvc", "cliTools", "codexCredentialsPvc", "connectorConfig", "createdAt", "defaultMcpProfile", "defaultSelectable", "displayName", "dockerSocketEnabled", "dockerSocketPath", "dockerSocketSupplementalGroups", "gatewayPort", "githubDeployKeySecret", "image", "imagePullPolicy", "knowledgeBaseUrl", "knowledgeBearerSecret", "knowledgeBearerSecretKey", "mcpServersConfigMap", "namespace", "nodeSelector", "selectable", "serviceAccount", "setup", "toolAllowlist", "toolProfiles", "updatedAt" ]
-      }
-    },
-    "securitySchemes" : {
-      "xUserId" : {
-        "type" : "apiKey",
-        "description" : "User identifier injected by Traefik forward-auth",
-        "name" : "X-User-Id",
-        "in" : "header"
       }
     }
   }

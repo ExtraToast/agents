@@ -7,6 +7,9 @@ import com.jorisjonkers.personalstack.agents.domain.model.ConversationId
 import com.jorisjonkers.personalstack.agents.domain.model.ConversationStatus
 import com.jorisjonkers.personalstack.common.command.CommandBus
 import com.jorisjonkers.personalstack.common.exception.NotFoundException
+import com.jorisjonkers.personalstack.common.identity.CredentialSource
+import com.jorisjonkers.personalstack.common.identity.CurrentPrincipalArgumentResolver
+import com.jorisjonkers.personalstack.common.identity.ForwardAuthPrincipal
 import com.jorisjonkers.personalstack.common.web.GlobalExceptionHandler
 import io.mockk.every
 import io.mockk.mockk
@@ -36,9 +39,18 @@ class ConversationControllerTest {
         mockMvc =
             MockMvcBuilders
                 .standaloneSetup(controller)
+                .setCustomArgumentResolvers(CurrentPrincipalArgumentResolver())
                 .setControllerAdvice(GlobalExceptionHandler())
                 .build()
     }
+
+    private fun principal(userId: UUID): ForwardAuthPrincipal =
+        ForwardAuthPrincipal(
+            userId = userId,
+            roles = emptySet(),
+            username = null,
+            credentialSource = CredentialSource.EDGE_ASSERTION,
+        )
 
     @Test
     fun `POST creates conversation and returns 201`() {
@@ -49,7 +61,7 @@ class ConversationControllerTest {
         mockMvc
             .perform(
                 post("/api/v1/conversations")
-                    .header("X-User-Id", userId.toString())
+                    .requestAttr(ForwardAuthPrincipal::class.java.name, principal(userId))
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(mapOf("title" to "My Chat"))),
             ).andExpect(status().isCreated)
@@ -67,7 +79,7 @@ class ConversationControllerTest {
         mockMvc
             .perform(
                 post("/api/v1/conversations")
-                    .header("X-User-Id", userId.toString())
+                    .requestAttr(ForwardAuthPrincipal::class.java.name, principal(userId))
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(mapOf("title" to ""))),
             ).andExpect(status().isUnprocessableContent)
@@ -82,7 +94,7 @@ class ConversationControllerTest {
         mockMvc
             .perform(
                 post("/api/v1/conversations")
-                    .header("X-User-Id", userId.toString())
+                    .requestAttr(ForwardAuthPrincipal::class.java.name, principal(userId))
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(mapOf("title" to longTitle))),
             ).andExpect(status().isUnprocessableContent)
@@ -122,7 +134,7 @@ class ConversationControllerTest {
         mockMvc
             .perform(
                 delete("/api/v1/conversations/$conversationId")
-                    .header("X-User-Id", userId.toString()),
+                    .requestAttr(ForwardAuthPrincipal::class.java.name, principal(userId)),
             ).andExpect(status().isNoContent)
 
         verify { commandBus.dispatch(any()) }
@@ -141,18 +153,11 @@ class ConversationControllerTest {
         mockMvc
             .perform(
                 get("/api/v1/conversations")
-                    .header("X-User-Id", userId.toString()),
+                    .requestAttr(ForwardAuthPrincipal::class.java.name, principal(userId)),
             ).andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(2))
             .andExpect(jsonPath("$[0].title").value("First"))
             .andExpect(jsonPath("$[1].title").value("Second"))
-    }
-
-    @Test
-    fun `GET list without X-User-Id header returns error`() {
-        mockMvc
-            .perform(get("/api/v1/conversations"))
-            .andExpect(status().isInternalServerError)
     }
 
     private fun buildConversation(

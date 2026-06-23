@@ -13,7 +13,10 @@ import com.jorisjonkers.personalstack.agents.infrastructure.web.dto.ChatMessageR
 import com.jorisjonkers.personalstack.agents.infrastructure.web.dto.ChatSessionResponse
 import com.jorisjonkers.personalstack.agents.infrastructure.web.dto.StartChatSessionRequest
 import com.jorisjonkers.personalstack.common.command.CommandBus
+import com.jorisjonkers.personalstack.common.identity.CurrentPrincipal
+import com.jorisjonkers.personalstack.common.identity.ForwardAuthPrincipal
 import io.swagger.v3.oas.annotations.Hidden
+import io.swagger.v3.oas.annotations.Parameter
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -23,7 +26,6 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
@@ -38,15 +40,14 @@ class ChatSessionController(
 ) {
     @PostMapping
     fun create(
-        @RequestHeader("X-User-Id") userId: String,
+        @Parameter(hidden = true) @CurrentPrincipal principal: ForwardAuthPrincipal,
         @Valid @RequestBody req: StartChatSessionRequest,
     ): ResponseEntity<ChatSessionResponse> {
-        val userUuid = UUID.fromString(userId)
         val sessionId = ChatSessionId.random()
         commandBus.dispatch(
             StartChatSessionCommand(
                 sessionId = sessionId,
-                userId = userUuid,
+                userId = principal.userId,
                 title = req.title,
                 kind = req.kind ?: ChatSessionKind.PLAIN,
             ),
@@ -59,10 +60,10 @@ class ChatSessionController(
 
     @GetMapping
     fun list(
-        @RequestHeader("X-User-Id") userId: String,
+        @Parameter(hidden = true) @CurrentPrincipal principal: ForwardAuthPrincipal,
     ): List<ChatSessionResponse> =
         chatSessionQuery
-            .list(UUID.fromString(userId))
+            .list(principal.userId)
             .map(ChatSessionResponse::of)
 
     @GetMapping("/{id}")
@@ -122,12 +123,12 @@ class ChatSessionController(
     @DeleteMapping("/{id}")
     fun archive(
         @PathVariable id: UUID,
-        @RequestHeader("X-User-Id") userId: String,
+        @Parameter(hidden = true) @CurrentPrincipal principal: ForwardAuthPrincipal,
     ): ResponseEntity<Void> {
         commandBus.dispatch(
             ArchiveChatSessionCommand(
                 sessionId = ChatSessionId(id),
-                userId = UUID.fromString(userId),
+                userId = principal.userId,
             ),
         )
         return ResponseEntity.noContent().build()

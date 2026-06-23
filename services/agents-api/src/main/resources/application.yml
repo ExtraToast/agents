@@ -103,6 +103,18 @@ springdoc:
   swagger-ui:
     path: /api/v1/swagger-ui
 
+extratoast:
+  identity:
+    enabled: true
+    header-name: X-Agents-Verified-Jwt
+    audience: agents-api
+    jwks-uri: ${AUTH_JWKS_URI:}
+    issuer: ${AUTH_ISSUER:}
+  web:
+    problem-details:
+      validation-enabled: true
+      validation-status: 422
+
 agent-runtime:
   namespace: ${AGENT_RUNTIME_NAMESPACE:agents-system}
   image: ${AGENT_RUNTIME_IMAGE:ghcr.io/extratoast/agents/agent-runner:latest}

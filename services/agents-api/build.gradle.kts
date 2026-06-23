@@ -17,6 +17,7 @@ dependencies {
     implementation(libs.kotlin.commons.crac)
     implementation(libs.kotlin.commons.events)
     implementation(libs.kotlin.commons.exceptions)
+    implementation(libs.kotlin.commons.identity)
     implementation(libs.kotlin.commons.observability)
     implementation(libs.kotlin.commons.timing)
     implementation(libs.kotlin.commons.vault)

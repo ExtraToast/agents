@@ -3,12 +3,14 @@ package com.jorisjonkers.personalstack.agents.infrastructure.web
 import com.jorisjonkers.personalstack.agents.application.query.GetWorkspaceQueryService
 import com.jorisjonkers.personalstack.agents.application.workspacerunner.events.WorkspaceRunnerEventsBroadcaster
 import com.jorisjonkers.personalstack.agents.domain.model.WorkspaceId
+import com.jorisjonkers.personalstack.common.identity.CurrentPrincipal
+import com.jorisjonkers.personalstack.common.identity.ForwardAuthPrincipal
 import io.swagger.v3.oas.annotations.Hidden
+import io.swagger.v3.oas.annotations.Parameter
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
@@ -25,7 +27,7 @@ class WorkspaceRunnerEventsController(
     @Suppress("UnusedParameter")
     fun events(
         @PathVariable id: UUID,
-        @RequestHeader("X-User-Id") userId: String,
+        @Parameter(hidden = true) @CurrentPrincipal principal: ForwardAuthPrincipal,
     ): ResponseEntity<SseEmitter> {
         val workspaceId = WorkspaceId(id)
         getQuery.getSummary(workspaceId) ?: return ResponseEntity.notFound().build()
