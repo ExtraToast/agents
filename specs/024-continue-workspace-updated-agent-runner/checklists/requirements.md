@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain — **one open**: auto-upgrade idle runners vs strictly operator-initiated (see Deferred / out of scope)
+- [x] No [NEEDS CLARIFICATION] markers remain — resolved: idle runners auto-upgrade on the existing sweep (FR-012, SC-007) in addition to the operator-initiated action
 - [x] Requirements are testable and unambiguous (each FR maps to an acceptance scenario or success criterion)
 - [x] Success criteria are measurable (SC-001..006 are observable: image identity, conversation resumed, indicator accuracy, no-op on current, bounded time, operator comprehension)
 - [x] Success criteria are technology-agnostic (no API names, no Kubernetes verbs, no class names)
@@ -31,5 +31,5 @@
 
 ## Notes
 
-- Resolve the single open clarification (auto-upgrade-on-idle vs operator-initiated only) via `/speckit.clarify` or directly, then proceed to `/speckit.plan`. Recommended default: **operator-initiated only** for this feature; auto-upgrade can be a follow-up that reuses the same detection + recycle path.
+- Clarification resolved (2026-06-23): auto-upgrade idle runners on the existing sweep IS in scope (FR-012, SC-007), alongside the operator-initiated action — both reuse the same image-staleness detection and recycle-and-continue path. Ready for `/speckit.plan`.
 - The spec deliberately treats credential refresh (US3) as riding on the same recycle-and-continue path rather than a separate mechanism, to keep the surface area small and consistent with the operator's mental model ("restart picks up new auth").

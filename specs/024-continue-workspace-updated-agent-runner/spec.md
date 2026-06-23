@@ -62,6 +62,7 @@ When runner credentials are refreshed (e.g. a re-authenticated Claude token proj
 - Concurrent upgrade/connect/restart requests for the same workspace → serialized; only one recycle proceeds.
 - The `/workspace` volume must never be deleted by an upgrade (it is preserved across the recycle).
 - A workspace with multiple bound agent sessions → all of its sessions continue across the upgrade (each resumes its prior conversation).
+- Auto-upgrade must never recycle a runner with connected clients or non-idle agents; an operator actively using a behind-image workspace keeps it until they disconnect/idle or upgrade manually.
 
 ## Requirements *(mandatory)*
 
@@ -79,9 +80,10 @@ When runner credentials are refreshed (e.g. a re-authenticated Claude token proj
 - **FR-010**: When the agent session is actively running, the system MUST require confirmation before recycling (consistent with the existing restart-and-continue confirmation) and end in-flight work at a safe boundary.
 - **FR-011**: The system MUST stop presenting the internal setup-id/version/generation strings as the primary runner status; that scheme MAY remain available as secondary detail but MUST NOT be the operator's main signal for upgradeability.
 
+- **FR-012**: Idle workspaces whose runner is behind the current target image MUST be automatically recycled onto it by the existing idle sweep, but only when it is safe — no connected clients and all agents idle past the existing grace period. Auto-upgrade MUST preserve the workspace volume and MUST NOT interrupt active work; the session resumes on the next connect (or is continued in place) exactly as for an operator-initiated upgrade.
+
 *Deferred / out of scope (recorded, not solved here):*
 
-- Automatic background upgrade of idle runners onto a new image is **not** required by this feature; the action is operator-initiated. [NEEDS CLARIFICATION: should idle runners also auto-upgrade onto a new image on the existing idle sweep, or remain strictly operator-initiated?]
 - The upstream credential-capture problem (the projected runner credential Secret not yet existing because token capture has not populated the store) is out of scope; this feature only ensures a new runner *reads* whatever credentials are present.
 - Codex runners are out of scope; Claude only for now.
 - The setup-catalog/setup-version model itself is unchanged; only its presentation is addressed.
@@ -104,3 +106,4 @@ When runner credentials are refreshed (e.g. a re-authenticated Claude token proj
 - **SC-004**: A workspace whose runner is already current reports "already up to date" and performs no recycle (no new Pod, no session interruption).
 - **SC-005**: A continue-onto-new-image completes (runner ready + session resumed) within a bounded time consistent with a normal cold runner start, and a failed pull/boot leaves the workspace reconnectable to a working runner rather than broken.
 - **SC-006**: An operator unfamiliar with the internal setup/generation scheme can correctly tell whether their workspace needs an upgrade from the presented status alone.
+- **SC-007**: An idle, behind-image workspace (no clients, agents idle past the grace period) is recycled onto the target image by the sweep without operator action, and a behind-image workspace that is in active use is never recycled out from under the operator.
