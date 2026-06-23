@@ -28,7 +28,7 @@ class CredentialControllerTest {
     fun setUp() {
         mockMvc =
             MockMvcBuilders
-                .standaloneSetup(CredentialController(worker, objectMapper))
+                .standaloneSetup(CredentialController(worker))
                 .setControllerAdvice(GlobalExceptionHandler())
                 .build()
     }

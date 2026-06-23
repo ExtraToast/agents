@@ -39,8 +39,11 @@ import java.net.URI
 @RequestMapping("/api/v1/credentials")
 class CredentialController(
     private val worker: HttpCredentialWorkerClient,
-    private val objectMapper: ObjectMapper,
 ) {
+    // Not injected: the OpenAPI web-mvc slice that exports the spec does not
+    // expose an ObjectMapper bean, so a constructor dependency would break it.
+    private val objectMapper = ObjectMapper()
+
     @PostMapping("/sessions")
     @Operation(summary = "Start a CLI re-authentication session for Claude or Codex")
     fun start(
