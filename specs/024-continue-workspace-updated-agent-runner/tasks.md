@@ -11,28 +11,30 @@ Backend (agents-api) before UI (agents-ui). Each layer independently testable.
 
 ## Phase B — agents-api: upgrade action (FR-002, FR-004..FR-010)
 
-- [x] T005 `Fabric8AgentRunnerOrchestrator`: a force-recreate (scaleDown + provision regardless of readiness) or `provision(force=true)`.
-- [x] T006 `WorkspaceRunnerLifecycleService.upgradeRunner(workspaceId)`: serialize via boot lease; no-op + `already-current` when `runnerDigest == freshest`; else force-recreate and continue every bound session via the existing `RunnerSessionBinder` restart-and-continue (epoch++, resume, reason="runner-image-upgrade"); preserve PVC; recoverable on failure.
-- [x] T007 Tests: recreate path, no-op when current, lease serialization, multi-session continuation, failure recoverable.
+Implemented by **reusing the existing session restart path** rather than a new endpoint — `restart()` → `forceProvisionAndWait()` already unconditionally scales down + reprovisions (Always-pull → latest image) and resumes the conversation (`resumeCliSessionId`, epoch++), preserving the PVC. The operator action is the UI "Update runner" button (Phase E) which drives `restartSession`.
 
-## Phase C — agents-api: endpoint + DTO (FR-002, FR-003)
+- [~] T005 SUPERSEDED — no `provision(force=true)` needed; `forceProvisionAndWait` already force-recreates.
+- [~] T006 SUPERSEDED — no dedicated `upgradeRunner` lifecycle method; the UI action calls the existing `restartSession`. (`runnerImageStatus` was added for the indicator instead.)
+- [x] T007 Continuation is covered by the existing `RunnerSessionBindingServiceTest` (restart/forceProvisionAndWait/resume).
 
-- [x] T008 `WorkspaceController`: `POST /api/v1/workspaces/{id}/runner/upgrade` → states upgrading/already-current/unavailable; 404/409/503 mapping.
-- [x] T009 `WorkspaceDtos`: add `runnerImage { digest, upgradeAvailable }` to the workspace/connect response.
-- [x] T010 Regenerate `openapi.json` (+ agents-ui `generated.ts`) iff the response is a typed DTO.
-- [x] T011 Controller tests: endpoint states; `runnerImage` present + `upgradeAvailable` correct.
+## Phase C — agents-api: DTO (FR-003) — endpoint superseded by reuse
+
+- [~] T008 SUPERSEDED — no `POST /runner/upgrade`; reuses the existing session-restart endpoint.
+- [x] T009 `WorkspaceDtos`: `runnerImage { digest, upgradeAvailable }` on the workspace detail response (`WorkspaceRunnerLifecycleService.runnerImageStatus` computes it; controller maps it).
+- [x] T010 Regenerated `openapi.json` + agents-ui `generated.ts`.
+- [x] T011 `WorkspaceControllerTest`: `GET` returns `runnerImage` with short digest + `upgradeAvailable`.
 
 ## Phase D — agents-api: idle auto-upgrade (FR-012, SC-007)
 
-- [x] T012 `IdleScaleDownScheduler`: also recycle idle runners whose digest != freshest observed, with the existing connected-client + idle-grace guards.
-- [x] T013 Tests: recycles idle behind-image runner; never with clients / non-idle agents.
+- [x] T012 No scheduler code change needed: `isRunnerImageStale` is now runner-image-aware (digest behind freshest), so the existing `IdleScaleDownScheduler` sweep — which already calls `isRunnerImageStale` behind its connected-client + agent-idle `staleRunnerSafeToRecycle` guard — auto-recycles idle behind-image runners.
+- [x] T013 The sweep's recycle-on-stale + safe-to-recycle guards are covered by `IdleScaleDownSchedulerTest` (it stubs `isRunnerImageStale`); the new digest-comparison logic that drives it is covered by `RunnerImageDigestsTest`.
 
 ## Phase E — agents-ui (FR-002, FR-003, FR-011)
 
-- [x] T014 `workspaceService.upgradeRunner(workspaceId)` + `runnerImage` on the workspace type.
-- [x] T015 `stores/workspaces.ts`: `upgradeRunner()` action posting the endpoint and driving the reattach/replay states.
-- [x] T016 `SessionStatusRail.vue`: primary runner status = "Runner image: <short> — up to date / Upgrade available" + "Update runner" button gated on `upgradeAvailable`; demote the setup/generation detail to secondary.
-- [x] T017 Store + component tests.
+- [x] T014 `runnerImage { digest, upgradeAvailable }` added to the workspace type; flows through the existing `getWorkspace` mapping. (No `workspaceService.upgradeRunner` — reuses the restart path.)
+- [~] T015 SUPERSEDED — no new store action; `WorkspaceView.onUpdateRunner` calls the existing `store.restartSession`, driving the existing reattach/replay states.
+- [x] T016 `SessionStatusRail.vue`: primary "Runner" tile = "<digest> · up to date / update available" + "Update runner" button gated on `upgradeAvailable` (emits `updateRunner`); setup/generation demoted to a secondary "Runner setup" tile.
+- [x] T017 `SessionStatusRail.test.ts`: up-to-date, update-available + button emit, no-runner.
 
 ## Phase F — ship & verify
 
