@@ -1,7 +1,7 @@
 import type { CredentialSession } from '../types'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cancelSession, getSession, startSession, submitRedirectUrl } from '../services/credentialsService'
+import { cancelSession, getSession, getStoredStatus, startSession, submitRedirectUrl } from '../services/credentialsService'
 import { useCredentialsStore } from '../stores/credentials'
 
 vi.mock('../services/credentialsService', () => ({
@@ -9,6 +9,7 @@ vi.mock('../services/credentialsService', () => ({
   getSession: vi.fn(),
   submitRedirectUrl: vi.fn(),
   cancelSession: vi.fn(),
+  getStoredStatus: vi.fn(),
 }))
 
 const mocked = {
@@ -16,6 +17,7 @@ const mocked = {
   getSession: vi.mocked(getSession),
   submitRedirectUrl: vi.mocked(submitRedirectUrl),
   cancelSession: vi.mocked(cancelSession),
+  getStoredStatus: vi.mocked(getStoredStatus),
 }
 
 function session(overrides: Partial<CredentialSession> = {}): CredentialSession {
@@ -102,6 +104,34 @@ describe('credentials store', () => {
     await store.cancel('claude')
     expect(mocked.cancelSession).toHaveBeenCalledWith('s1')
     expect(store.states.claude.session?.phase).toBe('cancelled')
+  })
+
+  it('fetchStored populates per-provider stored credential status', async () => {
+    mocked.getStoredStatus.mockResolvedValue({
+      claude: { exists: true, version: 2, updatedAt: '2026-06-23T10:00:00Z', updatedBy: 'ExtraToast' },
+      codex: { exists: false, version: 0 },
+    })
+    const store = useCredentialsStore()
+
+    await store.fetchStored()
+    expect(store.stored.claude?.exists).toBe(true)
+    expect(store.stored.claude?.updatedBy).toBe('ExtraToast')
+    expect(store.stored.codex?.exists).toBe(false)
+  })
+
+  it('refreshes the stored-credential check after a login succeeds', async () => {
+    mocked.startSession.mockResolvedValue(session())
+    mocked.getSession.mockResolvedValue(session({ phase: 'succeeded', needsRedirectUrl: false }))
+    mocked.getStoredStatus.mockResolvedValue({
+      claude: { exists: true, version: 3 },
+      codex: { exists: false, version: 0 },
+    })
+    const store = useCredentialsStore()
+
+    await store.start('claude')
+    await vi.advanceTimersByTimeAsync(2000)
+    expect(mocked.getStoredStatus).toHaveBeenCalled()
+    expect(store.stored.claude?.version).toBe(3)
   })
 
   it('reset clears provider state', async () => {

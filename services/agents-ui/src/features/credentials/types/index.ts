@@ -55,6 +55,23 @@ export interface CredentialAction {
   error?: string | null
 }
 
+/**
+ * Non-secret summary of what is currently stored in Vault for a provider — the
+ * "check" that a login actually landed. No credential material is exposed.
+ */
+export interface CredentialStatus {
+  exists: boolean
+  version: number
+  updatedAt?: string | null
+  updatedBy?: string | null
+  schemaVersion?: string | null
+}
+
+export interface CredentialStatusResponse {
+  claude: CredentialStatus
+  codex: CredentialStatus
+}
+
 const TERMINAL_PHASES: ReadonlySet<CredentialPhase> = new Set(['succeeded', 'failed', 'cancelled'])
 
 export function isTerminalPhase(phase: CredentialPhase): boolean {
