@@ -32,7 +32,8 @@ interface AgentCredentialStore {
     data class CredentialStatus(
         val provider: AgentCredentialProvider,
         val stored: Boolean,
-        val valid: Boolean,
+        val valid: Boolean?,
+        val validatedAt: java.time.Instant?,
         val updatedAt: java.time.Instant?,
     )
 }
