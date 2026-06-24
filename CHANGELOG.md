@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/ExtraToast/agents/compare/v0.12.0...v0.13.0) (2026-06-24)
+
+
+### Features
+
+* **agents:** report runner image by release version, not digest ([#97](https://github.com/ExtraToast/agents/issues/97)) ([3742ff9](https://github.com/ExtraToast/agents/commit/3742ff9707b890e49594053a268755490c87a04b))
+
 ## [0.12.0](https://github.com/ExtraToast/agents/compare/v0.11.0...v0.12.0) (2026-06-24)
 
 
