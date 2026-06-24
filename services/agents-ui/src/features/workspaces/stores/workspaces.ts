@@ -2,12 +2,8 @@ import type { CreateWorkspaceInput, RestartSessionRequest } from '../services/wo
 import type {
   AgentKind,
   AgentSession,
-  AgentSetupReference,
-  AgentSetupValidationProblem,
   RestartSessionResponse,
   RunnerReadiness,
-  SetupPreview,
-  SetupTargetOptions,
   Turn,
   Workspace,
   WorkspaceDetailWorkspace,
@@ -23,13 +19,20 @@ export type RestartSessionState
   = | 'idle'
     | 'confirm-pending'
     | 'in-progress'
+    | 'reconnecting'
     | 'reattaching'
     | 'replaying-history'
     | 'live'
     | 'failed'
 
+const RECONNECTING_TIMEOUT_MS = 180_000
+
 function isLiveSession(session: AgentSession): boolean {
   return session.status === 'STARTING' || session.status === 'RUNNING'
+}
+
+function isRestartReconnectError(err: unknown): err is ApiError {
+  return err instanceof ApiError && err.status === 503 && err.problem.runnerStatus === 'not_ready_after_provision'
 }
 
 function parseStoredSessions(raw: string | null): Record<string, string> {
@@ -99,16 +102,21 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
   // double-clicks or rapid re-renders share one in-flight POST /sessions.
   const startingSessionByKey = new Map<string, Promise<string | null>>()
   const restartStates = ref<Record<string, RestartSessionState>>({})
-  const selectedRestartTargets = ref<Record<string, AgentSetupReference | null>>({})
-  const setupOptionsBySessionId = ref<Record<string, SetupTargetOptions>>({})
-  const setupPreviewsBySessionId = ref<Record<string, SetupPreview>>({})
-  const setupValidationProblemsBySessionId = ref<Record<string, AgentSetupValidationProblem>>({})
+  const restartReconnectTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
   function restartStateFor(sessionId: string): RestartSessionState {
     return restartStates.value[sessionId] ?? 'idle'
   }
 
+  function clearRestartReconnectTimer(sessionId: string): void {
+    const timer = restartReconnectTimers.get(sessionId)
+    if (!timer) return
+    clearTimeout(timer)
+    restartReconnectTimers.delete(sessionId)
+  }
+
   function setRestartState(sessionId: string, state: RestartSessionState): void {
+    clearRestartReconnectTimer(sessionId)
     restartStates.value = {
       ...restartStates.value,
       [sessionId]: state,
@@ -116,47 +124,13 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
   }
 
   function clearRestartState(sessionId: string): void {
+    clearRestartReconnectTimer(sessionId)
     const next = { ...restartStates.value }
     delete next[sessionId]
     restartStates.value = next
   }
 
-  function selectedRestartTargetFor(sessionId: string): AgentSetupReference | null {
-    if (sessionId in selectedRestartTargets.value) return selectedRestartTargets.value[sessionId] ?? null
-    const session = sessions.value.find((s) => s.id === sessionId)
-    return session?.pendingSetup ?? session?.currentSetup ?? null
-  }
-
-  function selectRestartTarget(sessionId: string, target: AgentSetupReference | null): void {
-    selectedRestartTargets.value = {
-      ...selectedRestartTargets.value,
-      [sessionId]: target,
-    }
-    clearSetupPreviewError(sessionId)
-  }
-
-  function clearSetupPreview(sessionId: string): void {
-    const nextPreviews = { ...setupPreviewsBySessionId.value }
-    delete nextPreviews[sessionId]
-    setupPreviewsBySessionId.value = nextPreviews
-    clearSetupPreviewError(sessionId)
-  }
-
-  function clearSetupPreviewError(sessionId: string): void {
-    const nextProblems = { ...setupValidationProblemsBySessionId.value }
-    delete nextProblems[sessionId]
-    setupValidationProblemsBySessionId.value = nextProblems
-  }
-
-  async function requestRestartConfirmation(sessionId: string): Promise<void> {
-    const target = selectedRestartTargetFor(sessionId)
-    if (target) {
-      const preview = await loadSetupPreview(sessionId, target)
-      if (!preview) {
-        markRestartFailed(sessionId)
-        return
-      }
-    }
+  function requestRestartConfirmation(sessionId: string): void {
     setRestartState(sessionId, 'confirm-pending')
   }
 
@@ -166,6 +140,15 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
 
   function markRestartReattaching(sessionId: string): void {
     setRestartState(sessionId, 'reattaching')
+  }
+
+  function markRestartReconnecting(sessionId: string): void {
+    setRestartState(sessionId, 'reconnecting')
+    const timer = setTimeout(() => {
+      if (restartStateFor(sessionId) === 'reconnecting') markRestartFailed(sessionId)
+    }, RECONNECTING_TIMEOUT_MS)
+    if (typeof timer === 'object' && 'unref' in timer && typeof timer.unref === 'function') timer.unref()
+    restartReconnectTimers.set(sessionId, timer)
   }
 
   function markRestartReplayingHistory(sessionId: string): void {
@@ -297,17 +280,12 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
     const previousActiveId = activeSessionId.value
     const session = sessions.value.find((s) => s.id === sessionId)
     const generation = expectedGeneration ?? session?.generation
-    const target = selectedRestartTargetFor(sessionId)
     const request: RestartSessionRequest = {}
     if (generation !== undefined) request.expectedGeneration = generation
     if (session?.epoch !== undefined) request.expectedEpoch = session.epoch
     if (session?.currentSetup) {
       request.expectedSetupId = session.currentSetup.id
       request.expectedSetupVersion = session.currentSetup.version
-    }
-    if (target) {
-      request.targetSetupId = target.id
-      request.targetSetupVersion = target.version
     }
     setRestartState(sessionId, 'in-progress')
     try {
@@ -317,13 +295,16 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
         writePreferredSession(ws.id, restarted.sessionId)
       }
       markRestartReattaching(sessionId)
-      clearSetupPreview(sessionId)
       await open(ws.id, { loadTurns: false, connectRunner: false })
       return restarted
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         markRestartReattaching(sessionId)
-        clearSetupPreview(sessionId)
+        await open(ws.id, { loadTurns: false, connectRunner: false })
+        return null
+      }
+      if (isRestartReconnectError(err)) {
+        markRestartReconnecting(sessionId)
         await open(ws.id, { loadTurns: false, connectRunner: false })
         return null
       }
@@ -336,45 +317,6 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
     const ws = activeWorkspace.value
     if (!ws) return
     turns.value = await workspaceService.getTurns(ws.id, sessionId)
-  }
-
-  async function loadSetupOptions(sessionId: string): Promise<SetupTargetOptions | null> {
-    const ws = activeWorkspace.value
-    if (!ws) return null
-    const options = await workspaceService.listSetupOptions(ws.id, sessionId)
-    setupOptionsBySessionId.value = {
-      ...setupOptionsBySessionId.value,
-      [sessionId]: options,
-    }
-    if (!(sessionId in selectedRestartTargets.value)) {
-      selectRestartTarget(sessionId, options.pending ?? options.current)
-    }
-    return options
-  }
-
-  async function loadSetupPreview(sessionId: string, target = selectedRestartTargetFor(sessionId)): Promise<SetupPreview | null> {
-    const ws = activeWorkspace.value
-    if (!ws || !target) return null
-    try {
-      const preview = await workspaceService.previewSetup(ws.id, sessionId, target)
-      setupPreviewsBySessionId.value = {
-        ...setupPreviewsBySessionId.value,
-        [sessionId]: preview,
-      }
-      clearSetupPreviewError(sessionId)
-      return preview
-    } catch (err) {
-      const problem = workspaceService.agentSetupValidationProblemFromError(err)
-      if (!problem) throw err
-      const nextPreviews = { ...setupPreviewsBySessionId.value }
-      delete nextPreviews[sessionId]
-      setupPreviewsBySessionId.value = nextPreviews
-      setupValidationProblemsBySessionId.value = {
-        ...setupValidationProblemsBySessionId.value,
-        [sessionId]: problem,
-      }
-      return null
-    }
   }
 
   async function attachRepository(repositoryId: string): Promise<void> {
@@ -438,10 +380,6 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
     startingSession,
     runnerReadiness,
     restartStates,
-    selectedRestartTargets,
-    setupOptionsBySessionId,
-    setupPreviewsBySessionId,
-    setupValidationProblemsBySessionId,
     loadAll,
     open,
     create,
@@ -450,20 +388,16 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
     endSession,
     restartSession,
     loadTurns,
-    loadSetupOptions,
-    loadSetupPreview,
     attachRepository,
     detachRepository,
     selectSession,
-    selectedRestartTargetFor,
-    selectRestartTarget,
-    clearSetupPreview,
     restartStateFor,
     setRestartState,
     clearRestartState,
     requestRestartConfirmation,
     cancelRestartConfirmation,
     markRestartReattaching,
+    markRestartReconnecting,
     markRestartReplayingHistory,
     markRestartLive,
     markRestartFailed,
