@@ -49,7 +49,7 @@ async function onSubmit(): Promise<void> {
   <div class="space-y-4" data-testid="project-repository-picker">
     <p class="text-sm text-[var(--color-text-muted)]">
       Pick an existing repository to add to this project. A repository can be in multiple projects without duplicating
-      its deploy key. Need a new one?
+      GitHub App installation state. Need a new one?
       <RouterLink to="/repositories" class="text-[var(--color-accent-light)] underline"> Add a repository </RouterLink>
       first.
     </p>
@@ -71,7 +71,6 @@ async function onSubmit(): Promise<void> {
           <div class="flex-1">
             <div class="flex items-baseline justify-between">
               <span class="font-semibold">{{ r.name }}</span>
-              <span v-if="!r.deployKeyFingerprint" class="text-xs text-amber-400">no key yet</span>
             </div>
             <p class="text-xs text-[var(--color-text-muted)] font-mono mt-1">{{ r.repoUrl }}</p>
           </div>

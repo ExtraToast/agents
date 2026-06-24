@@ -19,7 +19,7 @@ const ownerInstallationsHref = computed(() => `https://github.com/settings/apps/
           <div>
             <h2 class="text-lg font-semibold">GitHub App</h2>
             <p class="mt-1 text-sm text-[var(--color-text-muted)]">
-              Use the App installation for repository automation before attaching deploy keys.
+              Installing the App on the repository owner is all that's needed to grant agent access.
             </p>
           </div>
           <code class="text-xs text-[var(--color-terminal-cyan)]">{{ appSlug }}</code>

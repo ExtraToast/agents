@@ -58,7 +58,7 @@ watch(selectedProjectId, async (id) => {
 
 watch(selectedPrimaryRepositoryId, async (id) => {
   if (!id) return
-  // Load detail so we can read the default branch + key state.
+  // Load detail so we can read the default branch.
   try {
     await repos.loadDetail(id)
     const repo = repos.detailById[id]?.repository
@@ -72,23 +72,6 @@ watch(selectedPrimaryRepositoryId, async (id) => {
 })
 
 const projectRepos = computed(() => projects.repositories)
-const selectedRepo = computed(() => {
-  const primaryId = selectedPrimaryRepositoryId.value
-  if (!primaryId) return null
-
-  const loadedRepo = repos.detailById[primaryId]?.repository
-  if (loadedRepo) return loadedRepo
-
-  return projectRepos.value.find((r) => r.id === primaryId) ?? null
-})
-const selectedRepositories = computed(() => {
-  const ids = new Set(selectedRepositoryIds.value)
-  return projectRepos.value.filter((r) => ids.has(r.id))
-})
-const additionalRepositoriesMissingKeys = computed(() =>
-  selectedRepositories.value.filter((r) => r.id !== selectedPrimaryRepositoryId.value && !r.deployKeyFingerprint),
-)
-const keyAttached = computed(() => Boolean(selectedRepo.value?.deployKeyFingerprint))
 const selectedRepositoryCount = computed(() => selectedRepositoryIds.value.length)
 
 function ensureRepositorySelected(repositoryId: string): void {
@@ -227,8 +210,6 @@ async function onSubmit(): Promise<void> {
               <div class="min-w-0 flex-1">
                 <div class="flex items-baseline justify-between">
                   <span class="font-semibold">{{ r.name }}</span>
-                  <span v-if="!r.deployKeyFingerprint" class="text-xs text-amber-400">no key yet</span>
-                  <span v-else class="text-xs text-emerald-400">key attached</span>
                 </div>
                 <p class="font-mono text-xs text-[var(--color-text-muted)]">{{ r.repoUrl }}</p>
               </div>
@@ -249,32 +230,12 @@ async function onSubmit(): Promise<void> {
       </ul>
       <p v-else class="text-sm text-[var(--color-text-muted)] italic">No repositories linked to this project yet.</p>
 
-      <div
-        v-if="selectedRepo && !keyAttached"
-        class="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-sm text-amber-300"
-        data-testid="wizard-missing-key-warning"
-      >
-        The primary repository has no deploy key yet — the runner Pod won't be able to clone it.
-        <RouterLink :to="`/repositories/${selectedPrimaryRepositoryId}`" class="underline">Attach a key</RouterLink>
-        first.
-      </div>
-
-      <div
-        v-if="additionalRepositoriesMissingKeys.length > 0"
-        class="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-sm text-amber-300"
-        data-testid="wizard-missing-selected-keys-warning"
-      >
-        {{ additionalRepositoriesMissingKeys.length }} selected
-        {{ additionalRepositoriesMissingKeys.length === 1 ? 'repository has' : 'repositories have' }} no deploy key yet;
-        additional repositories clone with the GitHub App token when the runner starts.
-      </div>
-
       <div class="flex justify-end gap-2">
         <SubmitButton type="button" variant="secondary" label="Back" @click="step = 'pick-project'" />
         <SubmitButton
           type="button"
           :label="selectedRepositoryCount > 1 ? `Next (${selectedRepositoryCount} repos)` : 'Next'"
-          :disabled="!selectedPrimaryRepositoryId || !keyAttached"
+          :disabled="!selectedPrimaryRepositoryId"
           data-testid="wizard-step2-next"
           @click="step = 'pick-branch'"
         />

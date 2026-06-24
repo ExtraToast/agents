@@ -1,6 +1,6 @@
 import type {
-  AttachDeployKeyInput,
   CreateRepositoryInput,
+  InstallationStatus,
   Repository,
   RepositoryDetail,
   RepositoryVerifyResult,
@@ -23,14 +23,17 @@ export async function createRepository(input: CreateRepositoryInput): Promise<Re
   return api().post<Repository>('/repositories', input)
 }
 
-export async function attachDeployKey(id: string, input: AttachDeployKeyInput): Promise<void> {
-  await api().post(`/repositories/${id}/key`, input)
-}
-
 export async function deleteRepository(id: string): Promise<void> {
   await api().del(`/repositories/${id}`)
 }
 
 export async function verifyRepositoryAccess(id: string): Promise<RepositoryVerifyResult> {
   return api().post<RepositoryVerifyResult>(`/repositories/${id}/verify`, {})
+}
+
+// Live GitHub App install-status. Backs both the initial load and the
+// manual "re-check" action — it queries GitHub fresh and never mints a
+// token.
+export async function fetchInstallationStatus(id: string): Promise<InstallationStatus> {
+  return api().get<InstallationStatus>(`/repositories/${id}/installation-status`)
 }

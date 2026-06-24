@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import type { RepositoryVerifyResult } from '../types'
+import type { InstallationStatus, RepositoryVerifyResult } from '../types'
 import { computed } from 'vue'
 
 interface Props {
   verify: RepositoryVerifyResult | null | undefined
+  installationStatus: InstallationStatus | null | undefined
 }
 
 const props = defineProps<Props>()
@@ -16,21 +17,16 @@ interface Pill {
 
 const pills = computed<Pill[]>(() => {
   const v = props.verify
-  if (!v) return []
   const out: Pill[] = []
 
-  out.push(
-    v.read
-      ? { testid: 'access-read', label: 'Read OK', tone: 'ok' }
-      : { testid: 'access-read', label: 'Read failed', tone: 'fail' },
-  )
+  if (props.installationStatus?.state === 'INSTALLED')
+    out.push({ testid: 'access-app-installation', label: 'App installed', tone: 'ok' })
+  else if (props.installationStatus?.state === 'NOT_INSTALLED')
+    out.push({ testid: 'access-app-installation', label: 'App not installed', tone: 'fail' })
+  else if (props.installationStatus?.state === 'UNKNOWN')
+    out.push({ testid: 'access-app-installation', label: 'App status unknown', tone: 'unknown' })
 
-  // read-only is the safe default, not an error.
-  out.push(
-    v.write
-      ? { testid: 'access-write', label: 'Write OK', tone: 'ok' }
-      : { testid: 'access-write', label: 'Read-only', tone: 'warn' },
-  )
+  if (!v) return out
 
   if (v.defaultBranchProtected === true)
     out.push({ testid: 'access-protection', label: 'Branch protected', tone: 'ok' })

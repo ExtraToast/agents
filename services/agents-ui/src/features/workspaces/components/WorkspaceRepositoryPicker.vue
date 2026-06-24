@@ -44,7 +44,7 @@ function onSubmit(): void {
   <div class="space-y-4" data-testid="workspace-repository-picker">
     <p class="text-sm text-[var(--color-text-muted)]">
       Attach an existing repository to this workspace. It will be cloned into /workspace by repository name on the next
-      runner start.
+      runner start using GitHub App access.
       <RouterLink to="/repositories" class="text-[var(--color-accent-light)] underline">Add a repository</RouterLink>
       first if it is missing.
     </p>
@@ -73,8 +73,6 @@ function onSubmit(): void {
           <div class="min-w-0 flex-1">
             <div class="flex items-baseline justify-between gap-3">
               <span class="font-semibold">{{ r.name }}</span>
-              <span v-if="!r.deployKeyFingerprint" class="shrink-0 text-xs text-amber-400">no key yet</span>
-              <span v-else class="shrink-0 text-xs text-emerald-400">key attached</span>
             </div>
             <p class="mt-1 truncate font-mono text-xs text-[var(--color-text-muted)]">{{ r.repoUrl }}</p>
           </div>
