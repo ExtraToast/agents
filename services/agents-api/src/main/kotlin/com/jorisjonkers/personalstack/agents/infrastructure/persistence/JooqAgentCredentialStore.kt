@@ -28,19 +28,19 @@ class JooqAgentCredentialStore(
             .set(USER_ID, credential.userId)
             .set(PROVIDER, credential.provider.name)
             .set(PAYLOAD, payload)
-            .set(VALID, false)
+            .set(VALID, null as Boolean?)
             .set(VALIDATED_AT, null as OffsetDateTime?)
             .set(UPDATED_AT, updatedAt)
             .set(UPDATED_BY, credential.updatedBy)
             .onConflict(USER_ID, PROVIDER)
             .doUpdate()
             .set(PAYLOAD, payload)
-            .set(VALID, false)
+            .set(VALID, null as Boolean?)
             .set(VALIDATED_AT, null as OffsetDateTime?)
             .set(UPDATED_AT, updatedAt)
             .set(UPDATED_BY, credential.updatedBy)
             .execute()
-        return credential.copy(valid = false, validatedAt = null)
+        return credential.copy(valid = null, validatedAt = null)
     }
 
     override fun find(
@@ -69,21 +69,32 @@ class JooqAgentCredentialStore(
     }
 
     override fun statusFor(userId: String): List<AgentCredentialStore.CredentialStatus> =
-        dsl
-            .select(PROVIDER, VALID, UPDATED_AT)
-            .from(TABLE)
-            .where(USER_ID.eq(userId))
-            .fetch()
-            .mapNotNull { rec ->
-                AgentCredentialProvider.fromRaw(rec.get(PROVIDER))?.let { provider ->
-                    AgentCredentialStore.CredentialStatus(
-                        provider = provider,
-                        stored = true,
-                        valid = rec.get(VALID),
-                        updatedAt = rec.get(UPDATED_AT)?.toInstant(),
-                    )
-                }
+        AgentCredentialProvider.entries.map { provider ->
+            val rec =
+                dsl
+                    .select(PROVIDER, VALID, VALIDATED_AT, UPDATED_AT)
+                    .from(TABLE)
+                    .where(USER_ID.eq(userId))
+                    .and(PROVIDER.eq(provider.name))
+                    .fetchOne()
+            if (rec == null) {
+                AgentCredentialStore.CredentialStatus(
+                    provider = provider,
+                    stored = false,
+                    valid = null,
+                    validatedAt = null,
+                    updatedAt = null,
+                )
+            } else {
+                AgentCredentialStore.CredentialStatus(
+                    provider = provider,
+                    stored = true,
+                    valid = rec.get(VALID),
+                    validatedAt = rec.get(VALIDATED_AT)?.toInstant(),
+                    updatedAt = rec.get(UPDATED_AT)?.toInstant(),
+                )
             }
+        }
 
     private fun Record.toCredential(): AgentOauthCredential {
         val payload: Map<String, String> =

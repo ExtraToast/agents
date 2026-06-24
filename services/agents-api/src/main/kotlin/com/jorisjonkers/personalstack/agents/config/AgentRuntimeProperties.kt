@@ -98,6 +98,10 @@ data class AgentRuntimeProperties(
     // starting with the `gh` wrapper degrading to a no-op.
     val githubAppBearerSecret: String = "github-app",
     val githubAppBearerSecretKey: String = "token-bearer",
+    // Shared bearer for the internal credential-ingest callback. Kept
+    // separate from githubAppTokenBearer so the login worker cannot mint
+    // GitHub App tokens if one secret is exposed.
+    val credentialIngestBearer: String = "",
     val durableSessionRetentionSeconds: Long = 604_800,
     val durableSessionCleanupBatchSize: Int = 25,
     // In-cluster ClusterIP of the credential-worker that drives the

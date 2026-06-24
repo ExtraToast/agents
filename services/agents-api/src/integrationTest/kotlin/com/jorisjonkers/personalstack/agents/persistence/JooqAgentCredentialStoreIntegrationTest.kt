@@ -35,7 +35,7 @@ class JooqAgentCredentialStoreIntegrationTest : IntegrationTestBase() {
         assertThat(loaded).isNotNull
         assertThat(loaded!!.payload["oauth_token"]).isEqualTo("sk-ant-oat01-abc")
         // Upsert resets validity until the next probe.
-        assertThat(loaded.valid).isFalse()
+        assertThat(loaded.valid).isNull()
         assertThat(loaded.validatedAt).isNull()
     }
 
@@ -65,17 +65,24 @@ class JooqAgentCredentialStoreIntegrationTest : IntegrationTestBase() {
         assertThat(validated.validatedAt).isNotNull()
 
         val status = store.statusFor(user)
-        assertThat(status).hasSize(1)
-        assertThat(status[0].provider).isEqualTo(AgentCredentialProvider.CLAUDE)
-        assertThat(status[0].stored).isTrue()
-        assertThat(status[0].valid).isTrue()
+        assertThat(status).hasSize(2)
+        val claude = status.single { it.provider == AgentCredentialProvider.CLAUDE }
+        val codex = status.single { it.provider == AgentCredentialProvider.CODEX }
+        assertThat(claude.stored).isTrue()
+        assertThat(claude.valid).isTrue()
+        assertThat(claude.validatedAt).isNotNull()
+        assertThat(codex.stored).isFalse()
+        assertThat(codex.valid).isNull()
     }
 
     @Test
-    fun `find returns null and status is empty when nothing stored`() {
+    fun `find returns null and status marks both providers absent when nothing stored`() {
         val user = userId()
+        val status = store.statusFor(user)
+
         assertThat(store.find(user, AgentCredentialProvider.CLAUDE)).isNull()
-        assertThat(store.statusFor(user)).isEmpty()
+        assertThat(status).hasSize(2)
+        assertThat(status.all { !it.stored }).isTrue()
     }
 
     private fun cred(
@@ -86,7 +93,7 @@ class JooqAgentCredentialStoreIntegrationTest : IntegrationTestBase() {
         userId = user,
         provider = provider,
         payload = mapOf("oauth_token" to token),
-        valid = false,
+        valid = null,
         validatedAt = null,
         updatedAt = Instant.now(),
         updatedBy = user,
