@@ -1,12 +1,14 @@
 package com.jorisjonkers.personalstack.agents.infrastructure.k8s
 
 import com.jorisjonkers.personalstack.agents.config.AgentRuntimeProperties
+import com.jorisjonkers.personalstack.agents.domain.model.AgentCredentialProvider
 import com.jorisjonkers.personalstack.agents.domain.model.AgentSetupId
 import com.jorisjonkers.personalstack.agents.domain.model.AgentSetupVersion
 import com.jorisjonkers.personalstack.agents.domain.model.GithubLink
 import com.jorisjonkers.personalstack.agents.domain.model.RunnerSetupProvisioningSpec
 import com.jorisjonkers.personalstack.agents.domain.model.RunnerState
 import com.jorisjonkers.personalstack.agents.domain.model.Workspace
+import com.jorisjonkers.personalstack.agents.domain.port.AgentCredentialStore
 import com.jorisjonkers.personalstack.agents.domain.port.AgentRunnerOrchestrator
 import com.jorisjonkers.personalstack.agents.domain.port.DeployKeyStore
 import com.jorisjonkers.personalstack.agents.domain.port.GithubLinkRepository
@@ -63,6 +65,7 @@ class Fabric8AgentRunnerOrchestrator(
     private val client: KubernetesClient,
     private val props: AgentRuntimeProperties,
     private val deployKeysProvider: ObjectProvider<DeployKeyStore>,
+    private val credentialsProvider: ObjectProvider<AgentCredentialStore>,
     private val githubLinks: ObjectProvider<GithubLinkRepository>,
     private val workspaceRepos: ObjectProvider<WorkspaceRepositoryRepository>,
     private val repositories: ObjectProvider<RepositoryRepository>,
@@ -82,7 +85,17 @@ class Fabric8AgentRunnerOrchestrator(
         val pvcName = "workspace-$short"
         val serviceName = "agent-runner-$short"
         val deployKeySecretName = ensureDeployKeySecret(workspace, short, setup)
-        applyResources(workspace, setup, runnerGeneration, podName, pvcName, serviceName, deployKeySecretName)
+        val credentialSecret = ensureCredentialSecret(workspace, short)
+        applyResources(
+            workspace,
+            setup,
+            runnerGeneration,
+            podName,
+            pvcName,
+            serviceName,
+            deployKeySecretName,
+            credentialSecret,
+        )
         val endpoint = "http://$serviceName.${props.namespace}.svc.cluster.local:${setup.gatewayPort}"
         log.info(
             "provisioned runner pod {} for workspace {} using setup {}@{} generation {} and deploy-key Secret {}",
@@ -108,6 +121,7 @@ class Fabric8AgentRunnerOrchestrator(
         pvcName: String,
         serviceName: String,
         deployKeySecretName: String,
+        credentialSecret: CredentialSecret?,
     ) {
         client
             .persistentVolumeClaims()
@@ -117,7 +131,7 @@ class Fabric8AgentRunnerOrchestrator(
         client
             .pods()
             .inNamespace(props.namespace)
-            .resource(pod(workspace, setup, runnerGeneration, podName, pvcName, deployKeySecretName))
+            .resource(pod(workspace, setup, runnerGeneration, podName, pvcName, deployKeySecretName, credentialSecret))
             .serverSideApply()
         client
             .services()
@@ -182,6 +196,11 @@ class Fabric8AgentRunnerOrchestrator(
                 .withName(workspaceSecretName(short))
                 .delete()
         }
+        client
+            .secrets()
+            .inNamespace(props.namespace)
+            .withName(credentialSecretName(short))
+            .delete()
         log.info("destroyed runner pod and PVC for workspace {}", workspace.id)
     }
 
@@ -270,6 +289,83 @@ class Fabric8AgentRunnerOrchestrator(
         value.toLongOrNull()?.let { runCatching { AgentSetupVersion(it) }.getOrNull() }
 
     private fun workspaceSecretName(short: String): String = "agent-runner-deploy-key-$short"
+
+    private fun credentialSecretName(short: String): String = "agent-runner-credentials-$short"
+
+    private data class CredentialSecret(
+        val name: String,
+        val hasClaude: Boolean,
+        val hasCodex: Boolean,
+    )
+
+    private fun ensureCredentialSecret(
+        workspace: Workspace,
+        short: String,
+    ): CredentialSecret? {
+        val name = credentialSecretName(short)
+        val data =
+            credentialSecretData(workspace)
+                ?: run {
+                    client
+                        .secrets()
+                        .inNamespace(props.namespace)
+                        .withName(name)
+                        .delete()
+                    return null
+                }
+        client
+            .secrets()
+            .inNamespace(props.namespace)
+            .resource(
+                SecretBuilder()
+                    .withNewMetadata()
+                    .withName(name)
+                    .withNamespace(props.namespace)
+                    .withLabels<String, String>(
+                        mapOf(
+                            "app.kubernetes.io/part-of" to "agent-runner",
+                            "agent-runner/workspace-id" to short,
+                        ),
+                    ).endMetadata()
+                    .withType("Opaque")
+                    .withData<String, String>(data)
+                    .build(),
+            ).serverSideApply()
+        return CredentialSecret(
+            name = name,
+            hasClaude = data.containsKey("claude_oauth_token"),
+            hasCodex = data.containsKey("codex_auth_json") && data.containsKey("codex_config_toml"),
+        )
+    }
+
+    private fun credentialSecretData(workspace: Workspace): Map<String, String>? {
+        val owner = workspace.ownerUserId?.takeIf { it.isNotBlank() } ?: return null
+        val store = credentialsProvider.ifAvailable ?: return null
+        val data =
+            buildMap {
+                val claude = loadCredential(store, owner, AgentCredentialProvider.CLAUDE)
+                claude?.payload?.get("oauth_token")?.takeIf { it.isNotBlank() }?.let {
+                    put("claude_oauth_token", b64(it))
+                }
+                val codex = loadCredential(store, owner, AgentCredentialProvider.CODEX)
+                val codexAuth = codex?.payload?.get("auth_json")?.takeIf { it.isNotBlank() }
+                val codexConfig = codex?.payload?.get("config_toml")?.takeIf { it.isNotBlank() }
+                if (codexAuth != null && codexConfig != null) {
+                    put("codex_auth_json", b64(codexAuth))
+                    put("codex_config_toml", b64(codexConfig))
+                }
+            }
+        return data.takeIf { it.isNotEmpty() }
+    }
+
+    private fun loadCredential(
+        store: AgentCredentialStore,
+        owner: String,
+        provider: AgentCredentialProvider,
+    ) = runCatching { store.find(owner, provider) }
+        .onFailure { log.warn("could not load {} credential for workspace owner", provider) }
+        .getOrNull()
+        ?.takeUnless { it.valid == false }
 
     /**
      * Resolve the deploy-key Secret name for a workspace. If the
@@ -384,6 +480,7 @@ class Fabric8AgentRunnerOrchestrator(
         name: String,
         workspacePvc: String,
         deployKeySecret: String,
+        credentialSecret: CredentialSecret?,
     ): Pod =
         PodBuilder()
             .withNewMetadata()
@@ -416,8 +513,8 @@ class Fabric8AgentRunnerOrchestrator(
             .withImage(RunnerImageVersions.pin(setup.image, ownReleaseVersion()))
             .withImagePullPolicy(setup.imagePullPolicy)
             .withPorts(ContainerPortBuilder().withName("gateway").withContainerPort(setup.gatewayPort).build())
-            .withEnv(podEnv(workspace, setup, runnerGeneration))
-            .withVolumeMounts(podVolumeMounts(setup))
+            .withEnv(podEnv(workspace, setup, runnerGeneration, credentialSecret))
+            .withVolumeMounts(podVolumeMounts(setup, credentialSecret))
             // Startup probe gates liveness + readiness until the gateway's
             // JVM has finished its cold start. Without it the liveness probe
             // (failureThreshold 3 x 10s ~= 30s, no initial delay) killed the
@@ -452,7 +549,7 @@ class Fabric8AgentRunnerOrchestrator(
             .withLimits<String, Quantity>(mapOf("cpu" to Quantity(CPU_LIMIT), "memory" to Quantity(MEMORY_LIMIT)))
             .endResources()
             .endContainer()
-            .withVolumes(podVolumes(workspacePvc, deployKeySecret, setup))
+            .withVolumes(podVolumes(workspacePvc, deployKeySecret, credentialSecret, setup))
             .endSpec()
             .build()
 
@@ -478,6 +575,7 @@ class Fabric8AgentRunnerOrchestrator(
         workspace: Workspace,
         setup: RunnerSetupProvisioningSpec,
         runnerGeneration: Long,
+        credentialSecret: CredentialSecret?,
     ) = buildList {
         add(EnvVarBuilder().withName("HOME").withValue("/home/agent").build())
         add(EnvVarBuilder().withName("CODEX_HOME").withValue("/home/agent/.codex").build())
@@ -527,7 +625,7 @@ class Fabric8AgentRunnerOrchestrator(
         addAll(dockerEnv(setup))
         addAll(knowledgeEnv(setup))
         addAll(githubAppTokenEnv())
-        addAll(claudeOauthEnv())
+        addAll(agentCredentialEnv(credentialSecret))
         // REPO_URL/REPO_BRANCH drive the entrypoint's boot-time clone
         // into /workspace/<repo-name>. Cloning in the runner removes the race that
         // left repo-backed workspaces empty: the old create-time
@@ -616,30 +714,56 @@ class Fabric8AgentRunnerOrchestrator(
                 .build(),
         )
 
-    // CLAUDE_CODE_OAUTH_TOKEN from the portal-managed Secret. `claude
-    // setup-token` produces this long-lived token, which Claude Code prefers
-    // over the mounted credential files, so a fresh runner picks up the latest
-    // portal sign-in. Optional ref: an absent Secret/key keeps the Pod starting
-    // and the runner falls back to the credential PVC.
-    private fun claudeOauthEnv() =
-        listOf(
-            EnvVarBuilder()
-                .withName("CLAUDE_CODE_OAUTH_TOKEN")
-                .withNewValueFrom()
-                .withNewSecretKeyRef()
-                .withName(props.claudeOauthSecret)
-                .withKey(props.claudeOauthSecretKey)
-                .withOptional(true)
-                .endSecretKeyRef()
-                .endValueFrom()
-                .build(),
-        )
+    private fun agentCredentialEnv(credentialSecret: CredentialSecret?) =
+        if (credentialSecret == null) {
+            emptyList()
+        } else {
+            buildList {
+                if (credentialSecret.hasClaude) {
+                    add(
+                        EnvVarBuilder()
+                            .withName("CLAUDE_CODE_OAUTH_TOKEN")
+                            .withNewValueFrom()
+                            .withNewSecretKeyRef()
+                            .withName(credentialSecret.name)
+                            .withKey("claude_oauth_token")
+                            .endSecretKeyRef()
+                            .endValueFrom()
+                            .build(),
+                    )
+                }
+                if (credentialSecret.hasCodex) {
+                    add(
+                        EnvVarBuilder()
+                            .withName("AGENT_CODEX_AUTH_JSON_FILE")
+                            .withValue("$AGENT_CREDENTIALS_MOUNT/codex_auth_json")
+                            .build(),
+                    )
+                    add(
+                        EnvVarBuilder()
+                            .withName("AGENT_CODEX_CONFIG_TOML_FILE")
+                            .withValue("$AGENT_CREDENTIALS_MOUNT/codex_config_toml")
+                            .build(),
+                    )
+                }
+            }
+        }
 
-    private fun podVolumeMounts(setup: RunnerSetupProvisioningSpec) =
+    private fun podVolumeMounts(
+        setup: RunnerSetupProvisioningSpec,
+        credentialSecret: CredentialSecret?,
+    ) =
         buildList {
             add(VolumeMountBuilder().withName("workspace").withMountPath("/workspace").build())
-            add(VolumeMountBuilder().withName("claude-credentials").withMountPath("/home/agent/.claude").build())
-            add(VolumeMountBuilder().withName("codex-credentials").withMountPath("/home/agent/.codex").build())
+            if (credentialSecret != null) {
+                add(
+                    VolumeMountBuilder()
+                        .withName(AGENT_CREDENTIALS_VOLUME)
+                        .withMountPath(AGENT_CREDENTIALS_MOUNT)
+                        .withReadOnly(true)
+                        .build(),
+                )
+            }
             if (setup.dockerSocketEnabled) {
                 add(
                     VolumeMountBuilder()
@@ -670,11 +794,11 @@ class Fabric8AgentRunnerOrchestrator(
     private fun podVolumes(
         workspacePvc: String,
         deployKeySecret: String,
+        credentialSecret: CredentialSecret?,
         setup: RunnerSetupProvisioningSpec,
     ) = buildList {
         add(pvcVolume("workspace", workspacePvc))
-        add(pvcVolume("claude-credentials", setup.claudeCredentialsPvc))
-        add(pvcVolume("codex-credentials", setup.codexCredentialsPvc))
+        credentialSecret?.let { add(agentCredentialsVolume(it.name)) }
         dockerSocketVolume(setup)?.let(::add)
         add(githubDeployKeyVolume(deployKeySecret))
         add(mcpConfigVolume(setup))
@@ -708,6 +832,14 @@ class Fabric8AgentRunnerOrchestrator(
             .withName("github-deploy-key")
             .withNewSecret()
             .withSecretName(deployKeySecret)
+            .endSecret()
+            .build()
+
+    private fun agentCredentialsVolume(credentialSecret: String): Volume =
+        VolumeBuilder()
+            .withName(AGENT_CREDENTIALS_VOLUME)
+            .withNewSecret()
+            .withSecretName(credentialSecret)
             .endSecret()
             .build()
 
@@ -776,6 +908,8 @@ class Fabric8AgentRunnerOrchestrator(
         private const val RUN_AS_GID = 1000L
         private const val FS_GROUP = 1000L
         private const val DOCKER_SOCKET_VOLUME = "docker-socket"
+        private const val AGENT_CREDENTIALS_VOLUME = "agent-credentials"
+        private const val AGENT_CREDENTIALS_MOUNT = "/var/run/secrets/agents/credentials"
 
         // How long scaleDown waits for the old runner Pod to fully terminate
         // (and release the ReadWriteOnce workspace PVC) before returning, so a

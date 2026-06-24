@@ -1,6 +1,8 @@
 package com.jorisjonkers.personalstack.agents.k8s
 
 import com.jorisjonkers.personalstack.agents.config.AgentRuntimeProperties
+import com.jorisjonkers.personalstack.agents.domain.model.AgentCredentialProvider
+import com.jorisjonkers.personalstack.agents.domain.model.AgentOauthCredential
 import com.jorisjonkers.personalstack.agents.domain.model.AgentSetupId
 import com.jorisjonkers.personalstack.agents.domain.model.AgentSetupVersion
 import com.jorisjonkers.personalstack.agents.domain.model.GithubLink
@@ -11,6 +13,7 @@ import com.jorisjonkers.personalstack.agents.domain.model.RunnerState
 import com.jorisjonkers.personalstack.agents.domain.model.Workspace
 import com.jorisjonkers.personalstack.agents.domain.model.WorkspaceId
 import com.jorisjonkers.personalstack.agents.domain.model.WorkspaceStatus
+import com.jorisjonkers.personalstack.agents.domain.port.AgentCredentialStore
 import com.jorisjonkers.personalstack.agents.domain.port.DeployKeyStore
 import com.jorisjonkers.personalstack.agents.domain.port.GithubLinkRepository
 import com.jorisjonkers.personalstack.agents.domain.port.RepositoryRepository
@@ -175,6 +178,11 @@ class Fabric8AgentRunnerOrchestratorIntegrationTest {
         assertThat(appBearer.valueFrom.secretKeyRef.name).isEqualTo("github-app")
         assertThat(appBearer.valueFrom.secretKeyRef.key).isEqualTo("token-bearer")
         assertThat(appBearer.valueFrom.secretKeyRef.optional).isTrue()
+        assertThat(env.map { it.name }).doesNotContain(
+            "CLAUDE_CODE_OAUTH_TOKEN",
+            "AGENT_CODEX_AUTH_JSON_FILE",
+            "AGENT_CODEX_CONFIG_TOML_FILE",
+        )
 
         // The agents-mcp-servers ConfigMap is mounted (optionally) at
         // /etc/agent-mcp so the entrypoint can seed Claude's mcpServers.
@@ -275,16 +283,9 @@ class Fabric8AgentRunnerOrchestratorIntegrationTest {
         assertThat(env["TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE"]?.value).isEqualTo("/var/run/custom-docker.sock")
 
         assertThat(pod.spec.securityContext.supplementalGroups).contains(44L)
-        assertThat(
-            pod.spec.volumes
-                .single { it.name == "claude-credentials" }
-                .persistentVolumeClaim.claimName,
-        ).isEqualTo("custom-claude-credentials")
-        assertThat(
-            pod.spec.volumes
-                .single { it.name == "codex-credentials" }
-                .persistentVolumeClaim.claimName,
-        ).isEqualTo("custom-codex-credentials")
+        assertThat(pod.spec.volumes.map { it.name }).doesNotContain("claude-credentials", "codex-credentials")
+        assertThat(container.volumeMounts.map { it.mountPath })
+            .doesNotContain("/home/agent/.claude", "/home/agent/.codex")
         assertThat(
             pod.spec.volumes
                 .single { it.name == "github-deploy-key" }
@@ -415,8 +416,35 @@ class Fabric8AgentRunnerOrchestratorIntegrationTest {
     }
 
     @Test
+    @DisplayName("scaleDown keeps the per-workspace credential Secret for wake-up reprovision")
+    fun `scaleDown keeps credential secret for wake up reprovision`() {
+        K3sTestSupport.applyProductionRbac(admin)
+        saScoped = K3sTestSupport.createServiceAccountScopedClient(k3s, admin)
+        val owner = "user-scale-down"
+        val orchestrator =
+            orchestrator(
+                saScoped,
+                deployKeysProvider = empty(),
+                githubLinks = empty(),
+                credentials = wrap(StaticAgentCredentialStore(owner, claude = "claude-scale-down")),
+            )
+        val workspace = adHocWorkspace().copy(ownerUserId = owner)
+        orchestrator.provision(workspace)
+
+        orchestrator.scaleDown(workspace)
+
+        assertThat(
+            admin
+                .secrets()
+                .inNamespace(K3sTestSupport.AGENTS_NAMESPACE)
+                .withName("agent-runner-credentials-${workspace.id.short()}")
+                .get(),
+        ).isNotNull
+    }
+
+    @Test
     @DisplayName("destroy removes the PVC, Pod, and Service")
-    fun `destroy removes the four resources`() {
+    fun `destroy removes pod service and pvc`() {
         K3sTestSupport.applyProductionRbac(admin)
         saScoped = K3sTestSupport.createServiceAccountScopedClient(k3s, admin)
         val orchestrator = orchestrator(saScoped, deployKeysProvider = empty(), githubLinks = empty())
@@ -455,6 +483,36 @@ class Fabric8AgentRunnerOrchestratorIntegrationTest {
                 .services()
                 .inNamespace(K3sTestSupport.AGENTS_NAMESPACE)
                 .withName("agent-runner-$short")
+                .get()
+                ?.metadata
+                ?.deletionTimestamp
+        }
+    }
+
+    @Test
+    @DisplayName("destroy removes the per-workspace credential Secret")
+    fun `destroy removes credential secret`() {
+        K3sTestSupport.applyProductionRbac(admin)
+        saScoped = K3sTestSupport.createServiceAccountScopedClient(k3s, admin)
+        val owner = "user-destroy"
+        val orchestrator =
+            orchestrator(
+                saScoped,
+                deployKeysProvider = empty(),
+                githubLinks = empty(),
+                credentials = wrap(StaticAgentCredentialStore(owner, claude = "claude-destroy")),
+            )
+        val workspace = adHocWorkspace().copy(ownerUserId = owner)
+        orchestrator.provision(workspace)
+
+        orchestrator.destroy(workspace)
+
+        val short = workspace.id.short()
+        assertDeletedOrTerminating {
+            admin
+                .secrets()
+                .inNamespace(K3sTestSupport.AGENTS_NAMESPACE)
+                .withName("agent-runner-credentials-$short")
                 .get()
                 ?.metadata
                 ?.deletionTimestamp
@@ -520,6 +578,195 @@ class Fabric8AgentRunnerOrchestratorIntegrationTest {
         assertThat(secret).isNotNull
         assertThat(secret.metadata.labels["agent-runner/github-link-id"]).isEqualTo(linkId.toString())
         assertThat(secret.data).containsKeys("private_key", "public_key", "known_hosts", "fingerprint")
+    }
+
+    @Test
+    @DisplayName("provision injects owner Claude and Codex credentials through a per-workspace Secret")
+    fun `provision injects owner credentials through workspace secret`() {
+        K3sTestSupport.applyProductionRbac(admin)
+        saScoped = K3sTestSupport.createServiceAccountScopedClient(k3s, admin)
+        val owner = "user-credentials"
+        val orchestrator =
+            orchestrator(
+                saScoped,
+                deployKeysProvider = empty(),
+                githubLinks = empty(),
+                credentials =
+                    wrap(
+                        StaticAgentCredentialStore(
+                            owner = owner,
+                            claude = "claude-current",
+                            codexAuthJson = """{"tokens":"current"}""",
+                            codexConfigToml = "profile = \"current\"",
+                        ),
+                    ),
+            )
+        val workspace = adHocWorkspace().copy(ownerUserId = owner)
+
+        orchestrator.provision(workspace)
+
+        val short = workspace.id.short()
+        val secret =
+            admin
+                .secrets()
+                .inNamespace(K3sTestSupport.AGENTS_NAMESPACE)
+                .withName("agent-runner-credentials-$short")
+                .get()
+        assertThat(secret).isNotNull
+        assertThat(secret.data).containsKeys("claude_oauth_token", "codex_auth_json", "codex_config_toml")
+        val pod =
+            admin
+                .pods()
+                .inNamespace(K3sTestSupport.AGENTS_NAMESPACE)
+                .withName("agent-runner-$short")
+                .get()
+        val container = pod.spec.containers.single()
+        val env = container.env.associateBy { it.name }
+        assertThat(env["CLAUDE_CODE_OAUTH_TOKEN"]?.value).isNull()
+        assertThat(env["CLAUDE_CODE_OAUTH_TOKEN"]?.valueFrom?.secretKeyRef?.name)
+            .isEqualTo("agent-runner-credentials-$short")
+        assertThat(env["CLAUDE_CODE_OAUTH_TOKEN"]?.valueFrom?.secretKeyRef?.key).isEqualTo("claude_oauth_token")
+        assertThat(env["AGENT_CODEX_AUTH_JSON_FILE"]?.value)
+            .isEqualTo("/var/run/secrets/agents/credentials/codex_auth_json")
+        assertThat(env["AGENT_CODEX_CONFIG_TOML_FILE"]?.value)
+            .isEqualTo("/var/run/secrets/agents/credentials/codex_config_toml")
+        val mount = container.volumeMounts.single { it.name == "agent-credentials" }
+        assertThat(mount.mountPath).isEqualTo("/var/run/secrets/agents/credentials")
+        assertThat(mount.readOnly).isTrue()
+        assertThat(container.volumeMounts.map { it.mountPath })
+            .doesNotContain("/home/agent/.claude", "/home/agent/.codex")
+        assertThat(pod.spec.volumes.single { it.name == "agent-credentials" }.secret.secretName)
+            .isEqualTo("agent-runner-credentials-$short")
+    }
+
+    @Test
+    @DisplayName("provision skips workspace credential Secret when owner or required payload is missing")
+    fun `provision skips credential secret when owner or credential missing`() {
+        K3sTestSupport.applyProductionRbac(admin)
+        saScoped = K3sTestSupport.createServiceAccountScopedClient(k3s, admin)
+        val owner = "user-missing"
+        val orchestrator =
+            orchestrator(
+                saScoped,
+                deployKeysProvider = empty(),
+                githubLinks = empty(),
+                credentials = wrap(StaticAgentCredentialStore(owner, codexAuthJson = """{"tokens":"partial"}""")),
+            )
+        val noOwner = adHocWorkspace()
+        val missingPayload = adHocWorkspace().copy(ownerUserId = owner)
+
+        orchestrator.provision(noOwner)
+        orchestrator.provision(missingPayload)
+
+        assertThat(
+            admin.secrets()
+                .inNamespace(K3sTestSupport.AGENTS_NAMESPACE)
+                .withName("agent-runner-credentials-${noOwner.id.short()}")
+                .get(),
+        ).isNull()
+        assertThat(
+            admin.secrets()
+                .inNamespace(K3sTestSupport.AGENTS_NAMESPACE)
+                .withName("agent-runner-credentials-${missingPayload.id.short()}")
+                .get(),
+        ).isNull()
+    }
+
+    @Test
+    @DisplayName("credential store read failure skips credential Secret without failing provision")
+    fun `credential store read failure skips credential secret`() {
+        K3sTestSupport.applyProductionRbac(admin)
+        saScoped = K3sTestSupport.createServiceAccountScopedClient(k3s, admin)
+        val orchestrator =
+            orchestrator(
+                saScoped,
+                deployKeysProvider = empty(),
+                githubLinks = empty(),
+                credentials = wrap(FailingAgentCredentialStore()),
+            )
+        val workspace = adHocWorkspace().copy(ownerUserId = "user-store-failure")
+
+        orchestrator.provision(workspace)
+
+        assertThat(
+            admin.secrets()
+                .inNamespace(K3sTestSupport.AGENTS_NAMESPACE)
+                .withName("agent-runner-credentials-${workspace.id.short()}")
+                .get(),
+        ).isNull()
+        assertThat(
+            admin.pods()
+                .inNamespace(K3sTestSupport.AGENTS_NAMESPACE)
+                .withName("agent-runner-${workspace.id.short()}")
+                .get(),
+        ).isNotNull
+    }
+
+    @Test
+    @DisplayName("re-provision updates the per-workspace credential Secret")
+    fun `reprovision updates credential secret`() {
+        K3sTestSupport.applyProductionRbac(admin)
+        saScoped = K3sTestSupport.createServiceAccountScopedClient(k3s, admin)
+        val owner = "user-update"
+        val credentials = StaticAgentCredentialStore(owner, claude = "old")
+        val orchestrator =
+            orchestrator(
+                saScoped,
+                deployKeysProvider = empty(),
+                githubLinks = empty(),
+                credentials = wrap(credentials),
+            )
+        val workspace = adHocWorkspace().copy(ownerUserId = owner)
+
+        orchestrator.provision(workspace)
+        credentials.claude = "new"
+        orchestrator.provision(workspace)
+
+        val encoded =
+            admin
+                .secrets()
+                .inNamespace(K3sTestSupport.AGENTS_NAMESPACE)
+                .withName("agent-runner-credentials-${workspace.id.short()}")
+                .get()
+                .data["claude_oauth_token"]
+        assertThat(String(java.util.Base64.getDecoder().decode(encoded))).isEqualTo("new")
+    }
+
+    @Test
+    @DisplayName("invalid owner credential is skipped without cluster-wide OAuth fallback")
+    fun `invalid credential skips secret and cluster wide oauth fallback`() {
+        K3sTestSupport.applyProductionRbac(admin)
+        saScoped = K3sTestSupport.createServiceAccountScopedClient(k3s, admin)
+        val owner = "user-invalid"
+        val orchestrator =
+            orchestrator(
+                saScoped,
+                deployKeysProvider = empty(),
+                githubLinks = empty(),
+                credentials = wrap(StaticAgentCredentialStore(owner, claude = "invalid", valid = false)),
+            )
+        val workspace = adHocWorkspace().copy(ownerUserId = owner)
+
+        orchestrator.provision(workspace)
+
+        val short = workspace.id.short()
+        assertThat(
+            admin.secrets()
+                .inNamespace(K3sTestSupport.AGENTS_NAMESPACE)
+                .withName("agent-runner-credentials-$short")
+                .get(),
+        ).isNull()
+        val env =
+            admin.pods()
+                .inNamespace(K3sTestSupport.AGENTS_NAMESPACE)
+                .withName("agent-runner-$short")
+                .get()
+                .spec
+                .containers
+                .single()
+                .env
+        assertThat(env.map { it.name }).doesNotContain("CLAUDE_CODE_OAUTH_TOKEN")
+        assertThat(env.mapNotNull { it.valueFrom?.secretKeyRef?.name }).doesNotContain("agents-claude-oauth")
     }
 
     @Test
@@ -699,6 +946,7 @@ class Fabric8AgentRunnerOrchestratorIntegrationTest {
         client: KubernetesClient,
         deployKeysProvider: ObjectProvider<DeployKeyStore>,
         githubLinks: ObjectProvider<GithubLinkRepository>,
+        credentials: ObjectProvider<AgentCredentialStore> = empty(),
         workspaceRepos: ObjectProvider<WorkspaceRepositoryRepository> = empty(),
         repositories: ObjectProvider<RepositoryRepository> = empty(),
     ): Fabric8AgentRunnerOrchestrator =
@@ -706,6 +954,7 @@ class Fabric8AgentRunnerOrchestratorIntegrationTest {
             client = client,
             props = testProps(),
             deployKeysProvider = deployKeysProvider,
+            credentialsProvider = credentials,
             githubLinks = githubLinks,
             workspaceRepos = workspaceRepos,
             repositories = repositories,
@@ -834,6 +1083,69 @@ class Fabric8AgentRunnerOrchestratorIntegrationTest {
         override fun loadKey(
             repositoryId: com.jorisjonkers.personalstack.agents.domain.model.RepositoryId,
         ): DeployKeyStore.KeyMaterial? = if (repositoryId.value == linkId.value) material else null
+    }
+
+    private class StaticAgentCredentialStore(
+        private val owner: String,
+        var claude: String? = null,
+        var codexAuthJson: String? = null,
+        var codexConfigToml: String? = null,
+        private val valid: Boolean? = true,
+    ) : AgentCredentialStore {
+        override fun upsert(credential: AgentOauthCredential): AgentOauthCredential = error("not used in this test")
+
+        override fun find(
+            userId: String,
+            provider: AgentCredentialProvider,
+        ): AgentOauthCredential? {
+            if (userId != owner) return null
+            val payload =
+                when (provider) {
+                    AgentCredentialProvider.CLAUDE ->
+                        claude?.let { mapOf("oauth_token" to it) }
+                    AgentCredentialProvider.CODEX ->
+                        buildMap {
+                            codexAuthJson?.let { put("auth_json", it) }
+                            codexConfigToml?.let { put("config_toml", it) }
+                        }.takeIf { it.isNotEmpty() }
+                } ?: return null
+            return AgentOauthCredential(
+                userId = userId,
+                provider = provider,
+                payload = payload,
+                valid = valid,
+                validatedAt = null,
+                updatedAt = Instant.now(),
+                updatedBy = userId,
+            )
+        }
+
+        override fun markValidity(
+            userId: String,
+            provider: AgentCredentialProvider,
+            valid: Boolean,
+        ) = error("not used in this test")
+
+        override fun statusFor(userId: String): List<AgentCredentialStore.CredentialStatus> =
+            error("not used in this test")
+    }
+
+    private class FailingAgentCredentialStore : AgentCredentialStore {
+        override fun upsert(credential: AgentOauthCredential): AgentOauthCredential = error("not used in this test")
+
+        override fun find(
+            userId: String,
+            provider: AgentCredentialProvider,
+        ): AgentOauthCredential? = throw IllegalStateException("store unavailable")
+
+        override fun markValidity(
+            userId: String,
+            provider: AgentCredentialProvider,
+            valid: Boolean,
+        ) = error("not used in this test")
+
+        override fun statusFor(userId: String): List<AgentCredentialStore.CredentialStatus> =
+            error("not used in this test")
     }
 
     private class SingleEntryGithubLinkRepo(
