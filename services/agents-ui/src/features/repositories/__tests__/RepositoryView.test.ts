@@ -1,19 +1,21 @@
-import type { Repository, RepositoryDetail, RepositoryVerifyResult } from '../types'
+import type { InstallationStatus, Repository, RepositoryDetail, RepositoryVerifyResult } from '../types'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import RepositoryView from '../views/RepositoryView.vue'
 
 const getRepository = vi.fn<(id: string) => Promise<RepositoryDetail>>()
+const fetchInstallationStatus = vi.fn<(id: string) => Promise<InstallationStatus>>()
 const verifyRepositoryAccess = vi.fn<(id: string) => Promise<RepositoryVerifyResult>>()
 
 vi.mock('../services/repositoriesService', () => ({
   listRepositories: vi.fn(),
   getRepository: (id: string) => getRepository(id),
   createRepository: vi.fn(),
-  attachDeployKey: vi.fn(),
   deleteRepository: vi.fn(),
+  fetchInstallationStatus: (id: string) => fetchInstallationStatus(id),
   verifyRepositoryAccess: (id: string) => verifyRepositoryAccess(id),
 }))
 
@@ -23,9 +25,6 @@ function fakeRepo(over: Partial<Repository> = {}): Repository {
     name: 'demo',
     repoUrl: 'git@github.com:owner/demo.git',
     defaultBranch: 'main',
-    vaultKeyPath: 'secret/data/agents/repositories/aaaa',
-    deployKeyFingerprint: 'SHA256:abc',
-    deployKeyAddedAt: '2026-05-20T10:00:00Z',
     createdAt: '2026-05-20T10:00:00Z',
     updatedAt: '2026-05-20T10:00:00Z',
     ...over,
@@ -57,35 +56,51 @@ describe('repositoryView access status', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     getRepository.mockReset()
+    fetchInstallationStatus.mockReset()
     verifyRepositoryAccess.mockReset()
+    fetchInstallationStatus.mockResolvedValue({
+      state: 'UNKNOWN',
+      checkedAt: '2026-05-21T10:00:00Z',
+      detail: null,
+    })
   })
 
-  it('shows "not verified" until a verify result is present', async () => {
+  it('shows install status even before branch protection has been verified', async () => {
+    fetchInstallationStatus.mockResolvedValue({
+      state: 'INSTALLED',
+      checkedAt: '2026-05-21T10:00:00Z',
+      detail: null,
+    })
     getRepository.mockResolvedValue(detail())
     const wrapper = await mountView()
-    expect(wrapper.find('[data-testid="access-status-unverified"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="access-status-badge"]').exists()).toBe(false)
+    expect(fetchInstallationStatus).toHaveBeenCalledWith('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa')
+    expect(wrapper.find('[data-testid="github-app-install-status"]').text()).toBe(
+      'App installed - can access this repo',
+    )
+    expect(wrapper.find('[data-testid="access-app-installation"]').attributes('data-tone')).toBe('ok')
+    expect(wrapper.find('[data-testid="access-protection"]').exists()).toBe(false)
   })
 
-  it('renders read/write/protection badges with the right tones once verified', async () => {
+  it('renders app/protection badges with the right tones once verified', async () => {
+    fetchInstallationStatus.mockResolvedValue({
+      state: 'NOT_INSTALLED',
+      checkedAt: '2026-05-21T10:00:00Z',
+      detail: 'no matching installation',
+    })
     getRepository.mockResolvedValue(
       detail({
         verify: {
-          read: true,
-          write: false,
           defaultBranchProtected: false,
           checkedAt: '2026-05-21T10:00:00Z',
-          messages: ['probe ref deleted'],
+          messages: ['branch protection disabled'],
         },
       }),
     )
     const wrapper = await mountView()
 
-    expect(wrapper.find('[data-testid="access-read"]').attributes('data-tone')).toBe('ok')
-    expect(wrapper.find('[data-testid="access-write"]').attributes('data-tone')).toBe('warn')
-    expect(wrapper.find('[data-testid="access-write"]').text()).toContain('Read-only')
+    expect(wrapper.find('[data-testid="access-app-installation"]').attributes('data-tone')).toBe('fail')
+    expect(wrapper.find('[data-testid="access-app-installation"]').text()).toContain('App not installed')
     expect(wrapper.find('[data-testid="access-protection"]').attributes('data-tone')).toBe('warn')
-    // Unprotected default branch surfaces the history-loss warning.
     expect(wrapper.find('[data-testid="repository-protection-warning"]').exists()).toBe(true)
   })
 
@@ -93,8 +108,6 @@ describe('repositoryView access status', () => {
     getRepository.mockResolvedValue(
       detail({
         verify: {
-          read: true,
-          write: true,
           defaultBranchProtected: null,
           checkedAt: '2026-05-21T10:00:00Z',
           messages: [],
@@ -114,14 +127,17 @@ describe('repositoryView access status', () => {
     expect(wrapper.find('[data-testid="github-app-permissions"]').text()).toMatch(/Contents:\s+write/)
     expect(wrapper.find('[data-testid="github-app-permissions"]').text()).toMatch(/Pull requests:\s+write/)
     expect(wrapper.find('[data-testid="github-app-permissions"]').text()).toMatch(/Actions:\s+write/)
+    expect(wrapper.find('[data-testid="github-app-permissions"]').text()).toMatch(/Issues:\s+write/)
+    expect(wrapper.find('[data-testid="github-app-permissions"]').text()).toMatch(/Workflows:\s+write/)
+    expect(wrapper.find('[data-testid="github-app-permissions"]').text()).toMatch(/Packages:\s+read/)
     expect(wrapper.find('[data-testid="github-app-approval-note"]').text()).toContain('approval on each installation')
 
     const expectedLinks = {
-      'github-app-install-link': 'https://github.com/apps/extratoast-agents/installations/new?state=ExtraToast',
+      'github-app-install-link': 'https://github.com/apps/jorisjonkers-dev-agents/installations/new?state=ExtraToast',
       'github-app-user-installations-link': 'https://github.com/settings/installations',
       'github-app-organization-installations-link':
         'https://github.com/organizations/ExtraToast/settings/installations',
-      'github-app-permissions-link': 'https://github.com/settings/apps/extratoast-agents/permissions',
+      'github-app-permissions-link': 'https://github.com/settings/apps/jorisjonkers-dev-agents/permissions',
     }
 
     for (const [testId, href] of Object.entries(expectedLinks)) {
@@ -132,11 +148,36 @@ describe('repositoryView access status', () => {
     }
   })
 
+  it('renders a clear message when the repo owner cannot be parsed', async () => {
+    getRepository.mockResolvedValue(detail({ repository: fakeRepo({ repoUrl: 'not-a-github-url' }) }))
+    const wrapper = await mountView()
+
+    expect(wrapper.find('[data-testid="github-app-owner-missing"]').text()).toContain('could not parse')
+    expect(wrapper.find('[data-testid="github-app-owner-parse-warning"]').text()).toContain(
+      'installation link cannot be built',
+    )
+    expect(wrapper.find('[data-testid="github-app-install-link"]').exists()).toBe(false)
+  })
+
+  it('re-check button refreshes GitHub App installation status', async () => {
+    getRepository.mockResolvedValue(detail())
+    fetchInstallationStatus
+      .mockResolvedValueOnce({ state: 'UNKNOWN', checkedAt: '2026-05-21T10:00:00Z', detail: null })
+      .mockResolvedValueOnce({ state: 'INSTALLED', checkedAt: '2026-05-21T10:01:00Z', detail: null })
+    const wrapper = await mountView()
+
+    await wrapper.find('[data-testid="github-app-recheck"]').trigger('click')
+    await flush()
+
+    expect(fetchInstallationStatus).toHaveBeenCalledTimes(2)
+    expect(wrapper.find('[data-testid="github-app-install-status"]').text()).toBe(
+      'App installed - can access this repo',
+    )
+  })
+
   it('verify-access button calls the verify endpoint and stores the result', async () => {
     getRepository.mockResolvedValue(detail())
     verifyRepositoryAccess.mockResolvedValue({
-      read: true,
-      write: true,
       defaultBranchProtected: true,
       checkedAt: '2026-05-21T10:00:00Z',
       messages: [],
@@ -147,44 +188,13 @@ describe('repositoryView access status', () => {
     await flush()
 
     expect(verifyRepositoryAccess).toHaveBeenCalledOnce()
-    expect(wrapper.find('[data-testid="access-read"]').attributes('data-tone')).toBe('ok')
     expect(wrapper.find('[data-testid="access-protection"]').text()).toContain('Branch protected')
-  })
-
-  it('replace-key opens the wizard in replace mode and auto-verifies after success', async () => {
-    getRepository.mockResolvedValue(detail())
-    verifyRepositoryAccess.mockResolvedValue({
-      read: true,
-      write: false,
-      defaultBranchProtected: true,
-      checkedAt: '2026-05-21T10:00:00Z',
-      messages: [],
-    })
-    const wrapper = await mountView()
-
-    await wrapper.find('[data-testid="repository-replace-key"]').trigger('click')
-    await flush()
-
-    // The Modal teleports its content to <body>, so query the wizard
-    // component directly rather than through the view wrapper.
-    const wizard = wrapper.findComponent({ name: 'AttachKeyWizard' })
-    expect(wizard.exists()).toBe(true)
-    // Replace mode is reflected in the wizard's prop + rotation notice.
-    expect(wizard.props('replacing')).toBe(true)
-    expect(wizard.find('[data-testid="attach-key-replace-notice"]').exists()).toBe(true)
-    // The branch-protection guidance is always present in the wizard.
-    expect(wizard.find('[data-testid="attach-key-protection-notice"]').exists()).toBe(true)
-
-    // Simulate the wizard reporting a successful key write.
-    await wizard.vm.$emit('success')
-    await flush()
-
-    expect(verifyRepositoryAccess).toHaveBeenCalledOnce()
   })
 })
 
 async function flush(): Promise<void> {
-  await Promise.resolve()
-  await Promise.resolve()
-  await Promise.resolve()
+  for (let i = 0; i < 5; i += 1) {
+    await Promise.resolve()
+    await nextTick()
+  }
 }

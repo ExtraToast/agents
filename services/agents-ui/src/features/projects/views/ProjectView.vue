@@ -73,8 +73,8 @@ async function onUnlink(repositoryId: string, repositoryName: string): Promise<v
         <div>
           <h2 class="text-lg font-semibold">Repositories</h2>
           <p class="mt-1 text-sm text-[var(--color-text-muted)]">
-            The pool of GitHub repos this project's workspaces can clone. Reuse repositories across projects — the
-            deploy key lives on the repository.
+            The pool of GitHub repos this project's workspaces can clone. Reuse repositories across projects and install
+            the GitHub App on each repository for access.
           </p>
         </div>
         <SubmitButton
@@ -99,8 +99,6 @@ async function onUnlink(repositoryId: string, repositoryName: string): Promise<v
                 <RouterLink :to="`/repositories/${r.id}`" class="font-semibold hover:underline">
                   {{ r.name }}
                 </RouterLink>
-                <span v-if="!r.deployKeyFingerprint" class="text-xs text-amber-400">no key yet</span>
-                <span v-else class="text-xs text-emerald-400">key attached</span>
               </div>
             </template>
             <p class="font-mono text-xs text-[var(--color-text-muted)]">{{ r.repoUrl }}</p>

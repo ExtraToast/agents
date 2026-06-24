@@ -106,9 +106,8 @@ export interface CreateWorkspaceInput {
    */
   kind?: WorkspaceKind
   /**
-   * The preferred way to bind a workspace to a repo + its deploy key.
-   * When set, the API derives `repoUrl` and `branch` from the
-   * repository row.
+   * The preferred way to bind a workspace to a repository. When set,
+   * the API derives `repoUrl` and `branch` from the repository row.
    */
   repositoryId?: string | null
   /** Primary repository for multi-repo workspace creation. */

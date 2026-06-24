@@ -11,8 +11,8 @@ vi.mock('../services/repositoriesService', () => ({
   listRepositories: () => listRepositories(),
   getRepository: vi.fn(),
   createRepository: vi.fn(),
-  attachDeployKey: vi.fn(),
   deleteRepository: vi.fn(),
+  fetchInstallationStatus: vi.fn(),
   verifyRepositoryAccess: vi.fn(),
 }))
 
@@ -46,7 +46,7 @@ describe('repositoriesView', () => {
     expect(header.element.compareDocumentPosition(reference.element)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     expect(reference.element.compareDocumentPosition(loading.element)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     expect(reference.get('[data-testid="github-app-public-link"]').attributes('href')).toBe(
-      'https://github.com/apps/extratoast-agents',
+      'https://github.com/apps/jorisjonkers-dev-agents',
     )
   })
 })

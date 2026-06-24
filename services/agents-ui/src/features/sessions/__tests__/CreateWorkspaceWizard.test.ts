@@ -48,7 +48,6 @@ vi.mock('@/features/projects/services/projectsService', () => ({
   unlinkRepository: vi.fn(),
   addLink: vi.fn(),
   removeLink: vi.fn(),
-  attachKey: vi.fn(),
 }))
 
 const getRepository = vi.fn<(id: string) => Promise<RepositoryDetail>>()
@@ -56,7 +55,6 @@ vi.mock('@/features/repositories/services/repositoriesService', () => ({
   listRepositories: vi.fn(),
   getRepository: (id: string) => getRepository(id),
   createRepository: vi.fn(),
-  attachDeployKey: vi.fn(),
   deleteRepository: vi.fn(),
   verifyRepositoryAccess: vi.fn(),
 }))
@@ -94,9 +92,6 @@ function fakeRepository(over: Partial<Repository> = {}): Repository {
     name: 'primary',
     repoUrl: 'git@github.com:owner/primary.git',
     defaultBranch: 'main',
-    vaultKeyPath: 'secret/data/agents/repositories/repo-primary',
-    deployKeyFingerprint: 'SHA256:primary',
-    deployKeyAddedAt: '2026-05-20T10:00:00Z',
     createdAt: '2026-05-20T10:00:00Z',
     updatedAt: '2026-05-20T10:00:00Z',
     ...over,
@@ -161,15 +156,11 @@ describe('createWorkspaceWizard', () => {
       id: 'repo-extra',
       name: 'extra',
       repoUrl: 'git@github.com:owner/extra.git',
-      vaultKeyPath: 'secret/data/agents/repositories/repo-extra',
-      deployKeyFingerprint: 'SHA256:extra',
     })
     const skipped = fakeRepository({
       id: 'repo-skipped',
       name: 'skipped',
       repoUrl: 'git@github.com:owner/skipped.git',
-      vaultKeyPath: 'secret/data/agents/repositories/repo-skipped',
-      deployKeyFingerprint: 'SHA256:skipped',
     })
     listProjects.mockResolvedValue([project])
     getProject.mockResolvedValue({ project, links: [], repositories: [primary, extra, skipped] })

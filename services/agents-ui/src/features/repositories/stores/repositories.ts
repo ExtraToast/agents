@@ -10,8 +10,8 @@ import { computed, ref } from 'vue'
 import {
   createRepository as createApi,
   deleteRepository as deleteApi,
-  fetchInstallationStatus as installationStatusApi,
   getRepository as getApi,
+  fetchInstallationStatus as installationStatusApi,
   listRepositories as listApi,
   verifyRepositoryAccess as verifyApi,
 } from '../services/repositoriesService'

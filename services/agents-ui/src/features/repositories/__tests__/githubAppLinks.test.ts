@@ -63,7 +63,7 @@ describe('githubAppLinks', () => {
   })
 
   it.each([
-    { slug: 'extratoast-agents', expected: true },
+    { slug: 'jorisjonkers-dev-agents', expected: true },
     { slug: 'custom-app-1', expected: true },
     { slug: 'a', expected: true },
     { slug: '', expected: false },
@@ -100,10 +100,10 @@ describe('githubAppLinks', () => {
 
   it('builds the canonical GitHub App installation URL with owner state', () => {
     expect(buildGitHubAppInstallationUrl('ExtraToast')).toBe(
-      'https://github.com/apps/extratoast-agents/installations/new?state=ExtraToast',
+      'https://github.com/apps/jorisjonkers-dev-agents/installations/new?state=ExtraToast',
     )
     expect(buildGitHubAppInstallationUrlForRepo('git@github.com:ExtraToast/agents.git')).toBe(
-      'https://github.com/apps/extratoast-agents/installations/new?state=ExtraToast',
+      'https://github.com/apps/jorisjonkers-dev-agents/installations/new?state=ExtraToast',
     )
   })
 
@@ -126,6 +126,9 @@ describe('githubAppLinks', () => {
       { key: 'contents', access: 'write', label: 'Contents' },
       { key: 'pull_requests', access: 'write', label: 'Pull requests' },
       { key: 'actions', access: 'write', label: 'Actions' },
+      { key: 'issues', access: 'write', label: 'Issues' },
+      { key: 'workflows', access: 'write', label: 'Workflows' },
+      { key: 'packages', access: 'read', label: 'Packages' },
     ])
     expect(GITHUB_APP_REQUESTED_PERMISSIONS.map((permission) => permission.key)).not.toContain('administration')
     expect(Object.isFrozen(GITHUB_APP_REQUESTED_PERMISSIONS)).toBe(true)
