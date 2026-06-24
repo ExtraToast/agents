@@ -228,14 +228,29 @@ describe('sessionTabs', () => {
 
   it('shows a kind icon and status on the tab', () => {
     const wrapper = mount(SessionTabs, {
-      props: { sessions: [fakeSession({ id: 'sess-starting', kind: 'SHELL', status: 'STARTING' })], activeId: null },
+      props: {
+        sessions: [
+          fakeSession({ id: 'sess-codex', kind: 'CODEX', status: 'RUNNING' }),
+          fakeSession({ id: 'sess-starting', kind: 'SHELL', status: 'STARTING' }),
+          fakeSession({ id: 'sess-unknown', kind: 'MYSTERY' as AgentSession['kind'], status: 'RUNNING' }),
+        ],
+        activeId: null,
+      },
     })
-    const tab = wrapper.get('[data-testid="session-tab-sess-starting"]')
-    const kind = tab.get('[data-testid="session-tab-kind-sess-starting"]')
+    const codexKind = wrapper.get('[data-testid="session-tab-kind-sess-codex"]')
+    const shellTab = wrapper.get('[data-testid="session-tab-sess-starting"]')
+    const shellKind = shellTab.get('[data-testid="session-tab-kind-sess-starting"]')
+    const unknownKind = wrapper.get('[data-testid="session-tab-kind-sess-unknown"]')
 
-    expect(kind.attributes('data-kind')).toBe('SHELL')
-    expect(kind.attributes('aria-label')).toBe('Shell')
-    expect(tab.find('[aria-label="Status: STARTING"]').exists()).toBe(true)
+    expect(codexKind.attributes('data-kind')).toBe('CODEX')
+    expect(codexKind.get('img').attributes('src')).toContain('codex.svg')
+    expect(codexKind.get('img').attributes('aria-hidden')).toBe('true')
+    expect(shellKind.attributes('data-kind')).toBe('SHELL')
+    expect(shellKind.attributes('aria-label')).toBe('Shell')
+    expect(shellKind.find('img').exists()).toBe(false)
+    expect(unknownKind.attributes('aria-label')).toBe('Unknown')
+    expect(unknownKind.find('img').exists()).toBe(false)
+    expect(shellTab.find('[aria-label="Status: STARTING"]').exists()).toBe(true)
   })
 
   it('defaults the tab name to kind-index (claude-1) and exposes a rename control', () => {

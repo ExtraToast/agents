@@ -35,6 +35,19 @@ const kindLabel: Record<AgentSession['kind'], string> = {
   SHELL: 'Shell',
 }
 
+const agentIcons: Partial<Record<AgentSession['kind'], string>> = {
+  CLAUDE: new URL('../assets/claude-code.svg', import.meta.url).href,
+  CODEX: new URL('../assets/codex.svg', import.meta.url).href,
+}
+
+function kindBadgeClass(kind: AgentSession['kind']): string {
+  return kindBadge[kind] ?? kindBadge.SHELL
+}
+
+function kindLabelFor(kind: AgentSession['kind']): string {
+  return kindLabel[kind] ?? 'Unknown'
+}
+
 // Default name reads like claude-1 / codex-2 / shell-1: the agent kind plus its
 // 1-based position among same-kind sessions, so tabs are recognisable before
 // anyone renames them.
@@ -222,9 +235,9 @@ function sessionShellClasses(s: AgentSession): string[] {
         >
           <span
             class="relative flex size-6 shrink-0 items-center justify-center rounded"
-            :class="kindBadge[s.kind]"
-            :aria-label="kindLabel[s.kind]"
-            :title="kindLabel[s.kind]"
+            :class="kindBadgeClass(s.kind)"
+            :aria-label="kindLabelFor(s.kind)"
+            :title="kindLabelFor(s.kind)"
             :data-testid="`session-tab-kind-${s.id}`"
             :data-kind="s.kind"
           >
@@ -238,31 +251,13 @@ function sessionShellClasses(s: AgentSession): string[] {
               :aria-label="`Status: ${s.status}`"
               :title="`Status: ${s.status}`"
             />
-            <svg
-              v-if="s.kind === 'CLAUDE'"
-              class="size-3.5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.5"
-              stroke-linecap="round"
+            <img
+              v-if="agentIcons[s.kind]"
+              :src="agentIcons[s.kind]"
+              class="size-4"
+              alt=""
               aria-hidden="true"
-            >
-              <path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4" />
-            </svg>
-            <svg
-              v-else-if="s.kind === 'CODEX'"
-              class="size-3.5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M12 2 20.66 7v10L12 22 3.34 17V7L12 2z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
+            />
             <svg
               v-else
               class="size-3.5"

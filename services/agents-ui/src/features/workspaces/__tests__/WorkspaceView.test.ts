@@ -1,6 +1,5 @@
 import type {
   AgentSession,
-  AgentSetupValidationProblem,
   SetupPreview,
   SetupTargetOptions,
   WorkspaceDetail,
@@ -71,6 +70,15 @@ const openSessionStatusStream = vi.fn((opts: { onOpen?: () => void; onError?: ()
 })
 vi.mock('../services/sessionStatusStream', () => ({
   openSessionStatusStream: (opts: { onOpen?: () => void; onError?: () => void }) => openSessionStatusStream(opts),
+}))
+
+const runnerStatusStream = {
+  close: vi.fn(),
+  readyState: vi.fn(() => 1),
+}
+const openWorkspaceRunnerStatusStream = vi.fn(() => runnerStatusStream)
+vi.mock('../services/workspaceRunnerStatusStream', () => ({
+  openWorkspaceRunnerStatusStream: (...args: unknown[]) => openWorkspaceRunnerStatusStream(...args),
 }))
 
 const getWorkspace = vi.fn<(id: string) => Promise<WorkspaceDetail>>()
@@ -210,16 +218,6 @@ function setupPreview(target = { id: 'setup-current', version: 1 }): SetupPrevie
   }
 }
 
-function validationProblem(): AgentSetupValidationProblem {
-  return {
-    type: 'https://jorisjonkers.dev/errors/agent-setup-validation',
-    title: 'Setup validation failed',
-    status: 422,
-    detail: 'Target setup is not valid for this session.',
-    errors: [{ field: 'targetSetupId', message: 'Target setup is not selectable', rejectedValue: null }],
-  }
-}
-
 function fakeRepository(over: Partial<Repository> = {}): Repository {
   return {
     id: 'repo-primary',
@@ -306,8 +304,10 @@ describe('workspaceView terminal persistence', () => {
     Object.values(socket).forEach((m) => m.mockClear())
     attachSessionSocket.mockClear()
     Object.values(statusStream).forEach((m) => m.mockClear())
+    Object.values(runnerStatusStream).forEach((m) => m.mockClear())
     statusStreamOptions = null
     openSessionStatusStream.mockClear()
+    openWorkspaceRunnerStatusStream.mockClear()
     getWorkspace.mockReset()
     connectWorkspace.mockReset()
     connectWorkspace.mockResolvedValue({ workspaceId: 'ws-1', setupId: 'setup-current', setupVersion: 1, state: 'READY', reason: null, checkedAt: '2026-06-17T08:00:00Z' })
@@ -335,11 +335,6 @@ describe('workspaceView terminal persistence', () => {
     previewSetup.mockReset()
     previewSetup.mockImplementation(async (_workspaceId, _sessionId, target) => setupPreview(target))
     agentSetupValidationProblemFromError.mockReset()
-    agentSetupValidationProblemFromError.mockImplementation((err) => {
-      // eslint-disable-next-line ts/consistent-type-assertions -- narrow the commons ProblemDetail to the 422 subtype the helper guarantees
-      if (err instanceof ApiError && err.status === 422) return err.problem as AgentSetupValidationProblem
-      return null
-    })
     toastMock.success.mockReset()
     toastMock.errorFromCatch.mockReset()
     vi.stubGlobal(
@@ -506,6 +501,7 @@ describe('workspaceView terminal persistence', () => {
     const wrapper = await mountView()
 
     expect(openSessionStatusStream).toHaveBeenCalledOnce()
+    expect(openWorkspaceRunnerStatusStream).toHaveBeenCalledOnce()
     expect(wrapper.get('[data-testid="session-status-rail-connection"]').attributes('data-state')).toBe('connecting')
 
     statusStreamOptions?.onOpen?.()
@@ -516,6 +512,7 @@ describe('workspaceView terminal persistence', () => {
     wrapper.unmount()
 
     expect(statusStream.close).toHaveBeenCalledOnce()
+    expect(runnerStatusStream.close).toHaveBeenCalledOnce()
   })
 
   it('drives restart confirmation, progress, replay, live, and failed states through the rail', async () => {
@@ -527,9 +524,7 @@ describe('workspaceView terminal persistence', () => {
     await flush()
 
     expect(wrapper.find('[data-testid="workspace-restart-confirmation"]').exists()).toBe(true)
-    expect(wrapper.get('[data-testid="workspace-restart-confirmation-copy"]').text()).toContain(
-      'from setup-current@v1 to setup-current@v1',
-    )
+    expect(wrapper.get('[data-testid="workspace-restart-confirmation-copy"]').text()).toContain('reattach the terminal')
     expect(document.activeElement).toBe(wrapper.get('[data-testid="workspace-lifecycle-controls"]').element)
 
     await wrapper.get('[data-testid="workspace-restart-confirm"]').trigger('click')
@@ -539,8 +534,6 @@ describe('workspaceView terminal persistence', () => {
       expectedGeneration: 3,
       expectedSetupId: 'setup-current',
       expectedSetupVersion: 1,
-      targetSetupId: 'setup-current',
-      targetSetupVersion: 1,
     })
     expect(wrapper.get('[data-testid="session-status-rail-restart"]').text()).toContain('Reattaching terminal')
 
@@ -558,23 +551,18 @@ describe('workspaceView terminal persistence', () => {
     expect(wrapper.get('[data-testid="session-status-rail-restart"]').text()).toContain('Restart failed')
   })
 
-  it('selects a setup target, previews the diff, and confirms restart with target setup preconditions', async () => {
+  it('confirms restart without loading setup choices or target setup preconditions', async () => {
     getWorkspace.mockResolvedValue(detail([fakeSession({ id: 'sess-a', generation: 3 })]))
     const wrapper = await mountView()
     await flush()
 
     await wrapper.get('[data-testid="workspace-active-restart"]').trigger('click')
     await flush()
-    await wrapper.get('input[aria-label="Select Next setup"]').setValue(true)
-    await flush()
 
-    expect(previewSetup).toHaveBeenLastCalledWith('ws-1', 'sess-a', { id: 'setup-next', version: 2 })
-    expect(wrapper.get('[data-testid="setup-diff-to"]').text()).toBe('setup-next@v2')
-    expect(wrapper.get('[data-testid="session-setup-diff"]').text()).toContain('runner:next')
-
-    expect(wrapper.get('[data-testid="workspace-restart-confirmation-copy"]').text()).toContain(
-      'from setup-current@v1 to setup-next@v2',
-    )
+    expect(listSetupOptions).not.toHaveBeenCalled()
+    expect(previewSetup).not.toHaveBeenCalled()
+    expect(wrapper.find('[data-testid="session-setup-picker"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="session-setup-diff"]').exists()).toBe(false)
     await wrapper.get('[data-testid="workspace-restart-confirm"]').trigger('click')
     await flush()
 
@@ -582,29 +570,10 @@ describe('workspaceView terminal persistence', () => {
       expectedGeneration: 3,
       expectedSetupId: 'setup-current',
       expectedSetupVersion: 1,
-      targetSetupId: 'setup-next',
-      targetSetupVersion: 2,
     })
   })
 
-  it('shows setup validation failures and marks restart failed before confirmation', async () => {
-    const problem = validationProblem()
-    previewSetup.mockRejectedValue(new ApiError(problem))
-    getWorkspace.mockResolvedValue(detail([fakeSession({ id: 'sess-a', generation: 3 })]))
-    const wrapper = await mountView()
-    await flush()
-
-    await wrapper.get('[data-testid="workspace-active-restart"]').trigger('click')
-    await flush()
-
-    expect(agentSetupValidationProblemFromError).toHaveBeenCalled()
-    expect(wrapper.find('[data-testid="workspace-restart-confirmation"]').exists()).toBe(false)
-    expect(wrapper.get('[data-testid="session-status-rail-restart"]').text()).toContain('Restart failed')
-    expect(wrapper.get('[data-testid="setup-diff-issues"]').text()).toContain('Target setup is not selectable')
-  })
-
-  it('surfaces temporary setup metadata failures while keeping start controls agent-kind-only', async () => {
-    previewSetup.mockRejectedValue(new ApiError({ type: 'about:blank', title: 'Unavailable', status: 503 }))
+  it('keeps restart setup metadata out of the lifecycle controls', async () => {
     getWorkspace.mockResolvedValue(detail([fakeSession({ id: 'sess-a' })]))
     const wrapper = await mountView()
     await flush()
@@ -613,15 +582,12 @@ describe('workspaceView terminal persistence', () => {
     expect(wrapper.get('[data-testid="workspace-new-agent"]').text()).toBe('Start Claude Code')
 
     await wrapper.get('[data-testid="workspace-active-restart"]').trigger('click')
-    // The 503 path rethrows through requestRestartConfirmation into
-    // onRequestRestart's catch — one more microtask hop than the 422 path —
-    // so settle the chain fully before asserting the rendered failure.
-    await flush()
     await flush()
 
-    expect(wrapper.get('[data-testid="setup-picker-error"]').text()).toContain('temporarily unavailable')
-    expect(wrapper.find('[data-testid="workspace-restart-confirmation"]').exists()).toBe(false)
-    expect(wrapper.get('[data-testid="workspace-restart-transition"]').text()).toContain('failed')
+    expect(listSetupOptions).not.toHaveBeenCalled()
+    expect(previewSetup).not.toHaveBeenCalled()
+    expect(wrapper.find('[data-testid="session-setup-picker"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="workspace-restart-confirmation"]').exists()).toBe(true)
     expect(wrapper.get('[data-testid="workspace-new-agent"]').text()).toBe('Start Claude Code')
   })
 
@@ -642,8 +608,6 @@ describe('workspaceView terminal persistence', () => {
       expectedGeneration: 3,
       expectedSetupId: 'setup-current',
       expectedSetupVersion: 1,
-      targetSetupId: 'setup-current',
-      targetSetupVersion: 1,
     })
   })
 

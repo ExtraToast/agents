@@ -81,7 +81,22 @@ describe('sessionStatusChip', () => {
       props: { session: fakeSession({ kind: 'CLAUDE', kindLabel: 'Claude Code' }), showKind: true },
     })
 
+    const icon = wrapper.get('img')
+    expect(icon.attributes('src')).toContain('claude-code.svg')
+    expect(icon.attributes('aria-hidden')).toBe('true')
     expect(wrapper.text()).toContain('CLAUDE')
     expect(wrapper.text()).toContain('Running')
+  })
+
+  it('uses a neutral fallback for shell sessions', () => {
+    const wrapper = mount(SessionStatusChip, {
+      props: { session: fakeSession({ kind: 'SHELL', kindLabel: 'Shell' }), showKind: true },
+    })
+
+    expect(wrapper.find('img').exists()).toBe(false)
+    expect(wrapper.text()).toContain('$')
+    expect(wrapper.get('[data-testid="session-status-chip"]').attributes('aria-label')).toBe(
+      'backend: Session is running',
+    )
   })
 })

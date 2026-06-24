@@ -32,6 +32,11 @@ const shapeClass: Record<SessionStatusShape, string> = {
   diamond: 'rotate-45 rounded-[1px] bg-current',
 }
 
+const agentIcons: Partial<Record<SessionConsoleViewModel['kind'], string>> = {
+  CLAUDE: new URL('../assets/claude-code.svg', import.meta.url).href,
+  CODEX: new URL('../assets/codex.svg', import.meta.url).href,
+}
+
 const label = computed(() => {
   const parts = [props.session.label, props.session.affordance.ariaLabel]
   if (props.session.idle) parts.push('idle')
@@ -68,8 +73,23 @@ const chipClass = computed(() => [
     >
       <span class="block h-2.5 w-2.5" :class="shapeClass[session.affordance.shape]" />
     </span>
-    <span v-if="showKind" class="shrink-0 uppercase tracking-normal text-[var(--color-text-muted)]">
-      {{ session.kind }}
+    <span
+      v-if="showKind"
+      class="flex shrink-0 items-center gap-1 uppercase tracking-normal text-[var(--color-text-muted)]"
+    >
+      <img
+        v-if="agentIcons[session.kind]"
+        :src="agentIcons[session.kind]"
+        class="size-4 shrink-0"
+        alt=""
+        aria-hidden="true"
+      />
+      <span
+        v-else
+        class="flex size-4 shrink-0 items-center justify-center rounded bg-gray-500/20 font-mono text-[0.625rem]"
+        aria-hidden="true"
+      >$</span>
+      <span>{{ session.kind }}</span>
     </span>
     <span class="min-w-0 truncate" data-testid="session-status-chip-text">
       {{ session.affordance.text }}

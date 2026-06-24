@@ -122,7 +122,7 @@ describe('useWorkspaceRunnerStatusesStore', () => {
 
     expect(store.connectionState).toBe('open')
     expect(store.connectionError).toBeNull()
-    expect(open).toHaveBeenCalledWith('ws-1', { connectRunner: false })
+    expect(open).toHaveBeenCalledWith('ws-1', { connectRunner: false, loadTurns: false })
   })
 
   it('sets reconnecting state on transient onerror and recovers on reopen', async () => {
