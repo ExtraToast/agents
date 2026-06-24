@@ -31,6 +31,13 @@ export interface WorkspaceRunnerSetup {
   operationUpdatedAt?: string | null
 }
 
+export interface WorkspaceRunnerImage {
+  /** Short, operator-readable agent-runner image digest, or null when no running runner. */
+  digest: string | null
+  /** True when a newer agent-runner image is available than the one the runner is on. */
+  upgradeAvailable: boolean
+}
+
 export interface Workspace {
   id: string
   name: string
@@ -49,6 +56,7 @@ export interface Workspace {
    */
   githubLinkId: string | null
   runnerSetup?: WorkspaceRunnerSetup
+  runnerImage?: WorkspaceRunnerImage | null
   createdAt: string
   updatedAt: string
 }

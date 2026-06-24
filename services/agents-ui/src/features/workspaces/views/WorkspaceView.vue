@@ -325,6 +325,20 @@ async function onConfirmRestart(): Promise<void> {
   }
 }
 
+async function onUpdateRunner(): Promise<void> {
+  const session = activeSession.value
+  if (!session) return
+  try {
+    const restarted = await store.restartSession(session.id, session.generation)
+    statuses.syncRestSessions()
+    toast.success(restarted ? 'Updating runner — recreating on the latest image…' : 'Runner refresh requested')
+  } catch (e) {
+    toast.errorFromCatch('Could not update runner', e)
+  } finally {
+    await focusConsoleSurface()
+  }
+}
+
 async function loadSetupOptionsForSession(sessionId: string): Promise<void> {
   const seq = ++setupOptionsSeq
   setupOptionsLoading.value = true
@@ -618,6 +632,8 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
           :connection-error="statuses.connectionError"
           :restart-label="activeRestartLabel"
           :runner-setup="store.activeWorkspace.runnerSetup ?? null"
+          :runner-image="store.activeWorkspace.runnerImage ?? null"
+          @update-runner="onUpdateRunner"
         />
         <section
           ref="restartConfirmPanel"

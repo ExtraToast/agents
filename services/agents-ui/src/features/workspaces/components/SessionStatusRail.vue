@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { SessionConsoleViewModel } from '../stores/sessionConsoleViewModels'
-import type { WorkspaceRunnerSetup } from '../types'
+import type { WorkspaceRunnerImage, WorkspaceRunnerSetup } from '../types'
 import { computed, useSlots } from 'vue'
 import SessionStatusChip from './SessionStatusChip.vue'
 
@@ -19,6 +19,7 @@ interface Props {
   connectionError?: string | null
   restartLabel?: string | null
   runnerSetup?: WorkspaceRunnerSetup | null
+  runnerImage?: WorkspaceRunnerImage | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -26,7 +27,10 @@ const props = withDefaults(defineProps<Props>(), {
   connectionError: null,
   restartLabel: null,
   runnerSetup: null,
+  runnerImage: null,
 })
+
+const emit = defineEmits<{ (e: 'updateRunner'): void }>()
 
 const slots = useSlots()
 
@@ -67,6 +71,13 @@ const runnerSetupLabel = computed(() => {
   const current = `${setup.current.id}@v${setup.current.version}`
   const pending = setup.pending ? ` -> ${setup.pending.id}@v${setup.pending.version}` : ''
   return `${current}${pending} / Gen ${setup.generation} / ${runnerOperationLabel(setup.operation)}`
+})
+const runnerImageDigest = computed(() => props.runnerImage?.digest ?? null)
+const runnerUpgradeAvailable = computed(() => props.runnerImage?.upgradeAvailable === true)
+const runnerImageLabel = computed(() => {
+  const digest = runnerImageDigest.value
+  if (!digest) return 'No runner'
+  return runnerUpgradeAvailable.value ? `${digest} · update available` : `${digest} · up to date`
 })
 const connection = computed(() => connectionCopy[props.connectionState])
 const connectionLabel = computed(() => props.connectionError ?? connection.value.detail)
@@ -135,6 +146,28 @@ function formatTimestamp(value: string | null): string {
         <dd class="truncate font-mono text-[var(--color-text-primary)]" data-testid="session-status-rail-setup">
           {{ sessionSetupLabel }}
         </dd>
+      </div>
+      <div
+        class="col-span-2 flex min-h-10 items-center justify-between gap-2 rounded border px-2 py-1.5"
+        :class="runnerUpgradeAvailable
+          ? 'border-amber-500/35 bg-amber-500/10'
+          : 'border-[var(--color-surface-border)] bg-white/5'"
+      >
+        <div class="min-w-0">
+          <dt class="text-[var(--color-text-muted)]">Runner</dt>
+          <dd class="truncate font-mono text-[var(--color-text-primary)]" data-testid="session-status-rail-runner-image">
+            {{ runnerImageLabel }}
+          </dd>
+        </div>
+        <button
+          v-if="runnerUpgradeAvailable"
+          type="button"
+          class="shrink-0 rounded bg-amber-500 px-2.5 py-1 text-xs font-medium text-white hover:bg-amber-400"
+          data-testid="session-status-rail-update-runner"
+          @click="emit('updateRunner')"
+        >
+          Update runner
+        </button>
       </div>
       <div class="min-h-10 rounded border border-[var(--color-surface-border)] bg-white/5 px-2 py-1.5">
         <dt class="text-[var(--color-text-muted)]">Runner setup</dt>

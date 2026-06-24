@@ -121,4 +121,30 @@ describe('sessionStatusRail', () => {
     expect(rail.classes()).toContain('min-w-[18rem]')
     expect(wrapper.get('[data-testid="session-status-rail-restart"]').text()).toBe('Restart queued')
   })
+
+  it('shows the runner image as up to date with no update button', () => {
+    const wrapper = mount(SessionStatusRail, {
+      props: { session: fakeSession(), runnerImage: { digest: 'aabbccddeeff', upgradeAvailable: false } },
+    })
+    expect(wrapper.get('[data-testid="session-status-rail-runner-image"]').text()).toBe('aabbccddeeff · up to date')
+    expect(wrapper.find('[data-testid="session-status-rail-update-runner"]').exists()).toBe(false)
+  })
+
+  it('shows an update-available runner image with an Update runner button that emits updateRunner', async () => {
+    const wrapper = mount(SessionStatusRail, {
+      props: { session: fakeSession(), runnerImage: { digest: 'aabbccddeeff', upgradeAvailable: true } },
+    })
+    expect(wrapper.get('[data-testid="session-status-rail-runner-image"]').text()).toBe('aabbccddeeff · update available')
+    const button = wrapper.get('[data-testid="session-status-rail-update-runner"]')
+    await button.trigger('click')
+    expect(wrapper.emitted('updateRunner')).toHaveLength(1)
+  })
+
+  it('shows "No runner" and no update button when there is no runner image', () => {
+    const wrapper = mount(SessionStatusRail, {
+      props: { session: fakeSession(), runnerImage: null },
+    })
+    expect(wrapper.get('[data-testid="session-status-rail-runner-image"]').text()).toBe('No runner')
+    expect(wrapper.find('[data-testid="session-status-rail-update-runner"]').exists()).toBe(false)
+  })
 })
