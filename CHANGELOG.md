@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/ExtraToast/agents/compare/v0.11.0...v0.12.0) (2026-06-24)
+
+
+### Features
+
+* **agents:** continue a workspace onto an updated agent-runner image (spec 024) ([#95](https://github.com/ExtraToast/agents/issues/95)) ([d712805](https://github.com/ExtraToast/agents/commit/d71280599acfe2593e92c44c82d446dc0d9e71db))
+
 ## [0.11.0](https://github.com/ExtraToast/agents/compare/v0.10.0...v0.11.0) (2026-06-23)
 
 
