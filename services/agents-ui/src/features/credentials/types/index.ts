@@ -23,9 +23,9 @@ export type SubmitRedirectUrlInput = components['schemas']['SubmitRedirectUrlReq
  *  awaiting_url     — Claude: authorize URL emitted, waiting for the
  *                     operator to paste the post-approval redirect URL
  *  awaiting_device  — Codex: device code emitted, approve in the browser
- *  finalizing       — login accepted, capturing + writing to Vault
+ *  finalizing       — login accepted, capturing + storing credentials
  *  succeeded        — credentials written
- *  failed           — parse failure, CLI crash, or Vault conflict
+ *  failed           — parse failure, CLI crash, or storage conflict
  *  cancelled        — operator cancelled or the session timed out
  */
 export type CredentialPhase
@@ -56,15 +56,14 @@ export interface CredentialAction {
 }
 
 /**
- * Non-secret summary of what is currently stored in Vault for a provider — the
- * "check" that a login actually landed. No credential material is exposed.
+ * Non-secret summary of what is currently stored for a provider — the "check"
+ * that a login actually landed. No credential material is exposed.
  */
 export interface CredentialStatus {
   exists: boolean
-  version: number
+  valid: boolean | null
   updatedAt?: string | null
   updatedBy?: string | null
-  schemaVersion?: string | null
 }
 
 export interface CredentialStatusResponse {

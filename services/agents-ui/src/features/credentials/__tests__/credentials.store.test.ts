@@ -108,13 +108,14 @@ describe('credentials store', () => {
 
   it('fetchStored populates per-provider stored credential status', async () => {
     mocked.getStoredStatus.mockResolvedValue({
-      claude: { exists: true, version: 2, updatedAt: '2026-06-23T10:00:00Z', updatedBy: 'ExtraToast' },
-      codex: { exists: false, version: 0 },
+      claude: { exists: true, valid: null, updatedAt: '2026-06-23T10:00:00Z', updatedBy: 'ExtraToast' },
+      codex: { exists: false, valid: null },
     })
     const store = useCredentialsStore()
 
     await store.fetchStored()
     expect(store.stored.claude?.exists).toBe(true)
+    expect(store.stored.claude?.valid).toBeNull()
     expect(store.stored.claude?.updatedBy).toBe('ExtraToast')
     expect(store.stored.codex?.exists).toBe(false)
   })
@@ -123,15 +124,15 @@ describe('credentials store', () => {
     mocked.startSession.mockResolvedValue(session())
     mocked.getSession.mockResolvedValue(session({ phase: 'succeeded', needsRedirectUrl: false }))
     mocked.getStoredStatus.mockResolvedValue({
-      claude: { exists: true, version: 3 },
-      codex: { exists: false, version: 0 },
+      claude: { exists: true, valid: true },
+      codex: { exists: false, valid: null },
     })
     const store = useCredentialsStore()
 
     await store.start('claude')
     await vi.advanceTimersByTimeAsync(2000)
     expect(mocked.getStoredStatus).toHaveBeenCalled()
-    expect(store.stored.claude?.version).toBe(3)
+    expect(store.stored.claude?.valid).toBe(true)
   })
 
   it('reset clears provider state', async () => {
