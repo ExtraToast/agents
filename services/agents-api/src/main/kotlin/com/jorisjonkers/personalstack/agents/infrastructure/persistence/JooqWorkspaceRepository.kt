@@ -48,6 +48,7 @@ class JooqWorkspaceRepository(
             .set(PVC_NAME, workspace.pvcName)
             .set(GATEWAY_ENDPOINT, workspace.gatewayEndpoint)
             .set(STATUS, workspace.status.name)
+            .set(OWNER_USER_ID, workspace.ownerUserId)
             .set(GITHUB_LINK_ID, workspace.githubLinkId?.value)
             .set(REPOSITORY_ID, workspace.repositoryId?.value)
             .set(PROJECT_ID, workspace.projectId?.value)
@@ -79,6 +80,7 @@ class JooqWorkspaceRepository(
             .set(PVC_NAME, workspace.pvcName)
             .set(GATEWAY_ENDPOINT, workspace.gatewayEndpoint)
             .set(STATUS, workspace.status.name)
+            .set(OWNER_USER_ID, DSL.coalesce(DSL.excluded(OWNER_USER_ID), OWNER_USER_ID))
             .set(GITHUB_LINK_ID, workspace.githubLinkId?.value)
             .set(REPOSITORY_ID, workspace.repositoryId?.value)
             .set(PROJECT_ID, workspace.projectId?.value)
@@ -258,6 +260,7 @@ class JooqWorkspaceRepository(
             pvcName = this[PVC_NAME],
             gatewayEndpoint = this[GATEWAY_ENDPOINT],
             status = WorkspaceStatus.valueOf(this[STATUS]),
+            ownerUserId = this[OWNER_USER_ID],
             githubLinkId = this[GITHUB_LINK_ID]?.let { GithubLinkId(it) },
             repositoryId = this[REPOSITORY_ID]?.let { RepositoryId(it) },
             projectId = this[PROJECT_ID]?.let { ProjectId(it) },
@@ -296,6 +299,8 @@ class JooqWorkspaceRepository(
         @JvmStatic val GATEWAY_ENDPOINT = DSL.field("gateway_endpoint", String::class.java)
 
         @JvmStatic val STATUS = DSL.field("status", String::class.java)
+
+        @JvmStatic val OWNER_USER_ID = DSL.field("owner_user_id", String::class.java)
 
         @JvmStatic val GITHUB_LINK_ID = DSL.field("github_link_id", UUID::class.java)
 
