@@ -1,6 +1,6 @@
 import type {
-  AttachDeployKeyInput,
   CreateRepositoryInput,
+  InstallationStatus,
   Repository,
   RepositoryDetail,
   RepositoryVerifyResult,
@@ -8,9 +8,9 @@ import type {
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import {
-  attachDeployKey as attachKeyApi,
   createRepository as createApi,
   deleteRepository as deleteApi,
+  fetchInstallationStatus as installationStatusApi,
   getRepository as getApi,
   listRepositories as listApi,
   verifyRepositoryAccess as verifyApi,
@@ -19,6 +19,7 @@ import {
 export const useRepositoriesStore = defineStore('repositories', () => {
   const items = ref<Repository[]>([])
   const detailById = ref<Record<string, RepositoryDetail>>({})
+  const installationStatusById = ref<Record<string, InstallationStatus>>({})
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
@@ -52,11 +53,12 @@ export const useRepositoriesStore = defineStore('repositories', () => {
     return created
   }
 
-  async function attachKey(id: string, input: AttachDeployKeyInput): Promise<void> {
-    await attachKeyApi(id, input)
-    // The key write is async (returns 202); poll once via the detail
-    // endpoint so the fingerprint shows in the UI as soon as Vault has it.
-    await loadDetail(id)
+  // Live GitHub App install-status. `recheck` simply re-calls the same
+  // endpoint, which queries GitHub fresh — no token is ever minted.
+  async function loadInstallationStatus(id: string): Promise<InstallationStatus> {
+    const status = await installationStatusApi(id)
+    installationStatusById.value[id] = status
+    return status
   }
 
   async function verify(id: string): Promise<RepositoryVerifyResult> {
@@ -70,18 +72,20 @@ export const useRepositoriesStore = defineStore('repositories', () => {
     await deleteApi(id)
     items.value = items.value.filter((r) => r.id !== id)
     delete detailById.value[id]
+    delete installationStatusById.value[id]
   }
 
   return {
     items,
     detailById,
+    installationStatusById,
     isLoading,
     error,
     byId,
     loadAll,
     loadDetail,
     create,
-    attachKey,
+    loadInstallationStatus,
     verify,
     destroy,
   }

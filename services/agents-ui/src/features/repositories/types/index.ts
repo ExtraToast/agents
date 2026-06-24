@@ -1,6 +1,6 @@
 // Types for the repositories feature.
 //
-// Wire shapes (Repository, CreateRepositoryInput, AttachDeployKeyInput)
+// Wire shapes (Repository, CreateRepositoryInput, InstallationStatus)
 // flow through the OpenAPI contract pinned at
 // `services/agents-api/openapi.json` and the regenerated
 // `src/api/generated.ts`. Drift against the agents-api DTOs is
@@ -16,17 +16,17 @@ import type { components } from '@/api/generated'
 
 export type Repository = components['schemas']['RepositoryResponse']
 export type CreateRepositoryInput = components['schemas']['CreateRepositoryRequest']
-export type AttachDeployKeyInput = components['schemas']['AttachRepositoryDeployKeyRequest']
 
-// Deploy-key access verification result. Layer 2 (agents-api) adds
-// these fields to `GET /repositories/{id}` and a `POST
-// /repositories/{id}/verify`. Until that contract lands on main and the
-// OpenAPI types regenerate, this stays hand-rolled.
-// TODO: switch to `components['schemas']['RepositoryVerifyResponse']`
-// once Layer 2's verify endpoint is in `src/api/generated.ts`.
+// Live GitHub App installation status for a repository, returned by
+// `GET /repositories/{id}/installation-status`. `state` is one of
+// INSTALLED / NOT_INSTALLED / UNKNOWN.
+export type InstallationStatus = components['schemas']['RepositoryInstallationStatusResponse']
+
+// Branch-protection verification result for a repository's default
+// branch, surfaced via `GET /repositories/{id}` and refreshed by
+// `POST /repositories/{id}/verify`. Deploy-key read/write access is no
+// longer probed — GitHub App install-status is the access signal.
 export interface RepositoryVerifyResult {
-  read: boolean
-  write: boolean
   // null = no GitHub token configured or the protection check was
   // inconclusive (never a hard failure).
   defaultBranchProtected: boolean | null
