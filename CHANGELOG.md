@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.2](https://github.com/ExtraToast/agents/compare/v0.13.1...v0.13.2) (2026-06-24)
+
+
+### Bug Fixes
+
+* **agents:** resume the session on attach when a reprovisioned runner is still booting ([#101](https://github.com/ExtraToast/agents/issues/101)) ([aa34939](https://github.com/ExtraToast/agents/commit/aa349394f8e85bf6e96d6ab6bbdf7ed6a4b09f4d))
+
 ## [0.13.1](https://github.com/ExtraToast/agents/compare/v0.13.0...v0.13.1) (2026-06-24)
 
 
