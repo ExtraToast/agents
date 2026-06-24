@@ -45,7 +45,7 @@ describe('sessionStatusChip', () => {
     expect(wrapper.get('[data-testid="session-status-chip"]').attributes('data-shape')).toBe('dot')
     expect(wrapper.get('[data-testid="session-status-chip"]').attributes('data-icon')).toBe('play')
     expect(wrapper.get('[data-testid="session-status-chip-text"]').text()).toBe('Running')
-    expect(wrapper.get('[data-testid="session-status-chip-icon"]').text()).toBe('>')
+    expect(wrapper.find('[data-testid="session-status-chip-icon"]').exists()).toBe(false)
   })
 
   it('shows idle as its own non-color state with stable compact dimensions', () => {

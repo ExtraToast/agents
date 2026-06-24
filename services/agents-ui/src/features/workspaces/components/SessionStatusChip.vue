@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type {
   SessionConsoleViewModel,
-  SessionStatusAffordance,
   SessionStatusShape,
   SessionStatusTone,
 } from '../stores/sessionConsoleViewModels'
@@ -31,14 +30,6 @@ const shapeClass: Record<SessionStatusShape, string> = {
   ring: 'rounded-full border-2 border-current bg-transparent',
   square: 'rounded-[2px] bg-current',
   diamond: 'rotate-45 rounded-[1px] bg-current',
-}
-
-const iconGlyph: Record<SessionStatusAffordance['icon'], string> = {
-  'loader': '...',
-  'pause': 'II',
-  'play': '>',
-  'square': '[]',
-  'triangle-alert': '!',
 }
 
 const label = computed(() => {
@@ -76,13 +67,6 @@ const chipClass = computed(() => [
       data-testid="session-status-chip-shape"
     >
       <span class="block h-2.5 w-2.5" :class="shapeClass[session.affordance.shape]" />
-    </span>
-    <span
-      class="flex h-4 w-5 shrink-0 items-center justify-center font-mono text-[0.625rem] font-bold"
-      aria-hidden="true"
-      data-testid="session-status-chip-icon"
-    >
-      {{ iconGlyph[session.affordance.icon] ?? '?' }}
     </span>
     <span v-if="showKind" class="shrink-0 uppercase tracking-normal text-[var(--color-text-muted)]">
       {{ session.kind }}
