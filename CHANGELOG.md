@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/ExtraToast/agents/compare/v0.13.2...v0.14.0) (2026-06-24)
+
+
+### Features
+
+* **agents:** GitHub App-only repository access (spec 025) ([#103](https://github.com/ExtraToast/agents/issues/103)) ([7e3a0ac](https://github.com/ExtraToast/agents/commit/7e3a0ac901fb13426022d99d149d38e5a69a1625))
+
 ## [0.13.2](https://github.com/ExtraToast/agents/compare/v0.13.1...v0.13.2) (2026-06-24)
 
 
