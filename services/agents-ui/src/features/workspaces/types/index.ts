@@ -32,9 +32,9 @@ export interface WorkspaceRunnerSetup {
 }
 
 export interface WorkspaceRunnerImage {
-  /** Short, operator-readable agent-runner image digest, or null when no running runner. */
-  digest: string | null
-  /** True when a newer agent-runner image is available than the one the runner is on. */
+  /** Operator-readable agent-runner release version (e.g. "0.12.0"), or null when no running runner. */
+  version: string | null
+  /** True when a newer agent-runner release is available than the one the runner is on. */
   upgradeAvailable: boolean
 }
 

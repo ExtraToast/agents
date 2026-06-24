@@ -631,7 +631,6 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
           :connection-state="statuses.connectionState"
           :connection-error="statuses.connectionError"
           :restart-label="activeRestartLabel"
-          :runner-setup="store.activeWorkspace.runnerSetup ?? null"
           :runner-image="store.activeWorkspace.runnerImage ?? null"
           @update-runner="onUpdateRunner"
         />

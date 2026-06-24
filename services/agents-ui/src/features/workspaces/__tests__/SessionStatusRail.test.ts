@@ -55,7 +55,6 @@ describe('sessionStatusRail', () => {
     expect(wrapper.get('[data-testid="session-status-chip-text"]').text()).toBe('Running')
     expect(wrapper.get('[data-testid="session-status-rail-updated"]').text()).toBe('2026-06-12 10:05 UTC')
     expect(wrapper.get('[data-testid="session-status-rail-epoch"]').text()).toBe('Epoch 2 / Gen 4')
-    expect(wrapper.get('[data-testid="session-status-rail-setup"]').text()).toBe('setup-current@v1')
     expect(wrapper.get('[data-testid="session-status-rail-connection"]').attributes('data-state')).toBe('open')
     expect(wrapper.get('[data-testid="session-status-rail-connection"]').text()).toContain('Connected')
   })
@@ -72,31 +71,6 @@ describe('sessionStatusRail', () => {
     expect(wrapper.get('[data-testid="session-status-rail-connection"]').text()).toContain('Stream idle')
     expect(wrapper.get('[data-testid="session-status-rail-updated"]').text()).toBe('No status update')
     expect(wrapper.get('[data-testid="session-status-rail-epoch"]').text()).toBe('Epoch - / Gen -')
-  })
-
-  it('renders workspace runner setup metadata and pending setup transitions', () => {
-    const wrapper = mount(SessionStatusRail, {
-      props: {
-        session: fakeSession({
-          pendingSetup: { id: 'setup-next', version: 2 },
-          setupLabel: 'setup-current@v1 -> setup-next@v2',
-        }),
-        runnerSetup: {
-          current: { id: 'setup-current', version: 1 },
-          pending: { id: 'setup-next', version: 2 },
-          generation: 8,
-          operation: 'FAILED',
-          operationStartedAt: '2026-06-12T10:00:00Z',
-          operationUpdatedAt: '2026-06-12T10:03:00Z',
-        },
-      },
-    })
-
-    expect(wrapper.get('[data-testid="session-status-rail-setup"]').text()).toBe('setup-current@v1 -> setup-next@v2')
-    expect(wrapper.get('[data-testid="session-status-rail-runner-setup"]').text()).toContain('setup-current@v1')
-    expect(wrapper.get('[data-testid="session-status-rail-runner-setup"]').text()).toContain('setup-next@v2')
-    expect(wrapper.get('[data-testid="session-status-rail-runner-setup"]').text()).toContain('Gen 8')
-    expect(wrapper.get('[data-testid="session-status-rail-runner-setup"]').text()).toContain('Setup failed')
   })
 
   it('renders restart progress through the named slot', () => {
@@ -124,17 +98,17 @@ describe('sessionStatusRail', () => {
 
   it('shows the runner image as up to date with no update button', () => {
     const wrapper = mount(SessionStatusRail, {
-      props: { session: fakeSession(), runnerImage: { digest: 'aabbccddeeff', upgradeAvailable: false } },
+      props: { session: fakeSession(), runnerImage: { version: '0.12.0', upgradeAvailable: false } },
     })
-    expect(wrapper.get('[data-testid="session-status-rail-runner-image"]').text()).toBe('aabbccddeeff · up to date')
+    expect(wrapper.get('[data-testid="session-status-rail-runner-image"]').text()).toBe('0.12.0 · up to date')
     expect(wrapper.find('[data-testid="session-status-rail-update-runner"]').exists()).toBe(false)
   })
 
   it('shows an update-available runner image with an Update runner button that emits updateRunner', async () => {
     const wrapper = mount(SessionStatusRail, {
-      props: { session: fakeSession(), runnerImage: { digest: 'aabbccddeeff', upgradeAvailable: true } },
+      props: { session: fakeSession(), runnerImage: { version: '0.12.0', upgradeAvailable: true } },
     })
-    expect(wrapper.get('[data-testid="session-status-rail-runner-image"]').text()).toBe('aabbccddeeff · update available')
+    expect(wrapper.get('[data-testid="session-status-rail-runner-image"]').text()).toBe('0.12.0 · update available')
     const button = wrapper.get('[data-testid="session-status-rail-update-runner"]')
     await button.trigger('click')
     expect(wrapper.emitted('updateRunner')).toHaveLength(1)

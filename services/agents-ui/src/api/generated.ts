@@ -1186,7 +1186,7 @@ export interface components {
             verification?: components["schemas"]["AccessVerificationResponse"] | null;
         };
         WorkspaceRunnerImageResponse: {
-            digest?: string | null;
+            version?: string | null;
             upgradeAvailable: boolean;
         };
         WorkspaceWithRepositoriesResponse: {
