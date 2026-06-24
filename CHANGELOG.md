@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.1](https://github.com/ExtraToast/agents/compare/v0.13.0...v0.13.1) (2026-06-24)
+
+
+### Bug Fixes
+
+* **agents:** wait for the old runner pod to terminate before reprovision ([#99](https://github.com/ExtraToast/agents/issues/99)) ([a6ca5b3](https://github.com/ExtraToast/agents/commit/a6ca5b35fff9a310d4a87c5604deba80588d7047))
+
 ## [0.13.0](https://github.com/ExtraToast/agents/compare/v0.12.0...v0.13.0) (2026-06-24)
 
 
