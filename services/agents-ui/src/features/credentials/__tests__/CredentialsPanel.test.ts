@@ -22,8 +22,9 @@ describe('credentials panel', () => {
   it('renders one card per provider with a connection pill from stored status', async () => {
     const wrapper = mount(CredentialsPanel)
     const store = useCredentialsStore()
-    store.stored.claude = { exists: true, version: 2, updatedAt: '2026-06-23T10:00:00Z', updatedBy: 'ExtraToast' }
-    store.stored.codex = { exists: false, version: 0 }
+    await nextTick()
+    store.stored.claude = { exists: true, valid: true, updatedAt: '2026-06-23T10:00:00Z', updatedBy: 'ExtraToast' }
+    store.stored.codex = { exists: false, valid: null }
     await nextTick()
 
     expect(wrapper.find('[data-testid="credentials-card-claude"]').exists()).toBe(true)
@@ -31,6 +32,20 @@ describe('credentials panel', () => {
     expect(wrapper.find('[data-testid="credentials-pill-claude"]').text()).toContain('Connected')
     expect(wrapper.find('[data-testid="credentials-pill-codex"]').text()).toContain('Not connected')
     expect(wrapper.find('[data-testid="credentials-check-claude"]').text()).toContain('ExtraToast')
+  })
+
+  it('distinguishes unvalidated credentials from credentials that need re-login', async () => {
+    const wrapper = mount(CredentialsPanel)
+    const store = useCredentialsStore()
+    await nextTick()
+    store.stored.claude = { exists: true, valid: null }
+    store.stored.codex = { exists: true, valid: false, updatedAt: '2026-06-23T10:00:00Z' }
+    await nextTick()
+
+    expect(wrapper.find('[data-testid="credentials-pill-claude"]').text()).toContain('Stored')
+    expect(wrapper.find('[data-testid="credentials-check-claude"]').text()).toContain('Stored, not verified')
+    expect(wrapper.find('[data-testid="credentials-pill-codex"]').text()).toContain('Re-login needed')
+    expect(wrapper.find('[data-testid="credentials-check-codex"]').text()).toContain('Sign in again')
   })
 
   it('exposes the authorize URL only as a sign-in link button, never as raw text', async () => {
@@ -57,7 +72,7 @@ describe('credentials panel', () => {
     await nextTick()
 
     expect(wrapper.find('[data-testid="credentials-success-claude"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="credentials-success-claude"]').text()).toContain('saved to Vault')
+    expect(wrapper.find('[data-testid="credentials-success-claude"]').text()).toContain('credentials saved')
   })
 
   it('shows the Codex device code and an open-device-page link', async () => {

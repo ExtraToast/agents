@@ -43,11 +43,32 @@ const code = ref<Record<CredentialProvider, string>>({ claude: '', codex: '' })
 
 const phaseLabel: Record<string, string> = {
   starting: 'Starting the CLI…',
-  finalizing: 'Saving credentials to Vault…',
+  finalizing: 'Saving credentials…',
 }
 
-function connected(p: CredentialProvider): boolean {
-  return store.stored[p]?.exists === true
+function statusLabel(p: CredentialProvider): string {
+  const s: CredentialStatus | null = store.stored[p]
+  if (!s) return 'Checking'
+  if (!s.exists) return 'Not connected'
+  if (s.valid === true) return 'Connected'
+  if (s.valid === false) return 'Re-login needed'
+  return 'Stored'
+}
+
+function statusClass(p: CredentialProvider): string {
+  const s: CredentialStatus | null = store.stored[p]
+  if (s?.exists === true && s.valid === true) return 'bg-emerald-500/15 text-emerald-300'
+  if (s?.exists === true && s.valid === false) return 'bg-red-500/15 text-red-300'
+  if (s?.exists === true) return 'bg-amber-500/15 text-amber-300'
+  return 'bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]'
+}
+
+function statusDotClass(p: CredentialProvider): string {
+  const s: CredentialStatus | null = store.stored[p]
+  if (s?.exists === true && s.valid === true) return 'bg-emerald-400'
+  if (s?.exists === true && s.valid === false) return 'bg-red-400'
+  if (s?.exists === true) return 'bg-amber-400'
+  return 'bg-[var(--color-text-muted)]'
 }
 
 function formatWhen(iso?: string | null): string {
@@ -70,7 +91,14 @@ function checkLine(p: CredentialProvider): string {
   if (!s.exists) return 'No credentials stored yet'
   const when = formatWhen(s.updatedAt)
   const who = s.updatedBy ? ` · ${s.updatedBy}` : ''
-  return when ? `Updated ${when}${who}` : `Stored${who}`
+  const updated = when ? ` · Updated ${when}${who}` : who
+  if (s.valid === true) return `Usable${updated}`
+  if (s.valid === false) return `Sign in again${updated}`
+  return `Stored, not verified${updated}`
+}
+
+function actionLabel(p: ProviderMeta): string {
+  return store.stored[p.id]?.exists === true ? 'Sign in again' : p.action
 }
 
 async function copy(text: string): Promise<void> {
@@ -106,8 +134,8 @@ onUnmounted(() => store.dispose())
     <header class="mb-5 flex items-baseline justify-between gap-3">
       <p class="max-w-2xl text-sm text-[var(--color-text-muted)]">
         Re-authenticate the CLIs the agent runners share. Sign-in runs server-side and the renewed
-        credentials are written to Vault, so one sign-in refreshes every runner. Claude and Codex are
-        independent — start either, or both at once.
+        credentials are stored for every runner. Claude and Codex are independent — start either, or
+        both at once.
       </p>
       <button
         type="button"
@@ -138,13 +166,11 @@ onUnmounted(() => store.dispose())
             </div>
             <span
               class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
-              :class="connected(p.id)
-                ? 'bg-emerald-500/15 text-emerald-300'
-                : 'bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]'"
+              :class="statusClass(p.id)"
               :data-testid="`credentials-pill-${p.id}`"
             >
-              <span class="size-1.5 rounded-full" :class="connected(p.id) ? 'bg-emerald-400' : 'bg-[var(--color-text-muted)]'" />
-              {{ connected(p.id) ? 'Connected' : 'Not connected' }}
+              <span class="size-1.5 rounded-full" :class="statusDotClass(p.id)" />
+              {{ statusLabel(p.id) }}
             </span>
           </div>
 
@@ -258,7 +284,7 @@ onUnmounted(() => store.dispose())
               class="flex items-center gap-2 rounded-md bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300"
               :data-testid="`credentials-success-${p.id}`"
             >
-              <span aria-hidden="true">✓</span> Signed in — credentials saved to Vault.
+              <span aria-hidden="true">✓</span> Signed in — credentials saved.
             </div>
 
             <p
@@ -277,7 +303,7 @@ onUnmounted(() => store.dispose())
               :data-testid="`credentials-start-${p.id}`"
               @click="start(p.id)"
             >
-              {{ store.states[p.id].session ? `Sign in again` : p.action }}
+              {{ store.states[p.id].session ? `Sign in again` : actionLabel(p) }}
             </button>
           </template>
         </div>
