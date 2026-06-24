@@ -7,12 +7,8 @@ import org.junit.jupiter.api.Test
 class RunnerImageDigestsTest {
     @Test
     fun `parse extracts the digest after the @ separator`() {
-        assertEquals(
-            "sha256:5ef25c126d10f76c3f861c54d72ce377add3d57f2bf23a096868d07dcec20372",
-            RunnerImageDigests.parse(
-                "ghcr.io/extratoast/agents/agent-runner@sha256:5ef25c126d10f76c3f861c54d72ce377add3d57f2bf23a096868d07dcec20372",
-            ),
-        )
+        val digest = "sha256:5ef25c126d10f76c3f861c54d72ce377add3d57f2bf23a096868d07dcec20372"
+        assertEquals(digest, RunnerImageDigests.parse("ghcr.io/extratoast/agents/agent-runner@$digest"))
     }
 
     @Test
