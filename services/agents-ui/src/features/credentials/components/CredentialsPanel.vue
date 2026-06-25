@@ -2,19 +2,19 @@
 import type { CredentialProvider, CredentialStatus } from '../types'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { Card, useToast } from '@/lib/vueWebCommons'
+import claudeCodeIcon from '../../workspaces/assets/claude-code.svg'
+import codexIcon from '../../workspaces/assets/codex.svg'
 import { useCredentialsStore } from '../stores/credentials'
 import { isTerminalPhase } from '../types'
 
 interface ProviderMeta {
   id: CredentialProvider
   label: string
+  icon: string
   /** What the CLI is, in the operator's words. */
   blurb: string
   /** Primary-action verb shown on the idle button. */
   action: string
-  /** Per-provider accent so the two cards are not interchangeable. */
-  badge: string
-  accent: string
 }
 
 const store = useCredentialsStore()
@@ -24,18 +24,16 @@ const providers: ProviderMeta[] = [
   {
     id: 'claude',
     label: 'Claude Code',
+    icon: claudeCodeIcon,
     blurb: 'The Claude Code CLI the agent runners share.',
     action: 'Sign in to Claude Code',
-    badge: 'bg-amber-500/15 text-amber-300 ring-amber-500/30',
-    accent: 'bg-amber-500 hover:bg-amber-400',
   },
   {
     id: 'codex',
     label: 'Codex',
+    icon: codexIcon,
     blurb: 'The OpenAI Codex CLI the agent runners share.',
     action: 'Connect Codex',
-    badge: 'bg-sky-500/15 text-sky-300 ring-sky-500/30',
-    accent: 'bg-sky-500 hover:bg-sky-400',
   },
 ]
 
@@ -101,6 +99,11 @@ function actionLabel(p: ProviderMeta): string {
   return store.stored[p.id]?.exists === true ? 'Sign in again' : p.action
 }
 
+function redirectSubmitted(p: CredentialProvider): boolean {
+  const state = store.states[p]
+  return state.session?.id !== undefined && state.submittedRedirectSessionId === state.session.id
+}
+
 async function copy(text: string): Promise<void> {
   try {
     await navigator.clipboard.writeText(text)
@@ -139,7 +142,7 @@ onUnmounted(() => store.dispose())
       </p>
       <button
         type="button"
-        class="shrink-0 rounded-md px-2.5 py-1 text-xs font-medium text-[var(--color-text-muted)] ring-1 ring-[var(--color-surface-border)] hover:text-[var(--color-text)] disabled:opacity-50"
+        class="shrink-0 rounded-md px-2.5 py-1 text-xs font-medium text-[var(--color-text-muted)] ring-1 ring-[var(--color-surface-border)] hover:bg-white/5 hover:text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] disabled:opacity-50"
         :disabled="anyBusy"
         data-testid="credentials-refresh"
         @click="store.fetchStored()"
@@ -149,16 +152,24 @@ onUnmounted(() => store.dispose())
     </header>
 
     <div class="grid gap-5 lg:grid-cols-2">
-      <Card v-for="p in providers" :key="p.id" :data-testid="`credentials-card-${p.id}`">
+      <Card
+        v-for="p in providers"
+        :key="p.id"
+        class="rounded-md border border-[var(--color-surface-border)] bg-[var(--color-surface)] shadow-sm"
+        :data-testid="`credentials-card-${p.id}`"
+        :aria-label="`${p.label} credentials`"
+      >
         <div class="flex flex-col gap-4 p-5">
           <!-- Header: identity + the at-a-glance connection check -->
           <div class="flex items-start justify-between gap-3">
             <div class="flex items-center gap-3">
-              <span
-                class="grid size-9 place-items-center rounded-lg text-sm font-semibold uppercase ring-1"
-                :class="p.badge"
-                aria-hidden="true"
-              >{{ p.label.slice(0, 1) }}</span>
+              <img
+                :src="p.icon"
+                class="size-10 shrink-0 rounded-md border border-[var(--color-surface-border)] bg-white/5 p-2"
+                :alt="`${p.label} icon`"
+                :aria-label="`${p.label} product icon`"
+                :data-testid="`credentials-icon-${p.id}`"
+              >
               <div>
                 <h3 class="text-base font-semibold leading-tight">{{ p.label }}</h3>
                 <p class="text-xs text-[var(--color-text-muted)]">{{ p.blurb }}</p>
@@ -203,8 +214,7 @@ onUnmounted(() => store.dispose())
                     :href="store.states[p.id].session!.authorizeUrl!"
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="inline-flex w-fit items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-white"
-                    :class="p.accent"
+                    class="inline-flex w-fit items-center justify-center gap-1.5 rounded-md bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-[var(--color-accent-light)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)]"
                     :data-testid="`credentials-open-${p.id}`"
                   >
                     Open {{ p.label }} sign-in
@@ -212,27 +222,37 @@ onUnmounted(() => store.dispose())
                   </a>
                 </li>
                 <li class="flex flex-col gap-2">
-                  <label :for="`code-${p.id}`"><span class="font-medium">2.</span> Paste the authorization code shown after you approve.</label>
-                  <div class="flex items-center gap-2">
-                    <input
-                      :id="`code-${p.id}`"
-                      v-model="code[p.id]"
-                      type="text"
-                      placeholder="Authorization code"
-                      class="flex-1 rounded-md border border-[var(--color-surface-border)] bg-transparent px-2.5 py-1.5 text-sm focus:border-[var(--color-accent)] focus:outline-none"
-                      :data-testid="`credentials-code-input-${p.id}`"
-                      @keyup.enter="submit(p.id)"
-                    >
-                    <button
-                      type="button"
-                      class="rounded-md bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--color-accent-light)] disabled:opacity-50"
-                      :disabled="store.states[p.id].busy || code[p.id].trim().length === 0"
-                      :data-testid="`credentials-submit-${p.id}`"
-                      @click="submit(p.id)"
-                    >
-                      Submit
-                    </button>
+                  <div
+                    v-if="redirectSubmitted(p.id)"
+                    class="flex items-center gap-2 rounded-md border border-[var(--color-surface-border)] bg-white/5 px-3 py-2 text-sm text-[var(--color-text-muted)]"
+                    :data-testid="`credentials-submitted-${p.id}`"
+                  >
+                    <span class="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    Authorization submitted. Waiting for the session to finish.
                   </div>
+                  <template v-else>
+                    <label :for="`code-${p.id}`"><span class="font-medium">2.</span> Paste the authorization code shown after you approve.</label>
+                    <div class="flex items-center gap-2">
+                      <input
+                        :id="`code-${p.id}`"
+                        v-model="code[p.id]"
+                        type="text"
+                        placeholder="Authorization code"
+                        class="flex-1 rounded-md border border-[var(--color-surface-border)] bg-transparent px-2.5 py-1.5 text-sm focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-light)]"
+                        :data-testid="`credentials-code-input-${p.id}`"
+                        @keyup.enter="submit(p.id)"
+                      >
+                      <button
+                        type="button"
+                        class="inline-flex items-center justify-center rounded-md bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-[var(--color-accent-light)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)] disabled:cursor-not-allowed disabled:opacity-50"
+                        :disabled="store.states[p.id].busy || code[p.id].trim().length === 0"
+                        :data-testid="`credentials-submit-${p.id}`"
+                        @click="submit(p.id)"
+                      >
+                        Submit
+                      </button>
+                    </div>
+                  </template>
                 </li>
               </ol>
             </template>
@@ -245,7 +265,7 @@ onUnmounted(() => store.dispose())
                   <button
                     v-if="store.states[p.id].session!.deviceCode"
                     type="button"
-                    class="rounded-md bg-[var(--color-surface-muted)] px-3 py-1.5 font-mono text-base tracking-widest"
+                    class="rounded-md border border-[var(--color-surface-border)] bg-white/5 px-3 py-1.5 font-mono text-base tracking-widest hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)]"
                     :data-testid="`credentials-device-code-${p.id}`"
                     @click="copy(store.states[p.id].session!.deviceCode!)"
                   >
@@ -256,8 +276,7 @@ onUnmounted(() => store.dispose())
                     :href="store.states[p.id].session!.verificationUrl!"
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-white"
-                    :class="p.accent"
+                    class="inline-flex items-center justify-center gap-1.5 rounded-md bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-[var(--color-accent-light)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)]"
                     :data-testid="`credentials-open-${p.id}`"
                   >
                     Open device page
@@ -269,7 +288,7 @@ onUnmounted(() => store.dispose())
 
             <button
               type="button"
-              class="w-fit text-xs text-[var(--color-text-muted)] underline-offset-2 hover:underline"
+              class="w-fit rounded px-1 py-0.5 text-xs text-[var(--color-text-muted)] underline-offset-2 hover:text-[var(--color-text)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)]"
               :data-testid="`credentials-cancel-${p.id}`"
               @click="store.cancel(p.id)"
             >
@@ -297,8 +316,7 @@ onUnmounted(() => store.dispose())
 
             <button
               type="button"
-              class="w-fit rounded-md px-3.5 py-2 text-sm font-medium text-white disabled:opacity-50"
-              :class="p.accent"
+              class="inline-flex w-fit items-center justify-center rounded-md bg-[var(--color-accent)] px-3.5 py-2 text-sm font-medium text-white shadow-sm hover:bg-[var(--color-accent-light)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)] disabled:cursor-not-allowed disabled:opacity-50"
               :disabled="store.states[p.id].busy"
               :data-testid="`credentials-start-${p.id}`"
               @click="start(p.id)"

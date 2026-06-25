@@ -86,11 +86,51 @@ describe('credentials store', () => {
     mocked.submitRedirectUrl.mockResolvedValue({ ok: false, error: 'not an absolute http URL' })
     await store.submitRedirect('claude', 'nope')
     expect(store.states.claude.error).toBe('not an absolute http URL')
+    expect(store.states.claude.submittedRedirectSessionId).toBeNull()
 
     mocked.submitRedirectUrl.mockResolvedValue({ ok: true })
     mocked.getSession.mockResolvedValue(session({ phase: 'finalizing', needsRedirectUrl: false }))
     await store.submitRedirect('claude', 'https://claude.ai/oauth/callback?code=2')
     expect(mocked.submitRedirectUrl).toHaveBeenLastCalledWith('s1', 'https://claude.ai/oauth/callback?code=2')
+    expect(store.states.claude.session?.phase).toBe('finalizing')
+  })
+
+  it('submits a redirect URL once and then drives the flow by polling', async () => {
+    mocked.startSession.mockResolvedValue(session())
+    mocked.submitRedirectUrl.mockResolvedValue({ ok: true })
+    mocked.getSession
+      .mockResolvedValueOnce(session({ phase: 'finalizing', needsRedirectUrl: false }))
+      .mockResolvedValueOnce(session({ phase: 'succeeded', needsRedirectUrl: false }))
+    mocked.getStoredStatus.mockResolvedValue({
+      claude: { exists: true, valid: true },
+      codex: { exists: false, valid: null },
+    })
+    const store = useCredentialsStore()
+
+    await store.start('claude')
+    await store.submitRedirect('claude', 'https://claude.ai/oauth/callback?code=2')
+    await store.submitRedirect('claude', 'https://claude.ai/oauth/callback?code=2')
+
+    expect(mocked.submitRedirectUrl).toHaveBeenCalledTimes(1)
+    expect(mocked.getSession).toHaveBeenCalledTimes(2)
+    expect(store.states.claude.session?.phase).toBe('succeeded')
+    expect(store.stored.claude?.valid).toBe(true)
+  })
+
+  it('treats already-submitted redirect errors as benign after the submit attempt', async () => {
+    const alreadySubmitted = Object.assign(new Error('authorization code already submitted'), { status: 400 })
+    mocked.startSession.mockResolvedValue(session())
+    mocked.submitRedirectUrl.mockRejectedValue(alreadySubmitted)
+    mocked.getSession.mockResolvedValue(session({ phase: 'finalizing', needsRedirectUrl: false }))
+    const store = useCredentialsStore()
+
+    await store.start('claude')
+    await store.submitRedirect('claude', 'https://claude.ai/oauth/callback?code=2')
+    await store.submitRedirect('claude', 'https://claude.ai/oauth/callback?code=2')
+
+    expect(mocked.submitRedirectUrl).toHaveBeenCalledTimes(1)
+    expect(store.states.claude.error).toBeNull()
+    expect(store.states.claude.submittedRedirectSessionId).toBe('s1')
     expect(store.states.claude.session?.phase).toBe('finalizing')
   })
 
