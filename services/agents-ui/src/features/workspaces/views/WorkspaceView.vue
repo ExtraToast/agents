@@ -225,6 +225,7 @@ async function openWorkspace(id: string): Promise<void> {
 
 async function focusConsoleSurface(): Promise<void> {
   await nextTick()
+  if (activeRestartState.value === 'confirm-pending') return
   consoleSurface.value?.focus()
 }
 

@@ -3,7 +3,7 @@ package com.jorisjonkers.personalstack.agents.infrastructure.web
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.jorisjonkers.personalstack.agents.domain.model.AgentCredentialProvider
 import com.jorisjonkers.personalstack.agents.domain.model.AgentOauthCredential
-import com.jorisjonkers.personalstack.agents.domain.port.AgentCredentialStore
+import com.jorisjonkers.personalstack.agents.domain.port.AgentCredentialRepository
 import com.jorisjonkers.personalstack.agents.infrastructure.credentials.CredentialValidationResult
 import com.jorisjonkers.personalstack.agents.infrastructure.credentials.CredentialValidator
 import com.jorisjonkers.personalstack.common.web.GlobalExceptionHandler
@@ -27,7 +27,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 
 class InternalCredentialControllerTest {
-    private val store = mockk<AgentCredentialStore>()
+    private val store = mockk<AgentCredentialRepository>()
     private val validator = mockk<CredentialValidator>()
     private val objectMapper = ObjectMapper()
     private lateinit var mockMvc: MockMvc

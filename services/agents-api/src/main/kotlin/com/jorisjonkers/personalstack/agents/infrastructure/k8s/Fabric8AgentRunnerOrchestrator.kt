@@ -8,7 +8,7 @@ import com.jorisjonkers.personalstack.agents.domain.model.GithubLink
 import com.jorisjonkers.personalstack.agents.domain.model.RunnerSetupProvisioningSpec
 import com.jorisjonkers.personalstack.agents.domain.model.RunnerState
 import com.jorisjonkers.personalstack.agents.domain.model.Workspace
-import com.jorisjonkers.personalstack.agents.domain.port.AgentCredentialStore
+import com.jorisjonkers.personalstack.agents.domain.port.AgentCredentialRepository
 import com.jorisjonkers.personalstack.agents.domain.port.AgentRunnerOrchestrator
 import com.jorisjonkers.personalstack.agents.domain.port.DeployKeyStore
 import com.jorisjonkers.personalstack.agents.domain.port.GithubLinkRepository
@@ -65,7 +65,7 @@ class Fabric8AgentRunnerOrchestrator(
     private val client: KubernetesClient,
     private val props: AgentRuntimeProperties,
     private val deployKeysProvider: ObjectProvider<DeployKeyStore>,
-    private val credentialsProvider: ObjectProvider<AgentCredentialStore>,
+    private val credentialsProvider: ObjectProvider<AgentCredentialRepository>,
     private val githubLinks: ObjectProvider<GithubLinkRepository>,
     private val workspaceRepos: ObjectProvider<WorkspaceRepositoryRepository>,
     private val repositories: ObjectProvider<RepositoryRepository>,
@@ -75,6 +75,7 @@ class Fabric8AgentRunnerOrchestrator(
     override fun provision(workspace: Workspace): AgentRunnerOrchestrator.RunnerHandle =
         provision(workspace, legacySetupSpec(), workspace.runnerSetupGeneration)
 
+    @Suppress("LongMethod")
     override fun provision(
         workspace: Workspace,
         setup: RunnerSetupProvisioningSpec,
@@ -171,6 +172,7 @@ class Fabric8AgentRunnerOrchestrator(
         log.info("scaled down runner pod for workspace {} (PVC preserved)", workspace.id)
     }
 
+    @Suppress("LongMethod")
     override fun destroy(workspace: Workspace) {
         val short = workspace.id.short()
         client
@@ -298,6 +300,7 @@ class Fabric8AgentRunnerOrchestrator(
         val hasCodex: Boolean,
     )
 
+    @Suppress("LongMethod")
     private fun ensureCredentialSecret(
         workspace: Workspace,
         short: String,
@@ -359,7 +362,7 @@ class Fabric8AgentRunnerOrchestrator(
     }
 
     private fun loadCredential(
-        store: AgentCredentialStore,
+        store: AgentCredentialRepository,
         owner: String,
         provider: AgentCredentialProvider,
     ) = runCatching { store.find(owner, provider) }
@@ -714,6 +717,7 @@ class Fabric8AgentRunnerOrchestrator(
                 .build(),
         )
 
+    @Suppress("LongMethod")
     private fun agentCredentialEnv(credentialSecret: CredentialSecret?) =
         if (credentialSecret == null) {
             emptyList()
@@ -749,47 +753,47 @@ class Fabric8AgentRunnerOrchestrator(
             }
         }
 
+    @Suppress("LongMethod")
     private fun podVolumeMounts(
         setup: RunnerSetupProvisioningSpec,
         credentialSecret: CredentialSecret?,
-    ) =
-        buildList {
-            add(VolumeMountBuilder().withName("workspace").withMountPath("/workspace").build())
-            if (credentialSecret != null) {
-                add(
-                    VolumeMountBuilder()
-                        .withName(AGENT_CREDENTIALS_VOLUME)
-                        .withMountPath(AGENT_CREDENTIALS_MOUNT)
-                        .withReadOnly(true)
-                        .build(),
-                )
-            }
-            if (setup.dockerSocketEnabled) {
-                add(
-                    VolumeMountBuilder()
-                        .withName(DOCKER_SOCKET_VOLUME)
-                        .withMountPath(setup.dockerSocketPath)
-                        .build(),
-                )
-            }
+    ) = buildList {
+        add(VolumeMountBuilder().withName("workspace").withMountPath("/workspace").build())
+        if (credentialSecret != null) {
             add(
                 VolumeMountBuilder()
-                    .withName("github-deploy-key")
-                    .withMountPath("/var/run/secrets/agents/github-deploy-key")
-                    .withReadOnly(true)
-                    .build(),
-            )
-            // Declarative MCP server set; the entrypoint seeds it into
-            // ~/.claude.json. Optional volume, so an absent ConfigMap
-            // leaves the runner with no managed MCP servers.
-            add(
-                VolumeMountBuilder()
-                    .withName("mcp-config")
-                    .withMountPath(setup.mcpDir)
+                    .withName(AGENT_CREDENTIALS_VOLUME)
+                    .withMountPath(AGENT_CREDENTIALS_MOUNT)
                     .withReadOnly(true)
                     .build(),
             )
         }
+        if (setup.dockerSocketEnabled) {
+            add(
+                VolumeMountBuilder()
+                    .withName(DOCKER_SOCKET_VOLUME)
+                    .withMountPath(setup.dockerSocketPath)
+                    .build(),
+            )
+        }
+        add(
+            VolumeMountBuilder()
+                .withName("github-deploy-key")
+                .withMountPath("/var/run/secrets/agents/github-deploy-key")
+                .withReadOnly(true)
+                .build(),
+        )
+        // Declarative MCP server set; the entrypoint seeds it into
+        // ~/.claude.json. Optional volume, so an absent ConfigMap
+        // leaves the runner with no managed MCP servers.
+        add(
+            VolumeMountBuilder()
+                .withName("mcp-config")
+                .withMountPath(setup.mcpDir)
+                .withReadOnly(true)
+                .build(),
+        )
+    }
 
     private fun podVolumes(
         workspacePvc: String,

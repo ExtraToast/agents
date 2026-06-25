@@ -1,7 +1,7 @@
 package com.jorisjonkers.personalstack.agents.infrastructure.web
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.jorisjonkers.personalstack.agents.domain.port.AgentCredentialStore
+import com.jorisjonkers.personalstack.agents.domain.port.AgentCredentialRepository
 import com.jorisjonkers.personalstack.agents.infrastructure.integration.HttpCredentialWorkerClient
 import com.jorisjonkers.personalstack.agents.infrastructure.web.dto.CredentialActionResponse
 import com.jorisjonkers.personalstack.agents.infrastructure.web.dto.CredentialSessionResponse
@@ -41,7 +41,7 @@ import java.net.URI
 @RequestMapping("/api/v1/credentials")
 class CredentialController(
     private val worker: HttpCredentialWorkerClient,
-    private val credentials: AgentCredentialStore,
+    private val credentials: AgentCredentialRepository,
 ) {
     // Not injected: the OpenAPI web-mvc slice that exports the spec does not
     // expose an ObjectMapper bean, so a constructor dependency would break it.

@@ -6,10 +6,12 @@ import { nextTick } from 'vue'
 import CredentialsPanel from '../components/CredentialsPanel.vue'
 import { useCredentialsStore } from '../stores/credentials'
 
+const apiGet = vi.hoisted(() => vi.fn())
+
 vi.mock('@/lib/vueWebCommons', () => ({
   Card: { name: 'Card', template: '<section><slot /></section>' },
   useToast: () => ({ success: vi.fn(), error: vi.fn() }),
-  useApiWithAuth: () => ({ get: vi.fn(), post: vi.fn() }),
+  useApiWithAuth: () => ({ get: apiGet, post: vi.fn() }),
 }))
 
 function awaitingUrl(authorizeUrl: string): CredentialSession {
@@ -17,15 +19,22 @@ function awaitingUrl(authorizeUrl: string): CredentialSession {
 }
 
 describe('credentials panel', () => {
-  beforeEach(() => setActivePinia(createPinia()))
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    apiGet.mockResolvedValue({
+      claude: { exists: false, valid: null },
+      codex: { exists: false, valid: null },
+    })
+  })
 
   it('renders one card per provider with a connection pill from stored status', async () => {
+    apiGet.mockResolvedValue({
+      claude: { exists: true, valid: true, updatedAt: '2026-06-23T10:00:00Z', updatedBy: 'ExtraToast' },
+      codex: { exists: false, valid: null },
+    })
     const wrapper = mount(CredentialsPanel)
     const store = useCredentialsStore()
-    await nextTick()
-    store.stored.claude = { exists: true, valid: true, updatedAt: '2026-06-23T10:00:00Z', updatedBy: 'ExtraToast' }
-    store.stored.codex = { exists: false, valid: null }
-    await nextTick()
+    await store.fetchStored()
 
     expect(wrapper.find('[data-testid="credentials-card-claude"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="credentials-card-codex"]').exists()).toBe(true)
@@ -35,12 +44,13 @@ describe('credentials panel', () => {
   })
 
   it('distinguishes unvalidated credentials from credentials that need re-login', async () => {
+    apiGet.mockResolvedValue({
+      claude: { exists: true, valid: null },
+      codex: { exists: true, valid: false, updatedAt: '2026-06-23T10:00:00Z' },
+    })
     const wrapper = mount(CredentialsPanel)
     const store = useCredentialsStore()
-    await nextTick()
-    store.stored.claude = { exists: true, valid: null }
-    store.stored.codex = { exists: true, valid: false, updatedAt: '2026-06-23T10:00:00Z' }
-    await nextTick()
+    await store.fetchStored()
 
     expect(wrapper.find('[data-testid="credentials-pill-claude"]').text()).toContain('Stored')
     expect(wrapper.find('[data-testid="credentials-check-claude"]').text()).toContain('Stored, not verified')

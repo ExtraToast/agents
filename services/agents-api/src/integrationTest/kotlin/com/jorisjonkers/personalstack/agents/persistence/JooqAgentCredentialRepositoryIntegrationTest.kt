@@ -3,16 +3,16 @@ package com.jorisjonkers.personalstack.agents.persistence
 import com.jorisjonkers.personalstack.agents.IntegrationTestBase
 import com.jorisjonkers.personalstack.agents.domain.model.AgentCredentialProvider
 import com.jorisjonkers.personalstack.agents.domain.model.AgentOauthCredential
-import com.jorisjonkers.personalstack.agents.domain.port.AgentCredentialStore
+import com.jorisjonkers.personalstack.agents.domain.port.AgentCredentialRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import java.time.Instant
 import java.util.UUID
 
-class JooqAgentCredentialStoreIntegrationTest : IntegrationTestBase() {
+class JooqAgentCredentialRepositoryIntegrationTest : IntegrationTestBase() {
     @Autowired
-    private lateinit var store: AgentCredentialStore
+    private lateinit var store: AgentCredentialRepository
 
     private fun userId() = "user-${UUID.randomUUID()}"
 

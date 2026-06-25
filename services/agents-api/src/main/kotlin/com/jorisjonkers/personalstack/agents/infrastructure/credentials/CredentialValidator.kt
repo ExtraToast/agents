@@ -19,8 +19,15 @@ class CredentialValidator {
 
     fun fromHttpStatus(statusCode: Int): CredentialValidationResult =
         when (statusCode) {
-            in 200..299 -> CredentialValidationResult.VALID
-            401, 403 -> CredentialValidationResult.EXPLICIT_INVALID
+            in HTTP_OK_MIN..HTTP_OK_MAX -> CredentialValidationResult.VALID
+            HTTP_UNAUTHORIZED, HTTP_FORBIDDEN -> CredentialValidationResult.EXPLICIT_INVALID
             else -> CredentialValidationResult.UNKNOWN
         }
+
+    companion object {
+        private const val HTTP_OK_MIN = 200
+        private const val HTTP_OK_MAX = 299
+        private const val HTTP_UNAUTHORIZED = 401
+        private const val HTTP_FORBIDDEN = 403
+    }
 }

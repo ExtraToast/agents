@@ -2,7 +2,7 @@ package com.jorisjonkers.personalstack.agents.infrastructure.web
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.jorisjonkers.personalstack.agents.domain.model.AgentCredentialProvider
-import com.jorisjonkers.personalstack.agents.domain.port.AgentCredentialStore
+import com.jorisjonkers.personalstack.agents.domain.port.AgentCredentialRepository
 import com.jorisjonkers.personalstack.agents.infrastructure.integration.HttpCredentialWorkerClient
 import com.jorisjonkers.personalstack.common.web.GlobalExceptionHandler
 import io.mockk.every
@@ -24,7 +24,7 @@ import java.time.Instant
 
 class CredentialControllerTest {
     private val worker = mockk<HttpCredentialWorkerClient>()
-    private val credentials = mockk<AgentCredentialStore>()
+    private val credentials = mockk<AgentCredentialRepository>()
     private val objectMapper = ObjectMapper()
     private lateinit var mockMvc: MockMvc
 
@@ -228,14 +228,14 @@ class CredentialControllerTest {
     fun `GET status returns browser-safe stored-credential summary scoped to the user`() {
         every { credentials.statusFor("operator") } returns
             listOf(
-                AgentCredentialStore.CredentialStatus(
+                AgentCredentialRepository.CredentialStatus(
                     provider = AgentCredentialProvider.CLAUDE,
                     stored = true,
                     valid = null,
                     validatedAt = null,
                     updatedAt = Instant.parse("2026-06-23T10:00:00Z"),
                 ),
-                AgentCredentialStore.CredentialStatus(
+                AgentCredentialRepository.CredentialStatus(
                     provider = AgentCredentialProvider.CODEX,
                     stored = true,
                     valid = false,

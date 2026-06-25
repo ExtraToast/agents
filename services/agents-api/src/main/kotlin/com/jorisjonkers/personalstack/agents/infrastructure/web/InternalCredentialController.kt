@@ -2,7 +2,7 @@ package com.jorisjonkers.personalstack.agents.infrastructure.web
 
 import com.jorisjonkers.personalstack.agents.domain.model.AgentCredentialProvider
 import com.jorisjonkers.personalstack.agents.domain.model.AgentOauthCredential
-import com.jorisjonkers.personalstack.agents.domain.port.AgentCredentialStore
+import com.jorisjonkers.personalstack.agents.domain.port.AgentCredentialRepository
 import com.jorisjonkers.personalstack.agents.infrastructure.credentials.CredentialValidationResult
 import com.jorisjonkers.personalstack.agents.infrastructure.credentials.CredentialValidator
 import com.jorisjonkers.personalstack.agents.infrastructure.web.dto.InternalCredentialIngestRequest
@@ -21,10 +21,11 @@ import java.time.Instant
 @RestController
 @RequestMapping("/api/v1/internal/credentials")
 class InternalCredentialController(
-    private val credentials: AgentCredentialStore,
+    private val credentials: AgentCredentialRepository,
     private val validator: CredentialValidator,
 ) {
     @PostMapping
+    @Suppress("LongMethod")
     fun ingest(
         @Valid @RequestBody request: InternalCredentialIngestRequest,
     ): ResponseEntity<InternalCredentialIngestResponse> {

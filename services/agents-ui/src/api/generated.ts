@@ -573,7 +573,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Report what credentials are currently stored in Vault for each provider */
+        /** Report what credentials are currently stored for each provider */
         get: operations["storedStatus"];
         put?: never;
         post?: never;
@@ -769,6 +769,7 @@ export interface components {
             gatewayEndpoint?: string | null;
             status: string;
             kind: string;
+            ownerUserId?: string | null;
             /** Format: uuid */
             projectId?: string | null;
             /** Format: uuid */
@@ -1199,6 +1200,7 @@ export interface components {
             gatewayEndpoint?: string | null;
             status: string;
             kind: string;
+            ownerUserId?: string | null;
             /** Format: uuid */
             projectId?: string | null;
             /** Format: uuid */
@@ -1212,6 +1214,19 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        StoredCredentialStatusResponse: {
+            claude: components["schemas"]["StoredProviderCredentialStatus"];
+            codex: components["schemas"]["StoredProviderCredentialStatus"];
+        };
+        StoredProviderCredentialStatus: {
+            exists: boolean;
+            state: string;
+            valid?: boolean | null;
+            /** Format: date-time */
+            validatedAt?: string | null;
+            /** Format: date-time */
+            updatedAt?: string | null;
         };
         AgentSetupCatalogResponse: {
             setups: components["schemas"]["AgentSetupCatalogEntryResponse"][];
@@ -1288,7 +1303,9 @@ export interface operations {
     create: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "X-User-Id": string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2327,7 +2344,9 @@ export interface operations {
     storedStatus: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "X-User-Id": string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2339,7 +2358,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": Record<string, never>;
+                    "*/*": components["schemas"]["StoredCredentialStatusResponse"];
                 };
             };
         };

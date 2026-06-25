@@ -5,8 +5,12 @@ function api(): ReturnType<typeof useApiWithAuth> {
   return useApiWithAuth()
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
 function asRecord(value: unknown): Record<string, unknown> {
-  return typeof value === 'object' && value !== null ? value as Record<string, unknown> : {}
+  return isRecord(value) ? value : {}
 }
 
 function validFrom(exists: boolean, value: unknown): boolean | null {

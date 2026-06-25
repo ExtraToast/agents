@@ -53,7 +53,7 @@ class WorkspaceControllerTest {
         mockMvc =
             MockMvcBuilders
                 .standaloneSetup(controller)
-                .setControllerAdvice(GlobalExceptionHandler())
+                .setControllerAdvice(GlobalExceptionHandler(), MissingRequestHeaderExceptionHandler())
                 .build()
     }
 
@@ -160,7 +160,13 @@ class WorkspaceControllerTest {
 
     @Test
     fun `POST creates a workspace owned by the X-User-Id header`() {
-        val w = workspace(ownerUserId = "user-123")
+        val repositoryId = RepositoryId.random()
+        val w =
+            workspace(
+                kind = WorkspaceKind.REPO_BACKED,
+                repositoryId = repositoryId,
+                ownerUserId = "user-123",
+            )
         every { getQuery.getSummary(any()) } returns w
 
         mockMvc
@@ -168,7 +174,15 @@ class WorkspaceControllerTest {
                 post("/api/v1/workspaces")
                     .header("X-User-Id", " user-123 ")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(mapOf("name" to "demo"))),
+                    .content(
+                        objectMapper.writeValueAsString(
+                            mapOf(
+                                "name" to "demo",
+                                "kind" to "REPO_BACKED",
+                                "repositoryId" to repositoryId.value.toString(),
+                            ),
+                        ),
+                    ),
             ).andExpect(status().isCreated)
             .andExpect(jsonPath("$.ownerUserId").value("user-123"))
 

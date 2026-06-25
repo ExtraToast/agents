@@ -76,7 +76,7 @@ const runnerStatusStream = {
   close: vi.fn(),
   readyState: vi.fn(() => 1),
 }
-const openWorkspaceRunnerStatusStream = vi.fn(() => runnerStatusStream)
+const openWorkspaceRunnerStatusStream = vi.fn((..._args: unknown[]) => runnerStatusStream)
 vi.mock('../services/workspaceRunnerStatusStream', () => ({
   openWorkspaceRunnerStatusStream: (...args: unknown[]) => openWorkspaceRunnerStatusStream(...args),
 }))
@@ -501,7 +501,7 @@ describe('workspaceView terminal persistence', () => {
     const wrapper = await mountView()
 
     expect(openSessionStatusStream).toHaveBeenCalledOnce()
-    expect(openWorkspaceRunnerStatusStream).toHaveBeenCalledOnce()
+    await vi.waitFor(() => expect(openWorkspaceRunnerStatusStream).toHaveBeenCalledOnce())
     expect(wrapper.get('[data-testid="session-status-rail-connection"]').attributes('data-state')).toBe('connecting')
 
     statusStreamOptions?.onOpen?.()
@@ -525,7 +525,9 @@ describe('workspaceView terminal persistence', () => {
 
     expect(wrapper.find('[data-testid="workspace-restart-confirmation"]').exists()).toBe(true)
     expect(wrapper.get('[data-testid="workspace-restart-confirmation-copy"]').text()).toContain('reattach the terminal')
-    expect(document.activeElement).toBe(wrapper.get('[data-testid="workspace-lifecycle-controls"]').element)
+    await vi.waitFor(() => {
+      expect(document.activeElement).toBe(wrapper.get('[data-testid="workspace-lifecycle-controls"]').element)
+    })
 
     await wrapper.get('[data-testid="workspace-restart-confirm"]').trigger('click')
     await flush()
@@ -588,6 +590,11 @@ describe('workspaceView terminal persistence', () => {
     expect(previewSetup).not.toHaveBeenCalled()
     expect(wrapper.find('[data-testid="session-setup-picker"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="workspace-restart-confirmation"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="workspace-new-agent"]').exists()).toBe(false)
+
+    await wrapper.get('[data-testid="workspace-restart-cancel"]').trigger('click')
+    await flush()
+
     expect(wrapper.get('[data-testid="workspace-new-agent"]').text()).toBe('Start Claude Code')
   })
 

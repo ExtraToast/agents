@@ -6,6 +6,11 @@ import { nextTick } from 'vue'
 import SessionTabs from '../components/SessionTabs.vue'
 import { useSessionLabelsStore } from '../stores/sessionLabels'
 
+function expectSvgIcon(src: string | undefined, title: string): void {
+  expect(src).toMatch(/^data:image\/svg\+xml/)
+  expect(decodeURIComponent(src ?? '')).toContain(`<title>${title}</title>`)
+}
+
 function fakeSession(over: Partial<AgentSession> = {}): AgentSession {
   return {
     id: 'aaaaaaaa-1111-2222-3333-444444444444',
@@ -227,13 +232,18 @@ describe('sessionTabs', () => {
   })
 
   it('shows a kind icon and status on the tab', () => {
+    const unknownSession = fakeSession({ id: 'sess-unknown', status: 'RUNNING' })
+    Object.defineProperty(unknownSession, 'kind', { value: 'MYSTERY' })
+
+    const sessions = [
+      fakeSession({ id: 'sess-codex', kind: 'CODEX', status: 'RUNNING' }),
+      fakeSession({ id: 'sess-starting', kind: 'SHELL', status: 'STARTING' }),
+      unknownSession,
+    ] satisfies AgentSession[]
+
     const wrapper = mount(SessionTabs, {
       props: {
-        sessions: [
-          fakeSession({ id: 'sess-codex', kind: 'CODEX', status: 'RUNNING' }),
-          fakeSession({ id: 'sess-starting', kind: 'SHELL', status: 'STARTING' }),
-          fakeSession({ id: 'sess-unknown', kind: 'MYSTERY' as AgentSession['kind'], status: 'RUNNING' }),
-        ],
+        sessions,
         activeId: null,
       },
     })
@@ -243,7 +253,7 @@ describe('sessionTabs', () => {
     const unknownKind = wrapper.get('[data-testid="session-tab-kind-sess-unknown"]')
 
     expect(codexKind.attributes('data-kind')).toBe('CODEX')
-    expect(codexKind.get('img').attributes('src')).toContain('codex.svg')
+    expectSvgIcon(codexKind.get('img').attributes('src'), 'Codex')
     expect(codexKind.get('img').attributes('aria-hidden')).toBe('true')
     expect(shellKind.attributes('data-kind')).toBe('SHELL')
     expect(shellKind.attributes('aria-label')).toBe('Shell')

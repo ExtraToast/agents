@@ -14,7 +14,7 @@ CREATE TABLE agent_oauth_credentials (
     user_id      VARCHAR(255) NOT NULL,
     provider     VARCHAR(32)  NOT NULL,
     payload      TEXT         NOT NULL,
-    token_valid  BOOLEAN      NOT NULL DEFAULT FALSE,
+    token_valid  BOOLEAN,
     validated_at TIMESTAMPTZ,
     updated_at   TIMESTAMPTZ  NOT NULL,
     updated_by   VARCHAR(255) NOT NULL,

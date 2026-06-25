@@ -144,10 +144,9 @@ export const useWorkspacesStore = defineStore('workspaces', () => {
 
   function markRestartReconnecting(sessionId: string): void {
     setRestartState(sessionId, 'reconnecting')
-    const timer = setTimeout(() => {
+    const timer: ReturnType<typeof setTimeout> = setTimeout(() => {
       if (restartStateFor(sessionId) === 'reconnecting') markRestartFailed(sessionId)
     }, RECONNECTING_TIMEOUT_MS)
-    if (typeof timer === 'object' && 'unref' in timer && typeof timer.unref === 'function') timer.unref()
     restartReconnectTimers.set(sessionId, timer)
   }
 

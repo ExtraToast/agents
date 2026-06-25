@@ -18,7 +18,7 @@ import com.jorisjonkers.personalstack.agents.application.setup.AgentSetupValidat
 import com.jorisjonkers.personalstack.agents.application.setup.SetupGuideService
 import com.jorisjonkers.personalstack.agents.application.workspacerunner.WorkspaceRunnerLifecycleService
 import com.jorisjonkers.personalstack.agents.config.OpenApiConfig
-import com.jorisjonkers.personalstack.agents.domain.port.AgentCredentialStore
+import com.jorisjonkers.personalstack.agents.domain.port.AgentCredentialRepository
 import com.jorisjonkers.personalstack.agents.domain.port.AgentGatewayClient
 import com.jorisjonkers.personalstack.agents.domain.port.AgentSetupRepository
 import com.jorisjonkers.personalstack.agents.domain.port.GithubLinkRepository
@@ -199,7 +199,7 @@ class OpenApiSpecExportTest {
         fun agentGatewayClient(): AgentGatewayClient = mockk(relaxed = true)
 
         @Bean
-        fun agentCredentialStore(): AgentCredentialStore = mockk(relaxed = true)
+        fun agentCredentialRepository(): AgentCredentialRepository = mockk(relaxed = true)
 
         @Bean
         fun agentSetupDiffService(): AgentSetupDiffService = mockk(relaxed = true)

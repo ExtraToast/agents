@@ -5,7 +5,7 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.jorisjonkers.personalstack.agents.domain.model.AgentCredentialProvider
 import com.jorisjonkers.personalstack.agents.domain.model.AgentOauthCredential
-import com.jorisjonkers.personalstack.agents.domain.port.AgentCredentialStore
+import com.jorisjonkers.personalstack.agents.domain.port.AgentCredentialRepository
 import org.jooq.DSLContext
 import org.jooq.Record
 import org.jooq.impl.DSL
@@ -15,9 +15,9 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 
 @Repository
-class JooqAgentCredentialStore(
+class JooqAgentCredentialRepository(
     private val dsl: DSLContext,
-) : AgentCredentialStore {
+) : AgentCredentialRepository {
     private val json: ObjectMapper = jacksonObjectMapper()
 
     override fun upsert(credential: AgentOauthCredential): AgentOauthCredential {
@@ -68,7 +68,7 @@ class JooqAgentCredentialStore(
             .execute()
     }
 
-    override fun statusFor(userId: String): List<AgentCredentialStore.CredentialStatus> =
+    override fun statusFor(userId: String): List<AgentCredentialRepository.CredentialStatus> =
         AgentCredentialProvider.entries.map { provider ->
             val rec =
                 dsl
@@ -78,7 +78,7 @@ class JooqAgentCredentialStore(
                     .and(PROVIDER.eq(provider.name))
                     .fetchOne()
             if (rec == null) {
-                AgentCredentialStore.CredentialStatus(
+                AgentCredentialRepository.CredentialStatus(
                     provider = provider,
                     stored = false,
                     valid = null,
@@ -86,7 +86,7 @@ class JooqAgentCredentialStore(
                     updatedAt = null,
                 )
             } else {
-                AgentCredentialStore.CredentialStatus(
+                AgentCredentialRepository.CredentialStatus(
                     provider = provider,
                     stored = true,
                     valid = rec.get(VALID),

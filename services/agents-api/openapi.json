@@ -39,6 +39,14 @@
       "post" : {
         "tags" : [ "workspace-controller" ],
         "operationId" : "create",
+        "parameters" : [ {
+          "name" : "X-User-Id",
+          "in" : "header",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -1427,15 +1435,23 @@
     "/api/v1/credentials/status" : {
       "get" : {
         "tags" : [ "credential-controller" ],
-        "summary" : "Report what credentials are currently stored in Vault for each provider",
+        "summary" : "Report what credentials are currently stored for each provider",
         "operationId" : "storedStatus",
+        "parameters" : [ {
+          "name" : "X-User-Id",
+          "in" : "header",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "responses" : {
           "200" : {
             "description" : "OK",
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "type" : "object"
+                  "$ref" : "#/components/schemas/StoredCredentialStatusResponse"
                 }
               }
             }
@@ -1830,6 +1846,9 @@
           },
           "kind" : {
             "type" : "string"
+          },
+          "ownerUserId" : {
+            "type" : [ "string", "null" ]
           },
           "projectId" : {
             "type" : [ "string", "null" ],
@@ -3046,6 +3065,9 @@
           "kind" : {
             "type" : "string"
           },
+          "ownerUserId" : {
+            "type" : [ "string", "null" ]
+          },
           "projectId" : {
             "type" : [ "string", "null" ],
             "format" : "uuid"
@@ -3084,6 +3106,41 @@
           }
         },
         "required" : [ "createdAt", "id", "kind", "name", "repositories", "runnerSetup", "status", "updatedAt" ]
+      },
+      "StoredCredentialStatusResponse" : {
+        "type" : "object",
+        "properties" : {
+          "claude" : {
+            "$ref" : "#/components/schemas/StoredProviderCredentialStatus"
+          },
+          "codex" : {
+            "$ref" : "#/components/schemas/StoredProviderCredentialStatus"
+          }
+        },
+        "required" : [ "claude", "codex" ]
+      },
+      "StoredProviderCredentialStatus" : {
+        "type" : "object",
+        "properties" : {
+          "exists" : {
+            "type" : "boolean"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "valid" : {
+            "type" : [ "boolean", "null" ]
+          },
+          "validatedAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "updatedAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "exists", "state" ]
       },
       "AgentSetupCatalogResponse" : {
         "type" : "object",

@@ -2,7 +2,12 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import AgentKindPicker from '../components/AgentKindPicker.vue'
 
-describe('AgentKindPicker', () => {
+function expectSvgIcon(src: string | undefined, title: string): void {
+  expect(src).toMatch(/^data:image\/svg\+xml/)
+  expect(decodeURIComponent(src ?? '')).toContain(`<title>${title}</title>`)
+}
+
+describe('agentKindPicker', () => {
   it('renders local agent icons while keeping accessible button labels', () => {
     const wrapper = mount(AgentKindPicker, {
       props: { modelValue: 'CLAUDE' },
@@ -13,9 +18,9 @@ describe('AgentKindPicker', () => {
     const shell = wrapper.get('button[aria-label="Shell"]')
 
     expect(claude.attributes('aria-pressed')).toBe('true')
-    expect(claude.get('img').attributes('src')).toContain('claude-code.svg')
+    expectSvgIcon(claude.get('img').attributes('src'), 'Claude Code')
     expect(claude.get('img').attributes('aria-hidden')).toBe('true')
-    expect(codex.get('img').attributes('src')).toContain('codex.svg')
+    expectSvgIcon(codex.get('img').attributes('src'), 'Codex')
     expect(shell.find('img').exists()).toBe(false)
     expect(shell.text()).toContain('$')
   })

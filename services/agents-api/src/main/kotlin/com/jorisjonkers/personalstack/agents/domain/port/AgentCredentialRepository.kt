@@ -9,7 +9,7 @@ import com.jorisjonkers.personalstack.agents.domain.model.AgentOauthCredential
  * paths. Implementations store the payload as-is (it is secret) and never log
  * it.
  */
-interface AgentCredentialStore {
+interface AgentCredentialRepository {
     /** Upsert the captured credential, resetting validity until the next probe. */
     fun upsert(credential: AgentOauthCredential): AgentOauthCredential
 

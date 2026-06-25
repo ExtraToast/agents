@@ -1,7 +1,7 @@
 package com.jorisjonkers.personalstack.agents.infrastructure.web.dto
 
 import com.jorisjonkers.personalstack.agents.domain.model.AgentCredentialProvider
-import com.jorisjonkers.personalstack.agents.domain.port.AgentCredentialStore
+import com.jorisjonkers.personalstack.agents.domain.port.AgentCredentialRepository
 import com.jorisjonkers.personalstack.agents.infrastructure.integration.HttpCredentialWorkerClient
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Pattern
@@ -81,7 +81,7 @@ data class StoredCredentialStatusResponse(
     val codex: StoredProviderCredentialStatus,
 ) {
     companion object {
-        fun of(statuses: List<AgentCredentialStore.CredentialStatus>): StoredCredentialStatusResponse {
+        fun of(statuses: List<AgentCredentialRepository.CredentialStatus>): StoredCredentialStatusResponse {
             val byProvider = statuses.associateBy { it.provider }
             return StoredCredentialStatusResponse(
                 claude = StoredProviderCredentialStatus.of(byProvider[AgentCredentialProvider.CLAUDE]),
@@ -99,7 +99,7 @@ data class StoredProviderCredentialStatus(
     val updatedAt: Instant?,
 ) {
     companion object {
-        fun of(status: AgentCredentialStore.CredentialStatus?): StoredProviderCredentialStatus {
+        fun of(status: AgentCredentialRepository.CredentialStatus?): StoredProviderCredentialStatus {
             if (status == null || !status.stored) {
                 return StoredProviderCredentialStatus(
                     exists = false,

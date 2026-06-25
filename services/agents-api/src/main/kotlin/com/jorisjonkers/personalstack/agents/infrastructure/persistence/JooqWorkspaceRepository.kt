@@ -80,7 +80,13 @@ class JooqWorkspaceRepository(
             .set(PVC_NAME, workspace.pvcName)
             .set(GATEWAY_ENDPOINT, workspace.gatewayEndpoint)
             .set(STATUS, workspace.status.name)
-            .set(OWNER_USER_ID, DSL.coalesce(DSL.excluded(OWNER_USER_ID), OWNER_USER_ID))
+            .set(
+                OWNER_USER_ID,
+                DSL.coalesce(
+                    DSL.excluded(OWNER_USER_ID),
+                    DSL.field(DSL.name("workspaces", "owner_user_id"), String::class.java),
+                ),
+            )
             .set(GITHUB_LINK_ID, workspace.githubLinkId?.value)
             .set(REPOSITORY_ID, workspace.repositoryId?.value)
             .set(PROJECT_ID, workspace.projectId?.value)
