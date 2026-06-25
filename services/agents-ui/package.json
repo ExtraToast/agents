@@ -22,7 +22,7 @@
     "contract:check": "openapi-typescript ../agents-api/openapi.json -o /tmp/agents-ui-generated.ts && node scripts/contract-banner.mjs /tmp/agents-ui-generated.ts && diff -u src/api/generated.ts /tmp/agents-ui-generated.ts"
   },
   "dependencies": {
-    "@capacitor/android": "^7.0.0",
+    "@capacitor/android": "^8.4.0",
     "@capacitor/app": "^7.0.0",
     "@capacitor/core": "^7.0.0",
     "@capacitor/ios": "^7.0.0",
