@@ -21,6 +21,7 @@ function awaitingUrl(authorizeUrl: string): CredentialSession {
 describe('credentials panel', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
+    apiGet.mockReset()
     apiGet.mockResolvedValue({
       claude: { exists: false, valid: null },
       codex: { exists: false, valid: null },
@@ -38,9 +39,18 @@ describe('credentials panel', () => {
 
     expect(wrapper.find('[data-testid="credentials-card-claude"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="credentials-card-codex"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="credentials-icon-claude"]').attributes('alt')).toBe('Claude Code icon')
+    expect(wrapper.find('[data-testid="credentials-icon-codex"]').attributes('aria-label')).toBe('Codex product icon')
     expect(wrapper.find('[data-testid="credentials-pill-claude"]').text()).toContain('Connected')
     expect(wrapper.find('[data-testid="credentials-pill-codex"]').text()).toContain('Not connected')
     expect(wrapper.find('[data-testid="credentials-check-claude"]').text()).toContain('ExtraToast')
+  })
+
+  it('refreshes stored credential status on mount', async () => {
+    mount(CredentialsPanel)
+
+    await nextTick()
+    expect(apiGet).toHaveBeenCalledWith('/credentials/status')
   })
 
   it('distinguishes unvalidated credentials from credentials that need re-login', async () => {

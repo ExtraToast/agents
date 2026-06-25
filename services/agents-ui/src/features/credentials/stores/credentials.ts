@@ -8,13 +8,35 @@ const POLL_INTERVAL_MS = 2000
 
 interface ProviderState {
   session: CredentialSession | null
+  submittedRedirectSessionId: string | null
   busy: boolean
   error: string | null
   timer: ReturnType<typeof setInterval> | null
 }
 
 function emptyState(): ProviderState {
-  return { session: null, busy: false, error: null, timer: null }
+  return { session: null, submittedRedirectSessionId: null, busy: false, error: null, timer: null }
+}
+
+function errorMessage(value: unknown): string {
+  if (value instanceof Error) return value.message
+  if (typeof value === 'object' && value !== null && 'message' in value) {
+    const { message } = value
+    if (typeof message === 'string') return message
+  }
+  return ''
+}
+
+function errorStatus(value: unknown): number | null {
+  if (typeof value === 'object' && value !== null && 'status' in value) {
+    const { status } = value
+    if (typeof status === 'number') return status
+  }
+  return null
+}
+
+function isAlreadySubmittedError(value: unknown): boolean {
+  return errorMessage(value).toLowerCase().includes('authorization code already submitted')
 }
 
 export const useCredentialsStore = defineStore('credentials', () => {
@@ -67,7 +89,7 @@ export const useCredentialsStore = defineStore('credentials', () => {
         stopPolling(provider)
         // A completed login changes what is stored — refresh the check so the
         // card confirms the new credentials landed.
-        if (session.phase === 'succeeded') void fetchStored()
+        if (session.phase === 'succeeded') await fetchStored()
       }
     } catch (e) {
       state.error = e instanceof Error ? e.message : 'Failed to refresh session'
@@ -81,6 +103,7 @@ export const useCredentialsStore = defineStore('credentials', () => {
     state.error = null
     try {
       state.session = await startSession(provider)
+      state.submittedRedirectSessionId = null
       if (!isTerminalPhase(state.session.phase)) startPolling(provider)
     } catch (e) {
       state.error = e instanceof Error ? e.message : 'Failed to start session'
@@ -97,8 +120,18 @@ export const useCredentialsStore = defineStore('credentials', () => {
     state.busy = true
     state.error = null
     try {
+      if (state.submittedRedirectSessionId === id) {
+        await poll(provider)
+        return
+      }
+      state.submittedRedirectSessionId = id
       const result = await submitRedirectUrl(id, url)
       if (!result.ok) {
+        if (isAlreadySubmittedError(result.error)) {
+          await poll(provider)
+          return
+        }
+        state.submittedRedirectSessionId = null
         state.error = result.error ?? 'Redirect URL was rejected'
         return
       }
@@ -106,6 +139,13 @@ export const useCredentialsStore = defineStore('credentials', () => {
       // CLI emits its success line, which the poll will pick up.
       await poll(provider)
     } catch (e) {
+      const status = errorStatus(e)
+      const isSubmittedClientError = state.submittedRedirectSessionId === id && status !== null && status >= 400 && status < 500
+      if (isAlreadySubmittedError(e) || isSubmittedClientError) {
+        state.submittedRedirectSessionId = id
+        await poll(provider)
+        return
+      }
       state.error = e instanceof Error ? e.message : 'Failed to submit redirect URL'
       throw e
     } finally {
