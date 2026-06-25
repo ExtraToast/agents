@@ -85,6 +85,16 @@ describe('credentials panel', () => {
     expect(wrapper.find('input[data-testid="credentials-code-input-claude"]').element.tagName).toBe('INPUT')
   })
 
+  it('does not show the stored-status pill inside an active sign-in flow', async () => {
+    const wrapper = mount(CredentialsPanel)
+    const store = useCredentialsStore()
+    store.states.claude.session = awaitingUrl('https://claude.com/cai/oauth/authorize')
+    await nextTick()
+
+    expect(wrapper.find('[data-testid="credentials-pill-claude"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="credentials-pill-codex"]').exists()).toBe(true)
+  })
+
   it('renders the success confirmation once a login succeeds', async () => {
     const wrapper = mount(CredentialsPanel)
     const store = useCredentialsStore()

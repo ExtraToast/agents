@@ -44,6 +44,28 @@ const phaseLabel: Record<string, string> = {
   finalizing: 'Saving credentials…',
 }
 
+const spinnerClass = 'size-3.5 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent'
+const primaryButtonClass = [
+  'inline-flex items-center justify-center gap-1.5 rounded-md bg-[var(--color-accent)] px-3 py-1.5',
+  'text-sm font-medium text-white shadow-sm transition-colors hover:bg-[var(--color-accent-light)]',
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)]',
+  'focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)]',
+  'disabled:cursor-not-allowed disabled:opacity-50',
+].join(' ')
+const secondaryButtonClass = [
+  'inline-flex items-center justify-center rounded-md border border-[var(--color-surface-border)] px-3 py-1.5',
+  'text-sm font-medium text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-accent-light)]',
+  'hover:bg-white/5 hover:text-[var(--color-text)] focus-visible:outline-none',
+  'focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)]',
+  'focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)]',
+  'disabled:cursor-not-allowed disabled:opacity-50',
+].join(' ')
+
+function hasActiveFlow(p: CredentialProvider): boolean {
+  const session = store.states[p].session
+  return session !== null && session !== undefined && !isTerminalPhase(session.phase)
+}
+
 function statusLabel(p: CredentialProvider): string {
   const s: CredentialStatus | null = store.stored[p]
   if (!s) return 'Checking'
@@ -134,7 +156,7 @@ onUnmounted(() => store.dispose())
 
 <template>
   <div>
-    <header class="mb-5 flex items-baseline justify-between gap-3">
+    <header class="mb-4 flex items-baseline justify-between gap-3">
       <p class="max-w-2xl text-sm text-[var(--color-text-muted)]">
         Re-authenticate the CLIs the agent runners share. Sign-in runs server-side and the renewed
         credentials are stored for every runner. Claude and Codex are independent — start either, or
@@ -142,7 +164,7 @@ onUnmounted(() => store.dispose())
       </p>
       <button
         type="button"
-        class="shrink-0 rounded-md px-2.5 py-1 text-xs font-medium text-[var(--color-text-muted)] ring-1 ring-[var(--color-surface-border)] hover:bg-white/5 hover:text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] disabled:opacity-50"
+        class="shrink-0 rounded-md border border-[var(--color-surface-border)] px-2.5 py-1 text-xs font-medium text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-accent-light)] hover:bg-white/5 hover:text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] disabled:cursor-not-allowed disabled:opacity-50"
         :disabled="anyBusy"
         data-testid="credentials-refresh"
         @click="store.fetchStored()"
@@ -151,7 +173,7 @@ onUnmounted(() => store.dispose())
       </button>
     </header>
 
-    <div class="grid gap-5 lg:grid-cols-2">
+    <div class="grid gap-4 lg:grid-cols-2">
       <Card
         v-for="p in providers"
         :key="p.id"
@@ -159,13 +181,13 @@ onUnmounted(() => store.dispose())
         :data-testid="`credentials-card-${p.id}`"
         :aria-label="`${p.label} credentials`"
       >
-        <div class="flex flex-col gap-4 p-5">
+        <div class="flex flex-col gap-3 p-4">
           <!-- Header: identity + the at-a-glance connection check -->
           <div class="flex items-start justify-between gap-3">
             <div class="flex items-center gap-3">
               <img
                 :src="p.icon"
-                class="size-10 shrink-0 rounded-md border border-[var(--color-surface-border)] bg-white/5 p-2"
+                class="size-8 shrink-0"
                 :alt="`${p.label} icon`"
                 :aria-label="`${p.label} product icon`"
                 :data-testid="`credentials-icon-${p.id}`"
@@ -176,6 +198,7 @@ onUnmounted(() => store.dispose())
               </div>
             </div>
             <span
+              v-if="!hasActiveFlow(p.id)"
               class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
               :class="statusClass(p.id)"
               :data-testid="`credentials-pill-${p.id}`"
@@ -200,7 +223,7 @@ onUnmounted(() => store.dispose())
               class="flex items-center gap-2 text-sm text-[var(--color-text-muted)]"
               :data-testid="`credentials-phase-${p.id}`"
             >
-              <span class="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              <span :class="spinnerClass" />
               {{ phaseLabel[store.states[p.id].session!.phase] }}
             </div>
 
@@ -214,7 +237,7 @@ onUnmounted(() => store.dispose())
                     :href="store.states[p.id].session!.authorizeUrl!"
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="inline-flex w-fit items-center justify-center gap-1.5 rounded-md bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-[var(--color-accent-light)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)]"
+                    :class="primaryButtonClass"
                     :data-testid="`credentials-open-${p.id}`"
                   >
                     Open {{ p.label }} sign-in
@@ -224,10 +247,10 @@ onUnmounted(() => store.dispose())
                 <li class="flex flex-col gap-2">
                   <div
                     v-if="redirectSubmitted(p.id)"
-                    class="flex items-center gap-2 rounded-md border border-[var(--color-surface-border)] bg-white/5 px-3 py-2 text-sm text-[var(--color-text-muted)]"
+                    class="flex items-center gap-2 rounded-md bg-white/5 px-3 py-2 text-sm text-[var(--color-text-muted)]"
                     :data-testid="`credentials-submitted-${p.id}`"
                   >
-                    <span class="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    <span :class="spinnerClass" />
                     Authorization submitted. Waiting for the session to finish.
                   </div>
                   <template v-else>
@@ -244,11 +267,12 @@ onUnmounted(() => store.dispose())
                       >
                       <button
                         type="button"
-                        class="inline-flex items-center justify-center rounded-md bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-[var(--color-accent-light)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)] disabled:cursor-not-allowed disabled:opacity-50"
+                        :class="primaryButtonClass"
                         :disabled="store.states[p.id].busy || code[p.id].trim().length === 0"
                         :data-testid="`credentials-submit-${p.id}`"
                         @click="submit(p.id)"
                       >
+                        <span v-if="store.states[p.id].busy" :class="spinnerClass" />
                         Submit
                       </button>
                     </div>
@@ -259,13 +283,13 @@ onUnmounted(() => store.dispose())
 
             <!-- Codex: show the device code, open the device page -->
             <template v-if="store.states[p.id].session!.phase === 'awaiting_device'">
-              <div class="space-y-3 text-sm">
+              <div class="space-y-2 text-sm">
                 <p>Enter this code on the device page, then approve:</p>
                 <div class="flex items-center gap-2">
                   <button
                     v-if="store.states[p.id].session!.deviceCode"
                     type="button"
-                    class="rounded-md border border-[var(--color-surface-border)] bg-white/5 px-3 py-1.5 font-mono text-base tracking-widest hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)]"
+                    class="rounded-md border border-[var(--color-surface-border)] bg-white/5 px-3 py-1.5 font-mono text-base tracking-widest transition-colors hover:border-[var(--color-accent-light)] hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)]"
                     :data-testid="`credentials-device-code-${p.id}`"
                     @click="copy(store.states[p.id].session!.deviceCode!)"
                   >
@@ -276,7 +300,7 @@ onUnmounted(() => store.dispose())
                     :href="store.states[p.id].session!.verificationUrl!"
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="inline-flex items-center justify-center gap-1.5 rounded-md bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-[var(--color-accent-light)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)]"
+                    :class="primaryButtonClass"
                     :data-testid="`credentials-open-${p.id}`"
                   >
                     Open device page
@@ -288,7 +312,8 @@ onUnmounted(() => store.dispose())
 
             <button
               type="button"
-              class="w-fit rounded px-1 py-0.5 text-xs text-[var(--color-text-muted)] underline-offset-2 hover:text-[var(--color-text)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)]"
+              class="w-fit"
+              :class="secondaryButtonClass"
               :data-testid="`credentials-cancel-${p.id}`"
               @click="store.cancel(p.id)"
             >
@@ -316,11 +341,13 @@ onUnmounted(() => store.dispose())
 
             <button
               type="button"
-              class="inline-flex w-fit items-center justify-center rounded-md bg-[var(--color-accent)] px-3.5 py-2 text-sm font-medium text-white shadow-sm hover:bg-[var(--color-accent-light)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)] disabled:cursor-not-allowed disabled:opacity-50"
+              class="w-fit"
+              :class="primaryButtonClass"
               :disabled="store.states[p.id].busy"
               :data-testid="`credentials-start-${p.id}`"
               @click="start(p.id)"
             >
+              <span v-if="store.states[p.id].busy" :class="spinnerClass" />
               {{ store.states[p.id].session ? `Sign in again` : actionLabel(p) }}
             </button>
           </template>
