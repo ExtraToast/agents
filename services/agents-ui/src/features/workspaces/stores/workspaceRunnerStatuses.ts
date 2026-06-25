@@ -19,7 +19,7 @@ export const useWorkspaceRunnerStatusesStore = defineStore('workspaceRunnerStatu
   async function refreshSnapshot(): Promise<void> {
     const id = currentWorkspaceId.value
     if (!id) return
-    await workspaces.open(id, { connectRunner: false })
+    await workspaces.open(id, { connectRunner: false, loadTurns: false })
   }
 
   function refreshOnConnect(): void {
@@ -72,6 +72,15 @@ export const useWorkspaceRunnerStatusesStore = defineStore('workspaceRunnerStatu
     currentWorkspaceId.value = null
   }
 
+  function useWorkspace(workspaceId: string | null): void {
+    if (currentWorkspaceId.value === workspaceId) return
+    if (workspaceId) {
+      connect(workspaceId)
+    } else {
+      disconnect()
+    }
+  }
+
   async function waitForRefresh(): Promise<void> {
     await (pendingRefresh ?? Promise.resolve())
   }
@@ -83,6 +92,7 @@ export const useWorkspaceRunnerStatusesStore = defineStore('workspaceRunnerStatu
     currentWorkspaceId,
     connect,
     disconnect,
+    useWorkspace,
     waitForRefresh,
   }
 })

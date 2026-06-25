@@ -12,6 +12,11 @@ const options: { value: AgentKind; label: string; description: string }[] = [
   { value: 'CODEX', label: 'Codex', description: 'OpenAI Codex via the official CLI' },
   { value: 'SHELL', label: 'Shell', description: 'Plain bash — no LLM, raw exec' },
 ]
+
+const agentIcons: Partial<Record<AgentKind, string>> = {
+  CLAUDE: new URL('../assets/claude-code.svg', import.meta.url).href,
+  CODEX: new URL('../assets/codex.svg', import.meta.url).href,
+}
 </script>
 
 <template>
@@ -19,6 +24,7 @@ const options: { value: AgentKind; label: string; description: string }[] = [
     class="grid gap-2"
     :class="props.stacked ? 'grid-cols-1' : props.compact ? 'grid-cols-3' : 'grid-cols-1 sm:grid-cols-3'"
     data-testid="agent-kind-picker"
+    role="group"
     aria-label="Agent kind"
   >
     <button
@@ -36,7 +42,21 @@ const options: { value: AgentKind; label: string; description: string }[] = [
       :aria-label="opt.label"
       @click="emit('update:modelValue', opt.value)"
     >
-      <div class="text-sm font-semibold leading-5">{{ opt.label }}</div>
+      <div class="flex min-w-0 items-center gap-2" :class="props.compact && !props.stacked ? 'justify-center' : ''">
+        <img
+          v-if="agentIcons[opt.value]"
+          :src="agentIcons[opt.value]"
+          class="size-5 shrink-0"
+          alt=""
+          aria-hidden="true"
+        />
+        <span
+          v-else
+          class="flex size-5 shrink-0 items-center justify-center rounded bg-gray-500/20 font-mono text-xs text-[var(--color-text-muted)]"
+          aria-hidden="true"
+        >$</span>
+        <span class="min-w-0 truncate text-sm font-semibold leading-5">{{ opt.label }}</span>
+      </div>
       <div v-if="!props.compact || props.stacked" class="mt-1 text-xs text-[var(--color-text-muted)]">
         {{ opt.description }}
       </div>

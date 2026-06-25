@@ -3,6 +3,11 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import SessionStatusChip from '../components/SessionStatusChip.vue'
 
+function expectSvgIcon(src: string | undefined, title: string): void {
+  expect(src).toMatch(/^data:image\/svg\+xml/)
+  expect(decodeURIComponent(src ?? '')).toContain(`<title>${title}</title>`)
+}
+
 function fakeSession(over: Partial<SessionConsoleViewModel> = {}): SessionConsoleViewModel {
   return {
     id: 'sess-123456',
@@ -81,7 +86,22 @@ describe('sessionStatusChip', () => {
       props: { session: fakeSession({ kind: 'CLAUDE', kindLabel: 'Claude Code' }), showKind: true },
     })
 
+    const icon = wrapper.get('img')
+    expectSvgIcon(icon.attributes('src'), 'Claude Code')
+    expect(icon.attributes('aria-hidden')).toBe('true')
     expect(wrapper.text()).toContain('CLAUDE')
     expect(wrapper.text()).toContain('Running')
+  })
+
+  it('uses a neutral fallback for shell sessions', () => {
+    const wrapper = mount(SessionStatusChip, {
+      props: { session: fakeSession({ kind: 'SHELL', kindLabel: 'Shell' }), showKind: true },
+    })
+
+    expect(wrapper.find('img').exists()).toBe(false)
+    expect(wrapper.text()).toContain('$')
+    expect(wrapper.get('[data-testid="session-status-chip"]').attributes('aria-label')).toBe(
+      'backend: Session is running',
+    )
   })
 })

@@ -6,6 +6,11 @@ import { nextTick } from 'vue'
 import SessionTabs from '../components/SessionTabs.vue'
 import { useSessionLabelsStore } from '../stores/sessionLabels'
 
+function expectSvgIcon(src: string | undefined, title: string): void {
+  expect(src).toMatch(/^data:image\/svg\+xml/)
+  expect(decodeURIComponent(src ?? '')).toContain(`<title>${title}</title>`)
+}
+
 function fakeSession(over: Partial<AgentSession> = {}): AgentSession {
   return {
     id: 'aaaaaaaa-1111-2222-3333-444444444444',
@@ -227,15 +232,35 @@ describe('sessionTabs', () => {
   })
 
   it('shows a kind icon and status on the tab', () => {
-    const wrapper = mount(SessionTabs, {
-      props: { sessions: [fakeSession({ id: 'sess-starting', kind: 'SHELL', status: 'STARTING' })], activeId: null },
-    })
-    const tab = wrapper.get('[data-testid="session-tab-sess-starting"]')
-    const kind = tab.get('[data-testid="session-tab-kind-sess-starting"]')
+    const unknownSession = fakeSession({ id: 'sess-unknown', status: 'RUNNING' })
+    Object.defineProperty(unknownSession, 'kind', { value: 'MYSTERY' })
 
-    expect(kind.attributes('data-kind')).toBe('SHELL')
-    expect(kind.attributes('aria-label')).toBe('Shell')
-    expect(tab.find('[aria-label="Status: STARTING"]').exists()).toBe(true)
+    const sessions = [
+      fakeSession({ id: 'sess-codex', kind: 'CODEX', status: 'RUNNING' }),
+      fakeSession({ id: 'sess-starting', kind: 'SHELL', status: 'STARTING' }),
+      unknownSession,
+    ] satisfies AgentSession[]
+
+    const wrapper = mount(SessionTabs, {
+      props: {
+        sessions,
+        activeId: null,
+      },
+    })
+    const codexKind = wrapper.get('[data-testid="session-tab-kind-sess-codex"]')
+    const shellTab = wrapper.get('[data-testid="session-tab-sess-starting"]')
+    const shellKind = shellTab.get('[data-testid="session-tab-kind-sess-starting"]')
+    const unknownKind = wrapper.get('[data-testid="session-tab-kind-sess-unknown"]')
+
+    expect(codexKind.attributes('data-kind')).toBe('CODEX')
+    expectSvgIcon(codexKind.get('img').attributes('src'), 'Codex')
+    expect(codexKind.get('img').attributes('aria-hidden')).toBe('true')
+    expect(shellKind.attributes('data-kind')).toBe('SHELL')
+    expect(shellKind.attributes('aria-label')).toBe('Shell')
+    expect(shellKind.find('img').exists()).toBe(false)
+    expect(unknownKind.attributes('aria-label')).toBe('Unknown')
+    expect(unknownKind.find('img').exists()).toBe(false)
+    expect(shellTab.find('[aria-label="Status: STARTING"]').exists()).toBe(true)
   })
 
   it('defaults the tab name to kind-index (claude-1) and exposes a rename control', () => {

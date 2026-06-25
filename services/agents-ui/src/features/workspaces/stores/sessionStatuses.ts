@@ -13,6 +13,10 @@ export interface SessionStatusOverlay {
   ts: string
 }
 
+interface SyncRestSessionsOptions {
+  clearSettledRestartStates?: boolean
+}
+
 const LIVE_STATUSES = new Set<AgentSession['status']>(['STARTING', 'RUNNING'])
 
 function eventTime(ts: string | undefined): number | null {
@@ -82,6 +86,14 @@ export const useSessionStatusesStore = defineStore('sessionStatuses', () => {
     }
   }
 
+  function clearSettledRestartState(sessionId: string, status: AgentSession['status']): void {
+    if (status !== 'RUNNING') return
+    const restartState = workspaces.restartStateFor(sessionId)
+    if (restartState === 'reconnecting' || restartState === 'live') {
+      workspaces.clearRestartState(sessionId)
+    }
+  }
+
   function applyStatus(event: SessionStatusEvent): void {
     if (eventTime(event.ts) === null) return
     if (!isKnownSession(event.sessionId) || isOlder(event.sessionId, event.ts)) return
@@ -98,6 +110,7 @@ export const useSessionStatusesStore = defineStore('sessionStatuses', () => {
     delete nextRemoved[event.sessionId]
     removedAt.value = nextRemoved
     rememberTs(event.sessionId, event.ts)
+    clearSettledRestartState(event.sessionId, event.status)
   }
 
   function applyRemove(event: SessionRemoveEvent): void {
@@ -114,7 +127,10 @@ export const useSessionStatusesStore = defineStore('sessionStatuses', () => {
     rememberTs(event.sessionId, event.ts)
   }
 
-  function syncRestSessions(sessions: AgentSession[] = workspaces.sessions): void {
+  function syncRestSessions(
+    sessions: AgentSession[] = workspaces.sessions,
+    options: SyncRestSessionsOptions = {},
+  ): void {
     const known = new Set(sessions.map((session) => session.id))
     const nextOverlays: Record<string, SessionStatusOverlay> = {}
     const nextRemoved: Record<string, string> = {}
@@ -129,6 +145,7 @@ export const useSessionStatusesStore = defineStore('sessionStatuses', () => {
         nextTs[session.id] = overlay.ts
       } else if (restTime !== null) {
         nextTs[session.id] = session.updatedAt
+        if (options.clearSettledRestartStates === true) clearSettledRestartState(session.id, session.status)
       }
 
       const removedTime = eventTime(removedAt.value[session.id])
@@ -151,8 +168,8 @@ export const useSessionStatusesStore = defineStore('sessionStatuses', () => {
   async function refreshActiveWorkspaceSnapshot(): Promise<void> {
     const id = workspaceId.value ?? workspaces.activeWorkspace?.id
     if (!id) return
-    await workspaces.open(id, { connectRunner: false })
-    syncRestSessions()
+    await workspaces.open(id, { connectRunner: false, loadTurns: false })
+    syncRestSessions(workspaces.sessions, { clearSettledRestartStates: true })
   }
 
   function refreshOnConnect(): void {

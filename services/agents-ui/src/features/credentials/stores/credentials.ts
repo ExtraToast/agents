@@ -24,8 +24,8 @@ export const useCredentialsStore = defineStore('credentials', () => {
     codex: emptyState(),
   })
 
-  // The "check": what is currently stored in Vault per provider, independent of
-  // any active login. Refreshed on mount and after a login succeeds.
+  // The "check": what is currently stored per provider, independent of any
+  // active login. Refreshed on mount and after a login succeeds.
   const stored = ref<Record<CredentialProvider, CredentialStatus | null>>({
     claude: null,
     codex: null,

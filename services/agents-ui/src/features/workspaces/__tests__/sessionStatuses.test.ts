@@ -108,9 +108,52 @@ describe('useSessionStatusesStore', () => {
     await statuses.waitForRefresh()
 
     expect(open).toHaveBeenCalledTimes(2)
-    expect(open).toHaveBeenCalledWith('ws-1', { connectRunner: false })
+    expect(open).toHaveBeenCalledWith('ws-1', { connectRunner: false, loadTurns: false })
     expect(statuses.connectionState).toBe('open')
     expect(statuses.connectionError).toBeNull()
+  })
+
+  it('clears reconnecting and live restart state when a session is running again', () => {
+    const workspaces = useWorkspacesStore()
+    workspaces.sessions = [fakeSession({ id: 'sess-1', status: 'RUNNING' }), fakeSession({ id: 'sess-2', status: 'RUNNING' })]
+    workspaces.markRestartReconnecting('sess-1')
+    workspaces.markRestartLive('sess-2')
+    const statuses = useSessionStatusesStore()
+    statuses.syncRestSessions(workspaces.sessions, { clearSettledRestartStates: true })
+
+    expect(workspaces.restartStateFor('sess-1')).toBe('idle')
+    expect(workspaces.restartStateFor('sess-2')).toBe('idle')
+  })
+
+  it('does not clear reconnecting restart state on ordinary local REST syncs', () => {
+    const workspaces = useWorkspacesStore()
+    workspaces.sessions = [fakeSession({ id: 'sess-1', status: 'RUNNING' })]
+    workspaces.markRestartReconnecting('sess-1')
+    const statuses = useSessionStatusesStore()
+
+    statuses.syncRestSessions()
+
+    expect(workspaces.restartStateFor('sess-1')).toBe('reconnecting')
+  })
+
+  it('clears only settled restart states from RUNNING status events', () => {
+    const workspaces = useWorkspacesStore()
+    workspaces.sessions = [
+      fakeSession({ id: 'sess-1', status: 'RUNNING' }),
+      fakeSession({ id: 'sess-2', status: 'RUNNING' }),
+      fakeSession({ id: 'sess-3', status: 'RUNNING' }),
+    ]
+    workspaces.markRestartReconnecting('sess-1')
+    workspaces.markRestartLive('sess-2')
+    workspaces.markRestartReattaching('sess-3')
+    const statuses = useSessionStatusesStore()
+    statuses.applyStatus({ sessionId: 'sess-1', status: 'RUNNING', idle: false, ts: '2026-06-12T10:08:00Z' })
+    statuses.applyStatus({ sessionId: 'sess-2', status: 'RUNNING', idle: false, ts: '2026-06-12T10:08:00Z' })
+    statuses.applyStatus({ sessionId: 'sess-3', status: 'RUNNING', idle: false, ts: '2026-06-12T10:08:00Z' })
+
+    expect(workspaces.restartStateFor('sess-1')).toBe('idle')
+    expect(workspaces.restartStateFor('sess-2')).toBe('idle')
+    expect(workspaces.restartStateFor('sess-3')).toBe('reattaching')
   })
 
   it('sets reconnecting state while EventSource is auto-retrying after onerror', () => {
