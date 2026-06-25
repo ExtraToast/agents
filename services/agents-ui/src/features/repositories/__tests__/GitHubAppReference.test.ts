@@ -40,6 +40,9 @@ describe('gitHubAppReference', () => {
     expect(wrapper.get('[data-testid="github-app-permission-contents"]').text()).toBe('Contents: write')
     expect(wrapper.get('[data-testid="github-app-permission-pull_requests"]').text()).toBe('Pull requests: write')
     expect(wrapper.get('[data-testid="github-app-permission-actions"]').text()).toBe('Actions: write')
+    expect(wrapper.get('[data-testid="github-app-permission-issues"]').text()).toBe('Issues: write')
+    expect(wrapper.get('[data-testid="github-app-permission-workflows"]').text()).toBe('Workflows: write')
+    expect(wrapper.get('[data-testid="github-app-permission-packages"]').text()).toBe('Packages: read')
     expect(wrapper.get('[data-testid="github-app-permission-approval-note"]').text()).toContain(
       'Permission changes must be approved on each existing installation',
     )

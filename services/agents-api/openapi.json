@@ -460,36 +460,6 @@
         }
       }
     },
-    "/api/v1/repositories/{id}/key" : {
-      "post" : {
-        "tags" : [ "repository-controller" ],
-        "operationId" : "attachKey",
-        "parameters" : [ {
-          "name" : "id",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "format" : "uuid"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/AttachRepositoryDeployKeyRequest"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK"
-          }
-        }
-      }
-    },
     "/api/v1/projects" : {
       "get" : {
         "tags" : [ "project-controller" ],
@@ -533,44 +503,6 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "/api/v1/projects/{projectId}/links/{linkId}/key" : {
-      "post" : {
-        "tags" : [ "project-controller" ],
-        "operationId" : "attachKey_1",
-        "parameters" : [ {
-          "name" : "projectId",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "format" : "uuid"
-          }
-        }, {
-          "name" : "linkId",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "format" : "uuid"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/AttachDeployKeyRequest"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK"
           }
         }
       }
@@ -1343,20 +1275,12 @@
         }
       }
     },
-    "/api/v1/projects/{projectId}/links/{linkId}/setup-guide" : {
+    "/api/v1/repositories/{id}/installation-status" : {
       "get" : {
-        "tags" : [ "setup-guide-controller" ],
-        "operationId" : "guide",
+        "tags" : [ "repository-controller" ],
+        "operationId" : "installationStatus",
         "parameters" : [ {
-          "name" : "projectId",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "format" : "uuid"
-          }
-        }, {
-          "name" : "linkId",
+          "name" : "id",
           "in" : "path",
           "required" : true,
           "schema" : {
@@ -1368,14 +1292,9 @@
           "200" : {
             "description" : "OK",
             "content" : {
-              "text/markdown" : {
+              "*/*" : {
                 "schema" : {
-                  "type" : "string"
-                }
-              },
-              "text/plain" : {
-                "schema" : {
-                  "type" : "string"
+                  "$ref" : "#/components/schemas/RepositoryInstallationStatusResponse"
                 }
               }
             }
@@ -2172,12 +2091,6 @@
       "AccessVerificationResponse" : {
         "type" : "object",
         "properties" : {
-          "read" : {
-            "type" : [ "boolean", "null" ]
-          },
-          "write" : {
-            "type" : [ "boolean", "null" ]
-          },
           "defaultBranchProtected" : {
             "type" : [ "boolean", "null" ]
           },
@@ -2210,16 +2123,6 @@
           "defaultBranch" : {
             "type" : "string"
           },
-          "vaultKeyPath" : {
-            "type" : "string"
-          },
-          "deployKeyFingerprint" : {
-            "type" : [ "string", "null" ]
-          },
-          "deployKeyAddedAt" : {
-            "type" : [ "string", "null" ],
-            "format" : "date-time"
-          },
           "createdAt" : {
             "type" : "string",
             "format" : "date-time"
@@ -2236,24 +2139,7 @@
             } ]
           }
         },
-        "required" : [ "createdAt", "defaultBranch", "id", "name", "repoUrl", "updatedAt", "vaultKeyPath" ]
-      },
-      "AttachRepositoryDeployKeyRequest" : {
-        "type" : "object",
-        "properties" : {
-          "privateKeyOpenssh" : {
-            "type" : "string",
-            "minLength" : 1
-          },
-          "publicKeyOpenssh" : {
-            "type" : "string",
-            "minLength" : 1
-          },
-          "knownHosts" : {
-            "type" : [ "string", "null" ]
-          }
-        },
-        "required" : [ "privateKeyOpenssh", "publicKeyOpenssh" ]
+        "required" : [ "createdAt", "defaultBranch", "id", "name", "repoUrl", "updatedAt" ]
       },
       "CreateProjectRequest" : {
         "type" : "object",
@@ -2302,23 +2188,6 @@
         },
         "required" : [ "createdAt", "description", "id", "name", "slug", "updatedAt" ]
       },
-      "AttachDeployKeyRequest" : {
-        "type" : "object",
-        "properties" : {
-          "privateKeyOpenssh" : {
-            "type" : "string",
-            "minLength" : 1
-          },
-          "publicKeyOpenssh" : {
-            "type" : "string",
-            "minLength" : 1
-          },
-          "knownHosts" : {
-            "type" : [ "string", "null" ]
-          }
-        },
-        "required" : [ "privateKeyOpenssh", "publicKeyOpenssh" ]
-      },
       "LinkRepositoryRequest" : {
         "type" : "object",
         "properties" : {
@@ -2366,16 +2235,6 @@
           "defaultBranch" : {
             "type" : "string"
           },
-          "vaultKeyPath" : {
-            "type" : "string"
-          },
-          "deployKeyFingerprint" : {
-            "type" : [ "string", "null" ]
-          },
-          "deployKeyAddedAt" : {
-            "type" : [ "string", "null" ],
-            "format" : "date-time"
-          },
           "createdAt" : {
             "type" : "string",
             "format" : "date-time"
@@ -2385,7 +2244,7 @@
             "format" : "date-time"
           }
         },
-        "required" : [ "createdAt", "defaultBranch", "id", "name", "projectId", "repoUrl", "updatedAt", "vaultKeyPath" ]
+        "required" : [ "createdAt", "defaultBranch", "id", "name", "projectId", "repoUrl", "updatedAt" ]
       },
       "StartCredentialSessionRequest" : {
         "type" : "object",
@@ -2997,16 +2856,6 @@
           "defaultBranch" : {
             "type" : "string"
           },
-          "vaultKeyPath" : {
-            "type" : "string"
-          },
-          "deployKeyFingerprint" : {
-            "type" : [ "string", "null" ]
-          },
-          "deployKeyAddedAt" : {
-            "type" : [ "string", "null" ],
-            "format" : "date-time"
-          },
           "createdAt" : {
             "type" : "string",
             "format" : "date-time"
@@ -3023,7 +2872,7 @@
             } ]
           }
         },
-        "required" : [ "attachedAt", "createdAt", "defaultBranch", "id", "isPrimary", "name", "repoUrl", "updatedAt", "vaultKeyPath" ]
+        "required" : [ "attachedAt", "createdAt", "defaultBranch", "id", "isPrimary", "name", "repoUrl", "updatedAt" ]
       },
       "WorkspaceRunnerImageResponse" : {
         "type" : "object",
@@ -3106,6 +2955,22 @@
           }
         },
         "required" : [ "createdAt", "id", "kind", "name", "repositories", "runnerSetup", "status", "updatedAt" ]
+      },
+      "RepositoryInstallationStatusResponse" : {
+        "type" : "object",
+        "properties" : {
+          "state" : {
+            "type" : "string"
+          },
+          "checkedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "detail" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "checkedAt", "state" ]
       },
       "StoredCredentialStatusResponse" : {
         "type" : "object",

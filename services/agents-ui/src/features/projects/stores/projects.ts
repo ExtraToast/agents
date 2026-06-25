@@ -4,7 +4,6 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import {
   addLink,
-  attachKey,
   createProject,
   getProject,
   linkRepository,
@@ -102,16 +101,6 @@ export const useProjectsStore = defineStore('projects', () => {
     links.value = links.value.filter((l) => l.id !== linkId)
   }
 
-  async function attach(
-    linkId: string,
-    body: { privateKeyOpenssh: string; publicKeyOpenssh: string; knownHosts?: string },
-  ): Promise<void> {
-    const project = activeProject.value
-    if (!project) return
-    await attachKey(project.id, linkId, body)
-    await open(project.id)
-  }
-
   return {
     projects,
     activeProject,
@@ -126,6 +115,5 @@ export const useProjectsStore = defineStore('projects', () => {
     unlinkRepo,
     addNewLink,
     dropLink,
-    attach,
   }
 })

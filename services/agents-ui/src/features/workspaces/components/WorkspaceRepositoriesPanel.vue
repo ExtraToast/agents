@@ -33,7 +33,8 @@ const sortedRepositories = computed(() =>
       <div>
         <h2 class="text-sm font-semibold">Repositories</h2>
         <p class="mt-1 text-xs text-[var(--color-text-muted)]">
-          Attached repositories are cloned under /workspace by repository name. The primary repository drives defaults.
+          Attached repositories are cloned under /workspace by repository name using GitHub App access. The primary
+          repository drives defaults.
         </p>
       </div>
       <button
@@ -75,8 +76,6 @@ const sortedRepositories = computed(() =>
               >
                 primary
               </span>
-              <span v-if="!r.deployKeyFingerprint" class="text-xs text-amber-400">no key yet</span>
-              <span v-else class="text-xs text-emerald-400">key attached</span>
             </div>
             <p class="mt-1 truncate font-mono text-xs text-[var(--color-text-muted)]">{{ r.repoUrl }}</p>
             <p class="mt-1 text-xs text-[var(--color-text-muted)]">default: {{ r.defaultBranch }}</p>

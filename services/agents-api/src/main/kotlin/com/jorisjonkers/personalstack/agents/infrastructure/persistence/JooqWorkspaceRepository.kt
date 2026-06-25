@@ -86,8 +86,7 @@ class JooqWorkspaceRepository(
                     DSL.excluded(OWNER_USER_ID),
                     DSL.field(DSL.name("workspaces", "owner_user_id"), String::class.java),
                 ),
-            )
-            .set(GITHUB_LINK_ID, workspace.githubLinkId?.value)
+            ).set(GITHUB_LINK_ID, workspace.githubLinkId?.value)
             .set(REPOSITORY_ID, workspace.repositoryId?.value)
             .set(PROJECT_ID, workspace.projectId?.value)
             .set(KIND, workspace.kind.name)

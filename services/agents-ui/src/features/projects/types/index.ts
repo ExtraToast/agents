@@ -20,9 +20,6 @@ export interface GithubLink {
   name: string
   repoUrl: string
   defaultBranch: string
-  vaultKeyPath: string
-  deployKeyFingerprint: string | null
-  deployKeyAddedAt: string | null
   createdAt: string
   updatedAt: string
 }
@@ -38,7 +35,7 @@ export interface ProjectDetail {
   /**
    * The repository pool linked to this project. Many-to-many: a
    * repository can appear under multiple projects without
-   * duplicating its deploy key.
+   * duplicating GitHub App installation state.
    */
   repositories: Repository[]
 }

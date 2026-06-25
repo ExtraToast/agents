@@ -28,7 +28,7 @@ async function onCreate(input: CreateRepositoryInput): Promise<Repository> {
 
 async function onCreateSuccess(created: Repository): Promise<void> {
   showCreate.value = false
-  toast.success('Repository created', `Attach a deploy key next so the agent can clone ${created.name}.`)
+  toast.success('Repository created', `Install the GitHub App next so the agent can access ${created.name}.`)
   await router.push(`/repositories/${created.id}`)
 }
 </script>
@@ -39,8 +39,8 @@ async function onCreateSuccess(created: Repository): Promise<void> {
       <div>
         <h1 class="text-2xl font-bold">Repositories</h1>
         <p class="mt-1 text-sm text-[var(--color-text-muted)]">
-          A repository is one GitHub repo plus its deploy key. Projects below combine repositories — you can reuse the
-          same repository in multiple projects without uploading the key twice.
+          A repository is one GitHub repo available to agents through the GitHub App. Projects below combine
+          repositories, and the same repository can be reused in multiple projects.
         </p>
       </div>
       <button
@@ -76,15 +76,7 @@ async function onCreateSuccess(created: Repository): Promise<void> {
           <template #header>
             <div class="flex items-baseline justify-between">
               <h3 class="font-semibold">{{ r.name }}</h3>
-              <span
-                v-if="r.deployKeyFingerprint"
-                class="text-xs text-emerald-400"
-                :data-testid="`repository-${r.id}-key-attached`"
-                >key attached</span
-              >
-              <span v-else class="text-xs text-amber-400" :data-testid="`repository-${r.id}-key-missing`">
-                no key yet
-              </span>
+              <span class="text-xs text-[var(--color-text-muted)]">GitHub App</span>
             </div>
           </template>
           <p class="font-mono text-xs text-[var(--color-text-muted)]">{{ r.repoUrl }}</p>

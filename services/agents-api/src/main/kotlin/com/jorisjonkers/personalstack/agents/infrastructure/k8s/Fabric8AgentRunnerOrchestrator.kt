@@ -4,14 +4,11 @@ import com.jorisjonkers.personalstack.agents.config.AgentRuntimeProperties
 import com.jorisjonkers.personalstack.agents.domain.model.AgentCredentialProvider
 import com.jorisjonkers.personalstack.agents.domain.model.AgentSetupId
 import com.jorisjonkers.personalstack.agents.domain.model.AgentSetupVersion
-import com.jorisjonkers.personalstack.agents.domain.model.GithubLink
 import com.jorisjonkers.personalstack.agents.domain.model.RunnerSetupProvisioningSpec
 import com.jorisjonkers.personalstack.agents.domain.model.RunnerState
 import com.jorisjonkers.personalstack.agents.domain.model.Workspace
 import com.jorisjonkers.personalstack.agents.domain.port.AgentCredentialRepository
 import com.jorisjonkers.personalstack.agents.domain.port.AgentRunnerOrchestrator
-import com.jorisjonkers.personalstack.agents.domain.port.DeployKeyStore
-import com.jorisjonkers.personalstack.agents.domain.port.GithubLinkRepository
 import com.jorisjonkers.personalstack.agents.domain.port.RepositoryRepository
 import com.jorisjonkers.personalstack.agents.domain.port.WorkspaceRepositoryRepository
 import io.fabric8.kubernetes.api.model.ContainerPortBuilder
@@ -21,7 +18,6 @@ import io.fabric8.kubernetes.api.model.PersistentVolumeClaimBuilder
 import io.fabric8.kubernetes.api.model.Pod
 import io.fabric8.kubernetes.api.model.PodBuilder
 import io.fabric8.kubernetes.api.model.Quantity
-import io.fabric8.kubernetes.api.model.Secret
 import io.fabric8.kubernetes.api.model.SecretBuilder
 import io.fabric8.kubernetes.api.model.ServiceBuilder
 import io.fabric8.kubernetes.api.model.Volume
@@ -40,17 +36,15 @@ import java.util.concurrent.TimeUnit
  * is fixed: one Pod (`agent-runner-<short-id>`), one workspace PVC
  * (`workspace-<short-id>`), one ClusterIP Service so the gateway has
  * a stable in-cluster name. Adversarial use is anticipated, so the
- * Pod runs as UID 1000, with read-only mounts for the credential
- * PVCs that the agent itself doesn't need to write. Docker socket
+ * Pod runs as UID 1000, with read-only mounts for per-workspace
+ * credential Secrets that the agent itself doesn't need to write. Docker socket
  * access is intentionally host-equivalent and exists so repo tests
  * using Testcontainers can run inside future agent sessions.
  *
- * Per-workspace deploy-key isolation: when the workspace's
- * `githubLinkId` is set, the orchestrator looks up the link, reads
- * the deploy key from Vault via [DeployKeyStore], and stamps a
- * workspace-scoped k8s Secret out of it. The Pod mounts that Secret
- * instead of the cluster-wide `agents-github-deploy-key`, so a
- * workspace can only ever push to its own Project's repos.
+ * GitHub access uses the installed GitHub App: the runner mints
+ * short-lived, repo-scoped installation tokens and authenticates over
+ * HTTPS via a git credential helper, so repository access stays
+ * scoped to repos the App is installed on.
  *
  * fabric8's fluent builder chains naturally split into one helper per
  * pod section (labels, env, mounts, volumes, container body); below
@@ -64,9 +58,7 @@ import java.util.concurrent.TimeUnit
 class Fabric8AgentRunnerOrchestrator(
     private val client: KubernetesClient,
     private val props: AgentRuntimeProperties,
-    private val deployKeysProvider: ObjectProvider<DeployKeyStore>,
     private val credentialsProvider: ObjectProvider<AgentCredentialRepository>,
-    private val githubLinks: ObjectProvider<GithubLinkRepository>,
     private val workspaceRepos: ObjectProvider<WorkspaceRepositoryRepository>,
     private val repositories: ObjectProvider<RepositoryRepository>,
 ) : AgentRunnerOrchestrator {
@@ -75,7 +67,6 @@ class Fabric8AgentRunnerOrchestrator(
     override fun provision(workspace: Workspace): AgentRunnerOrchestrator.RunnerHandle =
         provision(workspace, legacySetupSpec(), workspace.runnerSetupGeneration)
 
-    @Suppress("LongMethod")
     override fun provision(
         workspace: Workspace,
         setup: RunnerSetupProvisioningSpec,
@@ -85,27 +76,16 @@ class Fabric8AgentRunnerOrchestrator(
         val podName = "agent-runner-$short"
         val pvcName = "workspace-$short"
         val serviceName = "agent-runner-$short"
-        val deployKeySecretName = ensureDeployKeySecret(workspace, short, setup)
         val credentialSecret = ensureCredentialSecret(workspace, short)
-        applyResources(
-            workspace,
-            setup,
-            runnerGeneration,
-            podName,
-            pvcName,
-            serviceName,
-            deployKeySecretName,
-            credentialSecret,
-        )
+        applyResources(workspace, setup, runnerGeneration, podName, pvcName, serviceName, credentialSecret)
         val endpoint = "http://$serviceName.${props.namespace}.svc.cluster.local:${setup.gatewayPort}"
         log.info(
-            "provisioned runner pod {} for workspace {} using setup {}@{} generation {} and deploy-key Secret {}",
+            "provisioned runner pod {} for workspace {} using setup {}@{} generation {}",
             podName,
             workspace.id,
             setup.setupId,
             setup.setupVersion,
             runnerGeneration,
-            deployKeySecretName,
         )
         return AgentRunnerOrchestrator.RunnerHandle(
             podName = podName,
@@ -121,7 +101,6 @@ class Fabric8AgentRunnerOrchestrator(
         podName: String,
         pvcName: String,
         serviceName: String,
-        deployKeySecretName: String,
         credentialSecret: CredentialSecret?,
     ) {
         client
@@ -132,7 +111,7 @@ class Fabric8AgentRunnerOrchestrator(
         client
             .pods()
             .inNamespace(props.namespace)
-            .resource(pod(workspace, setup, runnerGeneration, podName, pvcName, deployKeySecretName, credentialSecret))
+            .resource(pod(workspace, setup, runnerGeneration, podName, pvcName, credentialSecret))
             .serverSideApply()
         client
             .services()
@@ -172,7 +151,6 @@ class Fabric8AgentRunnerOrchestrator(
         log.info("scaled down runner pod for workspace {} (PVC preserved)", workspace.id)
     }
 
-    @Suppress("LongMethod")
     override fun destroy(workspace: Workspace) {
         val short = workspace.id.short()
         client
@@ -190,14 +168,6 @@ class Fabric8AgentRunnerOrchestrator(
             .inNamespace(props.namespace)
             .withName("workspace-$short")
             .delete()
-        // Per-workspace deploy-key Secret only exists when the workspace was bound to a GithubLink.
-        if (workspace.githubLinkId != null) {
-            client
-                .secrets()
-                .inNamespace(props.namespace)
-                .withName(workspaceSecretName(short))
-                .delete()
-        }
         client
             .secrets()
             .inNamespace(props.namespace)
@@ -290,8 +260,6 @@ class Fabric8AgentRunnerOrchestrator(
     private fun parseSetupVersion(value: String): AgentSetupVersion? =
         value.toLongOrNull()?.let { runCatching { AgentSetupVersion(it) }.getOrNull() }
 
-    private fun workspaceSecretName(short: String): String = "agent-runner-deploy-key-$short"
-
     private fun credentialSecretName(short: String): String = "agent-runner-credentials-$short"
 
     private data class CredentialSecret(
@@ -370,88 +338,6 @@ class Fabric8AgentRunnerOrchestrator(
         .getOrNull()
         ?.takeUnless { it.valid == false }
 
-    /**
-     * Resolve the deploy-key Secret name for a workspace. If the
-     * workspace is project-backed and the linked GithubLink has a
-     * Vault-stored key, that key gets stamped into a workspace-
-     * scoped Secret and its name is returned. Every other path —
-     * no link, link without key, Vault adapter disabled — falls
-     * back to the shared cluster-wide Secret so the Pod can still
-     * come up.
-     */
-    private fun ensureDeployKeySecret(
-        workspace: Workspace,
-        short: String,
-        setup: RunnerSetupProvisioningSpec,
-    ): String {
-        val material = resolveKeyMaterial(workspace) ?: return setup.githubDeployKeySecret
-        val secretName = workspaceSecretName(short)
-        val secret = buildWorkspaceSecret(secretName, short, material.link, material.key)
-        client
-            .secrets()
-            .inNamespace(props.namespace)
-            .resource(secret)
-            .serverSideApply()
-        return secretName
-    }
-
-    private data class ResolvedKey(
-        val link: GithubLink,
-        val key: DeployKeyStore.KeyMaterial,
-    )
-
-    // Early-out validation chain — explicit guards read better than
-    // a chained Result here; suppressing detekt's bounded-return
-    // and bounded-function rules with intent.
-    @Suppress("ReturnCount")
-    private fun resolveKeyMaterial(workspace: Workspace): ResolvedKey? {
-        val linkId = workspace.githubLinkId ?: return null
-        val links = githubLinks.ifAvailable ?: return null
-        val keys = deployKeysProvider.ifAvailable ?: return null
-        val link =
-            links.findById(linkId).also {
-                if (it == null) log.warn("workspace {} references missing GithubLink {}", workspace.id, linkId)
-            } ?: return null
-        val key =
-            keys.loadKey(link.projectId, link.id).also {
-                if (it == null) log.warn("workspace {} link {} has no Vault key yet", workspace.id, linkId)
-            } ?: return null
-        return ResolvedKey(link, key)
-    }
-
-    private fun buildWorkspaceSecret(
-        name: String,
-        short: String,
-        link: GithubLink,
-        material: DeployKeyStore.KeyMaterial,
-    ): Secret {
-        // fabric8 7.x's typed-builder `withLabels` / `withData`
-        // resolve cleanly only when the `Map` literal lives inline
-        // at the call site; an extracted `val labels: Map<String,
-        // String>` makes Kotlin's overload-resolution choke on K/V
-        // type parameters. Inlining is the pragmatic fix.
-        return SecretBuilder()
-            .withNewMetadata()
-            .withName(name)
-            .withNamespace(props.namespace)
-            .withLabels<String, String>(
-                mapOf(
-                    "app.kubernetes.io/part-of" to "agent-runner",
-                    "agent-runner/workspace-id" to short,
-                    "agent-runner/github-link-id" to link.id.toString(),
-                ),
-            ).endMetadata()
-            .withType("Opaque")
-            .withData<String, String>(
-                mapOf(
-                    "private_key" to b64(material.privateKey),
-                    "public_key" to b64(material.publicKey),
-                    "known_hosts" to b64(material.knownHosts),
-                    "fingerprint" to b64(material.fingerprint),
-                ),
-            ).build()
-    }
-
     private fun b64(s: String): String = Base64.getEncoder().encodeToString(s.toByteArray())
 
     private fun pvc(name: String): PersistentVolumeClaim =
@@ -482,7 +368,6 @@ class Fabric8AgentRunnerOrchestrator(
         runnerGeneration: Long,
         name: String,
         workspacePvc: String,
-        deployKeySecret: String,
         credentialSecret: CredentialSecret?,
     ): Pod =
         PodBuilder()
@@ -552,7 +437,7 @@ class Fabric8AgentRunnerOrchestrator(
             .withLimits<String, Quantity>(mapOf("cpu" to Quantity(CPU_LIMIT), "memory" to Quantity(MEMORY_LIMIT)))
             .endResources()
             .endContainer()
-            .withVolumes(podVolumes(workspacePvc, deployKeySecret, credentialSecret, setup))
+            .withVolumes(podVolumes(workspacePvc, credentialSecret, setup))
             .endSpec()
             .build()
 
@@ -776,13 +661,6 @@ class Fabric8AgentRunnerOrchestrator(
                     .build(),
             )
         }
-        add(
-            VolumeMountBuilder()
-                .withName("github-deploy-key")
-                .withMountPath("/var/run/secrets/agents/github-deploy-key")
-                .withReadOnly(true)
-                .build(),
-        )
         // Declarative MCP server set; the entrypoint seeds it into
         // ~/.claude.json. Optional volume, so an absent ConfigMap
         // leaves the runner with no managed MCP servers.
@@ -797,14 +675,12 @@ class Fabric8AgentRunnerOrchestrator(
 
     private fun podVolumes(
         workspacePvc: String,
-        deployKeySecret: String,
         credentialSecret: CredentialSecret?,
         setup: RunnerSetupProvisioningSpec,
     ) = buildList {
         add(pvcVolume("workspace", workspacePvc))
         credentialSecret?.let { add(agentCredentialsVolume(it.name)) }
         dockerSocketVolume(setup)?.let(::add)
-        add(githubDeployKeyVolume(deployKeySecret))
         add(mcpConfigVolume(setup))
     }
 
@@ -830,14 +706,6 @@ class Fabric8AgentRunnerOrchestrator(
                 .endHostPath()
                 .build()
         }
-
-    private fun githubDeployKeyVolume(deployKeySecret: String): Volume =
-        VolumeBuilder()
-            .withName("github-deploy-key")
-            .withNewSecret()
-            .withSecretName(deployKeySecret)
-            .endSecret()
-            .build()
 
     private fun agentCredentialsVolume(credentialSecret: String): Volume =
         VolumeBuilder()

@@ -4,7 +4,6 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   addLink,
-  attachKey,
   createProject,
   getProject,
   linkRepository,
@@ -20,7 +19,6 @@ vi.mock('../services/projectsService', () => ({
   createProject: vi.fn(),
   addLink: vi.fn(),
   removeLink: vi.fn(),
-  attachKey: vi.fn(),
   linkRepository: vi.fn(),
   unlinkRepository: vi.fn(),
 }))
@@ -31,7 +29,6 @@ const mocked = {
   createProject: vi.mocked(createProject),
   addLink: vi.mocked(addLink),
   removeLink: vi.mocked(removeLink),
-  attachKey: vi.mocked(attachKey),
   linkRepository: vi.mocked(linkRepository),
   unlinkRepository: vi.mocked(unlinkRepository),
 }
@@ -42,9 +39,6 @@ function fakeRepo(over: Partial<Repository> = {}): Repository {
     name: 'demo-repo',
     repoUrl: 'git@github.com:owner/demo.git',
     defaultBranch: 'main',
-    vaultKeyPath: 'secret/data/agents/repositories/rrrrrrrr...',
-    deployKeyFingerprint: null,
-    deployKeyAddedAt: null,
     createdAt: '2026-05-20T10:00:00Z',
     updatedAt: '2026-05-20T10:00:00Z',
     ...over,
@@ -70,9 +64,6 @@ function fakeLink(over: Partial<GithubLink> = {}): GithubLink {
     name: 'repo',
     repoUrl: 'git@github.com:owner/repo.git',
     defaultBranch: 'main',
-    vaultKeyPath: 'secret/data/agents/projects/p/repos/l',
-    deployKeyFingerprint: null,
-    deployKeyAddedAt: null,
     createdAt: '2026-05-19T10:00:00Z',
     updatedAt: '2026-05-19T10:00:00Z',
     ...over,
@@ -148,19 +139,6 @@ describe('useProjectsStore', () => {
     store.links = [fakeLink({ id: 'a' }), fakeLink({ id: 'b' })]
     await store.dropLink('a')
     expect(store.links.map((l) => l.id)).toEqual(['b'])
-  })
-
-  it('attach delegates and refreshes the project', async () => {
-    mocked.attachKey.mockResolvedValue()
-    mocked.getProject.mockResolvedValue({ project: fakeProject(), links: [], repositories: [] })
-    const store = useProjectsStore()
-    store.activeProject = fakeProject()
-    await store.attach('link-id', {
-      privateKeyOpenssh: '-----BEGIN OPENSSH PRIVATE KEY-----\nx\n-----END OPENSSH PRIVATE KEY-----',
-      publicKeyOpenssh: 'ssh-ed25519 AAAA test@laptop',
-    })
-    expect(mocked.attachKey).toHaveBeenCalled()
-    expect(mocked.getProject).toHaveBeenCalled()
   })
 
   it('linkRepo no-ops when no project is open', async () => {

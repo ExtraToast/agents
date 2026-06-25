@@ -119,7 +119,6 @@ vi.mock('@/features/repositories/services/repositoriesService', () => ({
   listRepositories: () => listRepositories(),
   getRepository: vi.fn(),
   createRepository: vi.fn(),
-  attachDeployKey: vi.fn(),
   deleteRepository: vi.fn(),
   verifyRepositoryAccess: vi.fn(),
 }))
@@ -224,9 +223,6 @@ function fakeRepository(over: Partial<Repository> = {}): Repository {
     name: 'primary',
     repoUrl: 'git@github.com:owner/primary.git',
     defaultBranch: 'main',
-    vaultKeyPath: 'secret/data/agents/repositories/repo-primary',
-    deployKeyFingerprint: 'SHA256:primary',
-    deployKeyAddedAt: '2026-05-19T10:00:00Z',
     createdAt: '2026-05-19T10:00:00Z',
     updatedAt: '2026-05-19T10:00:00Z',
     ...over,

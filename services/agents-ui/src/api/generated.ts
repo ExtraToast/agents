@@ -172,22 +172,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/repositories/{id}/key": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["attachKey"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/projects": {
         parameters: {
             query?: never;
@@ -198,22 +182,6 @@ export interface paths {
         get: operations["list_2"];
         put?: never;
         post: operations["create_2"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/projects/{projectId}/links/{linkId}/key": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["attachKey_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -518,14 +486,14 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/projects/{projectId}/links/{linkId}/setup-guide": {
+    "/api/v1/repositories/{id}/installation-status": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["guide"];
+        get: operations["installationStatus"];
         put?: never;
         post?: never;
         delete?: never;
@@ -891,8 +859,6 @@ export interface components {
             defaultBranch: string;
         };
         AccessVerificationResponse: {
-            read?: boolean | null;
-            write?: boolean | null;
             defaultBranchProtected?: boolean | null;
             /** Format: date-time */
             checkedAt?: string | null;
@@ -904,20 +870,11 @@ export interface components {
             name: string;
             repoUrl: string;
             defaultBranch: string;
-            vaultKeyPath: string;
-            deployKeyFingerprint?: string | null;
-            /** Format: date-time */
-            deployKeyAddedAt?: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
             verification?: components["schemas"]["AccessVerificationResponse"] | null;
-        };
-        AttachRepositoryDeployKeyRequest: {
-            privateKeyOpenssh: string;
-            publicKeyOpenssh: string;
-            knownHosts?: string | null;
         };
         CreateProjectRequest: {
             name: string;
@@ -934,11 +891,6 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
-        };
-        AttachDeployKeyRequest: {
-            privateKeyOpenssh: string;
-            publicKeyOpenssh: string;
-            knownHosts?: string | null;
         };
         LinkRepositoryRequest: {
             /** Format: uuid */
@@ -957,10 +909,6 @@ export interface components {
             name: string;
             repoUrl: string;
             defaultBranch: string;
-            vaultKeyPath: string;
-            deployKeyFingerprint?: string | null;
-            /** Format: date-time */
-            deployKeyAddedAt?: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -1176,10 +1124,6 @@ export interface components {
             attachedAt: string;
             repoUrl: string;
             defaultBranch: string;
-            vaultKeyPath: string;
-            deployKeyFingerprint?: string | null;
-            /** Format: date-time */
-            deployKeyAddedAt?: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -1214,6 +1158,12 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        RepositoryInstallationStatusResponse: {
+            state: string;
+            /** Format: date-time */
+            checkedAt: string;
+            detail?: string | null;
         };
         StoredCredentialStatusResponse: {
             claude: components["schemas"]["StoredProviderCredentialStatus"];
@@ -1623,30 +1573,6 @@ export interface operations {
             };
         };
     };
-    attachKey: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AttachRepositoryDeployKeyRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
     list_2: {
         parameters: {
             query?: never;
@@ -1688,31 +1614,6 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["ProjectResponse"];
                 };
-            };
-        };
-    };
-    attachKey_1: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                projectId: string;
-                linkId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AttachDeployKeyRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -2271,13 +2172,12 @@ export interface operations {
             };
         };
     };
-    guide: {
+    installationStatus: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                projectId: string;
-                linkId: string;
+                id: string;
             };
             cookie?: never;
         };
@@ -2289,8 +2189,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "text/markdown": string;
-                    "text/plain": string;
+                    "*/*": components["schemas"]["RepositoryInstallationStatusResponse"];
                 };
             };
         };

@@ -33,7 +33,7 @@ function onSubmit(): void {
         placeholder="agents"
       />
       <p class="text-xs text-[var(--color-text-muted)] mt-1">
-        Used as the deploy-key file name on your laptop and in the GitHub key title.
+        A short label for this repository link.
       </p>
     </div>
     <div>

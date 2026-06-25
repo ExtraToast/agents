@@ -88,9 +88,6 @@ function fakeRepository(over: Partial<WorkspaceRepository> = {}): WorkspaceRepos
     name: 'demo-repo',
     repoUrl: 'git@github.com:owner/demo.git',
     defaultBranch: 'main',
-    vaultKeyPath: 'secret/data/agents/repositories/repo-1',
-    deployKeyFingerprint: null,
-    deployKeyAddedAt: null,
     createdAt: '2026-05-20T10:00:00Z',
     updatedAt: '2026-05-20T10:00:00Z',
     isPrimary: false,
@@ -656,7 +653,7 @@ describe('useWorkspacesStore', () => {
   it('internal refreshes from attachRepository do not call connectWorkspace', async () => {
     mocked.attachRepository.mockResolvedValue()
     mocked.getWorkspace.mockResolvedValue({
-      workspace: { ...fakeWorkspace(), repositories: [{ id: 'repo-a', name: 'r', repoUrl: 'u', defaultBranch: 'main', vaultKeyPath: 'v', createdAt: '2026-05-20T10:00:00Z', updatedAt: '2026-05-20T10:00:00Z', isPrimary: false, attachedAt: '2026-05-20T10:00:00Z', deployKeyFingerprint: null, deployKeyAddedAt: null }] },
+      workspace: { ...fakeWorkspace(), repositories: [{ id: 'repo-a', name: 'r', repoUrl: 'u', defaultBranch: 'main', createdAt: '2026-05-20T10:00:00Z', updatedAt: '2026-05-20T10:00:00Z', isPrimary: false, attachedAt: '2026-05-20T10:00:00Z' }] },
       sessions: [],
     })
     const store = useWorkspacesStore()

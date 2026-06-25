@@ -32,8 +32,8 @@ async function onCreateSuccess(created: Project): Promise<void> {
       <div>
         <h1 class="text-2xl font-bold">Projects</h1>
         <p class="mt-1 text-sm text-[var(--color-text-muted)]">
-          A project groups one or more repositories. The same repository can live in multiple projects without uploading
-          its deploy key twice.
+          A project groups one or more repositories. The same repository can live in multiple projects without
+          duplicating GitHub App installation state.
         </p>
       </div>
       <button

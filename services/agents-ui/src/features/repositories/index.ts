@@ -1,11 +1,10 @@
 // Public surface for the repositories feature.
-export { default as AttachKeyWizard } from './components/AttachKeyWizard.vue'
 export { default as CreateRepositoryForm } from './components/CreateRepositoryForm.vue'
 export { useRepositoriesStore } from './stores/repositories'
 export type {
-  AttachDeployKeyInput,
   AttachedProject,
   CreateRepositoryInput,
+  InstallationStatus,
   Repository,
   RepositoryDetail,
   RepositoryVerifyResult,

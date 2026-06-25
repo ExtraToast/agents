@@ -8,8 +8,8 @@ export type WorkspaceStatus = 'PENDING' | 'STARTING' | 'READY' | 'IDLE' | 'FAILE
  * can distinguish a real cloned repo from a scratch sandbox or a
  * chat-only session.
  *
- * - `REPO_BACKED`: Pod boots, clones `repoUrl` / `branch` from the
- *   bound Repository's deploy key. The default.
+ * - `REPO_BACKED`: Pod boots, clones `repoUrl` / `branch` through the
+ *   GitHub App installation. The default.
  * - `SCRATCH`: Pod boots without a clone. The agent has a shell + the
  *   CLIs but no working tree.
  * - `CHAT`: no Pod at all. The "workspace" is purely a placeholder so
@@ -62,8 +62,6 @@ export interface Workspace {
 }
 
 export interface WorkspaceRepositoryVerification {
-  read?: boolean | null
-  write?: boolean | null
   defaultBranchProtected?: boolean | null
   checkedAt?: string | null
   messages: string[]
@@ -74,9 +72,6 @@ export interface WorkspaceRepository {
   name: string
   repoUrl: string
   defaultBranch: string
-  vaultKeyPath: string
-  deployKeyFingerprint?: string | null
-  deployKeyAddedAt?: string | null
   createdAt: string
   updatedAt: string
   verification?: WorkspaceRepositoryVerification | null

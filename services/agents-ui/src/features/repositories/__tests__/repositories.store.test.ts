@@ -1,10 +1,10 @@
-import type { Repository, RepositoryDetail } from '../types'
+import type { InstallationStatus, Repository, RepositoryDetail } from '../types'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
-  attachDeployKey,
   createRepository,
   deleteRepository,
+  fetchInstallationStatus,
   getRepository,
   listRepositories,
   verifyRepositoryAccess,
@@ -15,8 +15,8 @@ vi.mock('../services/repositoriesService', () => ({
   listRepositories: vi.fn(),
   getRepository: vi.fn(),
   createRepository: vi.fn(),
-  attachDeployKey: vi.fn(),
   deleteRepository: vi.fn(),
+  fetchInstallationStatus: vi.fn(),
   verifyRepositoryAccess: vi.fn(),
 }))
 
@@ -24,8 +24,8 @@ const mocked = {
   listRepositories: vi.mocked(listRepositories),
   getRepository: vi.mocked(getRepository),
   createRepository: vi.mocked(createRepository),
-  attachDeployKey: vi.mocked(attachDeployKey),
   deleteRepository: vi.mocked(deleteRepository),
+  fetchInstallationStatus: vi.mocked(fetchInstallationStatus),
   verifyRepositoryAccess: vi.mocked(verifyRepositoryAccess),
 }
 
@@ -35,9 +35,6 @@ function fakeRepo(over: Partial<Repository> = {}): Repository {
     name: 'demo',
     repoUrl: 'git@github.com:owner/demo.git',
     defaultBranch: 'main',
-    vaultKeyPath: 'secret/data/agents/repositories/aaaaaaaa-...',
-    deployKeyFingerprint: null,
-    deployKeyAddedAt: null,
     createdAt: '2026-05-20T10:00:00Z',
     updatedAt: '2026-05-20T10:00:00Z',
     ...over,
@@ -93,27 +90,23 @@ describe('repositories store', () => {
     expect(store.items[0]!.id).toBe('new')
   })
 
-  it('attachKey re-fetches the detail so the fingerprint updates', async () => {
-    mocked.attachDeployKey.mockResolvedValue()
-    mocked.getRepository.mockResolvedValue({
-      repository: fakeRepo({ deployKeyFingerprint: 'SHA256:x' }),
-      attachedProjects: [],
-    })
+  it('loadInstallationStatus caches the live GitHub App status by id', async () => {
+    const status: InstallationStatus = {
+      state: 'INSTALLED',
+      checkedAt: '2026-05-21T10:00:00Z',
+      detail: null,
+    }
+    mocked.fetchInstallationStatus.mockResolvedValue(status)
     const store = useRepositoriesStore()
-    await store.attachKey('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', {
-      privateKeyOpenssh: '-----BEGIN OPENSSH PRIVATE KEY-----\nx\n-----END OPENSSH PRIVATE KEY-----',
-      publicKeyOpenssh: 'ssh-ed25519 AAAA test@laptop',
-    })
-    expect(mocked.attachDeployKey).toHaveBeenCalledOnce()
-    expect(mocked.getRepository).toHaveBeenCalledOnce()
+    const result = await store.loadInstallationStatus('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa')
+    expect(result).toEqual(status)
+    expect(store.installationStatusById['aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa']).toEqual(status)
   })
 
   it('verify stores the result onto the cached detail', async () => {
-    const repo = fakeRepo({ deployKeyFingerprint: 'SHA256:x' })
+    const repo = fakeRepo()
     mocked.getRepository.mockResolvedValue({ repository: repo, attachedProjects: [] })
     mocked.verifyRepositoryAccess.mockResolvedValue({
-      read: true,
-      write: false,
       defaultBranchProtected: null,
       checkedAt: '2026-05-21T10:00:00Z',
       messages: ['no GitHub token configured'],
@@ -121,33 +114,33 @@ describe('repositories store', () => {
     const store = useRepositoriesStore()
     await store.loadDetail(repo.id)
     const result = await store.verify(repo.id)
-    expect(result.read).toBe(true)
+    expect(result.defaultBranchProtected).toBeNull()
     expect(store.detailById[repo.id]!.verify).toEqual(result)
   })
 
   it('verify is a no-op on the cache when no detail is loaded for the id', async () => {
     mocked.verifyRepositoryAccess.mockResolvedValue({
-      read: true,
-      write: true,
       defaultBranchProtected: true,
       checkedAt: '2026-05-21T10:00:00Z',
       messages: [],
     })
     const store = useRepositoriesStore()
     const result = await store.verify('missing-id')
-    expect(result.write).toBe(true)
+    expect(result.defaultBranchProtected).toBe(true)
     expect(store.detailById['missing-id']).toBeUndefined()
   })
 
-  it('destroy removes from items + detailById', async () => {
+  it('destroy removes from items, detailById, and installation status cache', async () => {
     mocked.deleteRepository.mockResolvedValue()
     const store = useRepositoriesStore()
     const a = fakeRepo({ id: 'a' })
     const b = fakeRepo({ id: 'b' })
     store.items = [a, b]
     store.detailById = { a: { repository: a, attachedProjects: [] } }
+    store.installationStatusById = { a: { state: 'INSTALLED', checkedAt: '2026-05-21T10:00:00Z', detail: null } }
     await store.destroy('a')
     expect(store.items.map((r) => r.id)).toEqual(['b'])
     expect(store.detailById.a).toBeUndefined()
+    expect(store.installationStatusById.a).toBeUndefined()
   })
 })

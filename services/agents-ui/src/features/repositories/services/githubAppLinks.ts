@@ -20,7 +20,7 @@ export interface GitHubAppLinksApi {
   readonly buildGitHubAppInstallationUrlForRepo: (repoUrl: string, appSlug?: string | null) => string | null
 }
 
-export const DEFAULT_GITHUB_APP_SLUG = 'extratoast-agents'
+export const DEFAULT_GITHUB_APP_SLUG = 'jorisjonkers-dev-agents'
 export const GITHUB_APP_SLUG_ENV_KEY = 'VITE_GITHUB_APP_SLUG'
 
 const GITHUB_BASE_URL = 'https://github.com'
@@ -37,6 +37,9 @@ export const GITHUB_APP_REQUESTED_PERMISSIONS: ReadonlyArray<GitHubAppRequestedP
   permission('contents', 'write', 'Contents'),
   permission('pull_requests', 'write', 'Pull requests'),
   permission('actions', 'write', 'Actions'),
+  permission('issues', 'write', 'Issues'),
+  permission('workflows', 'write', 'Workflows'),
+  permission('packages', 'read', 'Packages'),
 ])
 
 export function isValidGitHubAppSlug(slug: string): boolean {
