@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.3](https://github.com/ExtraToast/agents/compare/v0.14.2...v0.14.3) (2026-06-26)
+
+
+### Bug Fixes
+
+* **agents-ui:** real OpenAI Codex mark, sign-in on the title line, neutral cancel hover ([#117](https://github.com/ExtraToast/agents/issues/117)) ([31a7d0d](https://github.com/ExtraToast/agents/commit/31a7d0d920d7ef5ae5e60548ea7686437580a9e9))
+
 ## [0.14.2](https://github.com/ExtraToast/agents/compare/v0.14.1...v0.14.2) (2026-06-26)
 
 
