@@ -11,8 +11,6 @@ interface ProviderMeta {
   id: CredentialProvider
   label: string
   icon: string
-  /** What the CLI is, in the operator's words. */
-  blurb: string
   /** Primary-action verb shown on the idle button. */
   action: string
 }
@@ -25,14 +23,12 @@ const providers: ProviderMeta[] = [
     id: 'claude',
     label: 'Claude Code',
     icon: claudeCodeIcon,
-    blurb: 'The Claude Code CLI the agent runners share.',
     action: 'Sign in to Claude Code',
   },
   {
     id: 'codex',
     label: 'Codex',
     icon: codexIcon,
-    blurb: 'The OpenAI Codex CLI the agent runners share.',
     action: 'Connect Codex',
   },
 ]
@@ -40,7 +36,7 @@ const providers: ProviderMeta[] = [
 const code = ref<Record<CredentialProvider, string>>({ claude: '', codex: '' })
 
 const phaseLabel: Record<string, string> = {
-  starting: 'Starting the CLI…',
+  starting: 'Starting…',
   finalizing: 'Saving credentials…',
 }
 
@@ -66,29 +62,36 @@ function hasActiveFlow(p: CredentialProvider): boolean {
   return session !== null && session !== undefined && !isTerminalPhase(session.phase)
 }
 
+/** A status pill and the detail line only mean something once credentials
+ *  exist; an unconnected provider already reads as such from its action
+ *  button, so the loud "Not connected" badge is just noise. */
+function isConnectedState(p: CredentialProvider): boolean {
+  return store.stored[p]?.exists === true
+}
+
+function showStatus(p: CredentialProvider): boolean {
+  return !hasActiveFlow(p) && isConnectedState(p)
+}
+
 function statusLabel(p: CredentialProvider): string {
   const s: CredentialStatus | null = store.stored[p]
-  if (!s) return 'Checking'
-  if (!s.exists) return 'Not connected'
-  if (s.valid === true) return 'Connected'
-  if (s.valid === false) return 'Re-login needed'
+  if (s?.valid === true) return 'Connected'
+  if (s?.valid === false) return 'Re-login needed'
   return 'Stored'
 }
 
 function statusClass(p: CredentialProvider): string {
   const s: CredentialStatus | null = store.stored[p]
-  if (s?.exists === true && s.valid === true) return 'bg-emerald-500/15 text-emerald-300'
-  if (s?.exists === true && s.valid === false) return 'bg-red-500/15 text-red-300'
-  if (s?.exists === true) return 'bg-amber-500/15 text-amber-300'
-  return 'bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]'
+  if (s?.valid === true) return 'bg-emerald-500/15 text-emerald-300'
+  if (s?.valid === false) return 'bg-red-500/15 text-red-300'
+  return 'bg-amber-500/15 text-amber-300'
 }
 
 function statusDotClass(p: CredentialProvider): string {
   const s: CredentialStatus | null = store.stored[p]
-  if (s?.exists === true && s.valid === true) return 'bg-emerald-400'
-  if (s?.exists === true && s.valid === false) return 'bg-red-400'
-  if (s?.exists === true) return 'bg-amber-400'
-  return 'bg-[var(--color-text-muted)]'
+  if (s?.valid === true) return 'bg-emerald-400'
+  if (s?.valid === false) return 'bg-red-400'
+  return 'bg-amber-400'
 }
 
 function formatWhen(iso?: string | null): string {
@@ -107,8 +110,7 @@ function formatWhen(iso?: string | null): string {
 
 function checkLine(p: CredentialProvider): string {
   const s: CredentialStatus | null = store.stored[p]
-  if (!s) return 'Checking…'
-  if (!s.exists) return 'No credentials stored yet'
+  if (!s?.exists) return ''
   const when = formatWhen(s.updatedAt)
   const who = s.updatedBy ? ` · ${s.updatedBy}` : ''
   const updated = when ? ` · Updated ${when}${who}` : who
@@ -158,9 +160,9 @@ onUnmounted(() => store.dispose())
   <div>
     <header class="mb-4 flex items-baseline justify-between gap-3">
       <p class="max-w-2xl text-sm text-[var(--color-text-muted)]">
-        Re-authenticate the CLIs the agent runners share. Sign-in runs server-side and the renewed
-        credentials are stored for every runner. Claude and Codex are independent — start either, or
-        both at once.
+        Sign in so the agent runners can act as you in Claude and Codex. Authentication runs
+        server-side and the renewed credentials are shared across every runner. Claude and Codex
+        are independent — start either, or both at once.
       </p>
       <button
         type="button"
@@ -181,7 +183,7 @@ onUnmounted(() => store.dispose())
         :data-testid="`credentials-card-${p.id}`"
         :aria-label="`${p.label} credentials`"
       >
-        <div class="flex flex-col gap-3 p-4">
+        <div class="flex flex-col gap-4 p-4">
           <!-- Header: identity + the at-a-glance connection check -->
           <div class="flex items-start justify-between gap-3">
             <div class="flex items-center gap-3">
@@ -192,13 +194,19 @@ onUnmounted(() => store.dispose())
                 :aria-label="`${p.label} product icon`"
                 :data-testid="`credentials-icon-${p.id}`"
               >
-              <div>
+              <div class="flex flex-col gap-0.5">
                 <h3 class="text-base font-semibold leading-tight">{{ p.label }}</h3>
-                <p class="text-xs text-[var(--color-text-muted)]">{{ p.blurb }}</p>
+                <p
+                  v-if="showStatus(p.id)"
+                  class="text-xs text-[var(--color-text-muted)]"
+                  :data-testid="`credentials-check-${p.id}`"
+                >
+                  {{ checkLine(p.id) }}
+                </p>
               </div>
             </div>
             <span
-              v-if="!hasActiveFlow(p.id)"
+              v-if="showStatus(p.id)"
               class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
               :class="statusClass(p.id)"
               :data-testid="`credentials-pill-${p.id}`"
@@ -207,12 +215,6 @@ onUnmounted(() => store.dispose())
               {{ statusLabel(p.id) }}
             </span>
           </div>
-
-          <p class="text-xs text-[var(--color-text-muted)]" :data-testid="`credentials-check-${p.id}`">
-            {{ checkLine(p.id) }}
-          </p>
-
-          <div class="h-px bg-[var(--color-surface-border)]" />
 
           <!-- Flow -->
           <template v-if="store.states[p.id].session && !isTerminalPhase(store.states[p.id].session!.phase)">
@@ -254,28 +256,16 @@ onUnmounted(() => store.dispose())
                     Authorization submitted. Waiting for the session to finish.
                   </div>
                   <template v-else>
-                    <label :for="`code-${p.id}`"><span class="font-medium">2.</span> Paste the authorization code shown after you approve.</label>
-                    <div class="flex items-center gap-2">
-                      <input
-                        :id="`code-${p.id}`"
-                        v-model="code[p.id]"
-                        type="text"
-                        placeholder="Authorization code"
-                        class="flex-1 rounded-md border border-[var(--color-surface-border)] bg-transparent px-2.5 py-1.5 text-sm focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-light)]"
-                        :data-testid="`credentials-code-input-${p.id}`"
-                        @keyup.enter="submit(p.id)"
-                      >
-                      <button
-                        type="button"
-                        :class="primaryButtonClass"
-                        :disabled="store.states[p.id].busy || code[p.id].trim().length === 0"
-                        :data-testid="`credentials-submit-${p.id}`"
-                        @click="submit(p.id)"
-                      >
-                        <span v-if="store.states[p.id].busy" :class="spinnerClass" />
-                        Submit
-                      </button>
-                    </div>
+                    <label :for="`code-${p.id}`"><span class="font-medium">2.</span> Paste the authorization code and press Enter.</label>
+                    <input
+                      :id="`code-${p.id}`"
+                      v-model="code[p.id]"
+                      type="text"
+                      placeholder="Authorization code"
+                      class="w-full rounded-md border border-[var(--color-surface-border)] bg-transparent px-3 py-2 text-sm focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-light)]"
+                      :data-testid="`credentials-code-input-${p.id}`"
+                      @keyup.enter="submit(p.id)"
+                    >
                   </template>
                 </li>
               </ol>
@@ -310,15 +300,28 @@ onUnmounted(() => store.dispose())
               </div>
             </template>
 
-            <button
-              type="button"
-              class="w-fit"
-              :class="secondaryButtonClass"
-              :data-testid="`credentials-cancel-${p.id}`"
-              @click="store.cancel(p.id)"
-            >
-              Cancel
-            </button>
+            <!-- Submit (Claude code paste) sits next to Cancel; Enter also submits. -->
+            <div class="flex flex-wrap items-center gap-2">
+              <button
+                v-if="store.states[p.id].session!.phase === 'awaiting_url' && !redirectSubmitted(p.id)"
+                type="button"
+                :class="primaryButtonClass"
+                :disabled="store.states[p.id].busy || code[p.id].trim().length === 0"
+                :data-testid="`credentials-submit-${p.id}`"
+                @click="submit(p.id)"
+              >
+                <span v-if="store.states[p.id].busy" :class="spinnerClass" />
+                Submit
+              </button>
+              <button
+                type="button"
+                :class="secondaryButtonClass"
+                :data-testid="`credentials-cancel-${p.id}`"
+                @click="store.cancel(p.id)"
+              >
+                Cancel
+              </button>
+            </div>
           </template>
 
           <!-- Terminal + idle -->
