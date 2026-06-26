@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.4](https://github.com/ExtraToast/agents/compare/v0.14.3...v0.14.4) (2026-06-26)
+
+
+### Bug Fixes
+
+* **agents-api:** derive credential updatedBy from the owner, not the request body ([#119](https://github.com/ExtraToast/agents/issues/119)) ([206e3cd](https://github.com/ExtraToast/agents/commit/206e3cd8403e534f71b7b5d612ee3972d4a65f7a))
+
 ## [0.14.3](https://github.com/ExtraToast/agents/compare/v0.14.2...v0.14.3) (2026-06-26)
 
 
