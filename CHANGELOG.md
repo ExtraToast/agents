@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.14.1](https://github.com/ExtraToast/agents/compare/v0.14.0...v0.14.1) (2026-06-25)
+
+
+### Bug Fixes
+
+* **agents-ui:** credentials page submit-once, status refresh, icons, styling ([#112](https://github.com/ExtraToast/agents/issues/112)) ([2382396](https://github.com/ExtraToast/agents/commit/2382396785ceb5ad13c598cda70507db45028676))
+* **agents-ui:** polish credentials sign-in (padding, buttons, spinner, OpenAI icon) ([#114](https://github.com/ExtraToast/agents/issues/114)) ([3422fb9](https://github.com/ExtraToast/agents/commit/3422fb9f454fe20e003a88942689c0f819bb9399))
+
 ## [0.14.0](https://github.com/ExtraToast/agents/compare/v0.13.2...v0.14.0) (2026-06-24)
 
 
