@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.5](https://github.com/ExtraToast/agents/compare/v0.14.4...v0.14.5) (2026-06-26)
+
+
+### Bug Fixes
+
+* **agents:** inject full Claude subscription credential into runners ([#121](https://github.com/ExtraToast/agents/issues/121)) ([fb0287c](https://github.com/ExtraToast/agents/commit/fb0287c2d2b43bc13bee26ba1f0b57f228b9bf2a))
+
 ## [0.14.4](https://github.com/ExtraToast/agents/compare/v0.14.3...v0.14.4) (2026-06-26)
 
 
