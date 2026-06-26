@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.2](https://github.com/ExtraToast/agents/compare/v0.14.1...v0.14.2) (2026-06-26)
+
+
+### Bug Fixes
+
+* **agents-ui:** declutter the credentials cards and fix the Codex icon ([#115](https://github.com/ExtraToast/agents/issues/115)) ([152d8b3](https://github.com/ExtraToast/agents/commit/152d8b35eeb218a54470653ec24cdf3059ee9322))
+
 ## [0.14.1](https://github.com/ExtraToast/agents/compare/v0.14.0...v0.14.1) (2026-06-25)
 
 
