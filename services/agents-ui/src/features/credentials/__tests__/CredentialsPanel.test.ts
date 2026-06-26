@@ -28,7 +28,7 @@ describe('credentials panel', () => {
     })
   })
 
-  it('renders one card per provider with a connection pill from stored status', async () => {
+  it('renders one card per provider with a connection pill only for connected providers', async () => {
     apiGet.mockResolvedValue({
       claude: { exists: true, valid: true, updatedAt: '2026-06-23T10:00:00Z', updatedBy: 'ExtraToast' },
       codex: { exists: false, valid: null },
@@ -42,8 +42,20 @@ describe('credentials panel', () => {
     expect(wrapper.find('[data-testid="credentials-icon-claude"]').attributes('alt')).toBe('Claude Code icon')
     expect(wrapper.find('[data-testid="credentials-icon-codex"]').attributes('aria-label')).toBe('Codex product icon')
     expect(wrapper.find('[data-testid="credentials-pill-claude"]').text()).toContain('Connected')
-    expect(wrapper.find('[data-testid="credentials-pill-codex"]').text()).toContain('Not connected')
     expect(wrapper.find('[data-testid="credentials-check-claude"]').text()).toContain('ExtraToast')
+  })
+
+  it('shows no status pill or detail line for an unconnected provider', async () => {
+    // The loud "Not connected / No credentials stored yet" badge was noise —
+    // an unconnected provider already reads as such from its sign-in button.
+    const wrapper = mount(CredentialsPanel)
+    const store = useCredentialsStore()
+    await store.fetchStored()
+
+    expect(wrapper.find('[data-testid="credentials-pill-claude"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="credentials-check-claude"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="credentials-pill-codex"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="credentials-start-claude"]').text()).toContain('Sign in to Claude Code')
   })
 
   it('refreshes stored credential status on mount', async () => {
@@ -86,13 +98,34 @@ describe('credentials panel', () => {
   })
 
   it('does not show the stored-status pill inside an active sign-in flow', async () => {
+    apiGet.mockResolvedValue({
+      claude: { exists: true, valid: true, updatedAt: '2026-06-23T10:00:00Z', updatedBy: 'ExtraToast' },
+      codex: { exists: true, valid: true, updatedAt: '2026-06-23T10:00:00Z', updatedBy: 'ExtraToast' },
+    })
     const wrapper = mount(CredentialsPanel)
     const store = useCredentialsStore()
+    await store.fetchStored()
     store.states.claude.session = awaitingUrl('https://claude.com/cai/oauth/authorize')
     await nextTick()
 
+    // Claude is mid-flow, so its connected pill is suppressed; Codex (idle and
+    // connected) still shows its pill.
     expect(wrapper.find('[data-testid="credentials-pill-claude"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="credentials-pill-codex"]').exists()).toBe(true)
+  })
+
+  it('submits the pasted code on Enter without a dedicated button press', async () => {
+    const wrapper = mount(CredentialsPanel)
+    const store = useCredentialsStore()
+    const submitRedirect = vi.spyOn(store, 'submitRedirect').mockResolvedValue()
+    store.states.claude.session = awaitingUrl('https://claude.com/cai/oauth/authorize')
+    await nextTick()
+
+    const input = wrapper.find('[data-testid="credentials-code-input-claude"]')
+    await input.setValue('  auth-code-123  ')
+    await input.trigger('keyup.enter')
+
+    expect(submitRedirect).toHaveBeenCalledWith('claude', 'auth-code-123')
   })
 
   it('renders the success confirmation once a login succeeds', async () => {
