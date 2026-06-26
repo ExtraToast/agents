@@ -50,8 +50,8 @@ const primaryButtonClass = [
 ].join(' ')
 const secondaryButtonClass = [
   'inline-flex items-center justify-center rounded-md border border-[var(--color-surface-border)] px-3 py-1.5',
-  'text-sm font-medium text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-accent-light)]',
-  'hover:bg-white/5 hover:text-[var(--color-text)] focus-visible:outline-none',
+  'text-sm font-medium text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-text-muted)]',
+  'hover:bg-white/10 hover:text-[var(--color-text)] focus-visible:outline-none',
   'focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)]',
   'focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)]',
   'disabled:cursor-not-allowed disabled:opacity-50',
@@ -205,15 +205,30 @@ onUnmounted(() => store.dispose())
                 </p>
               </div>
             </div>
-            <span
-              v-if="showStatus(p.id)"
-              class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
-              :class="statusClass(p.id)"
-              :data-testid="`credentials-pill-${p.id}`"
-            >
-              <span class="size-1.5 rounded-full" :class="statusDotClass(p.id)" />
-              {{ statusLabel(p.id) }}
-            </span>
+            <div class="flex shrink-0 items-center gap-2">
+              <span
+                v-if="showStatus(p.id)"
+                class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
+                :class="statusClass(p.id)"
+                :data-testid="`credentials-pill-${p.id}`"
+              >
+                <span class="size-1.5 rounded-full" :class="statusDotClass(p.id)" />
+                {{ statusLabel(p.id) }}
+              </span>
+              <!-- Sign-in sits on the title line; an active flow renders its
+                   own controls below instead. -->
+              <button
+                v-if="!hasActiveFlow(p.id)"
+                type="button"
+                :class="primaryButtonClass"
+                :disabled="store.states[p.id].busy"
+                :data-testid="`credentials-start-${p.id}`"
+                @click="start(p.id)"
+              >
+                <span v-if="store.states[p.id].busy" :class="spinnerClass" />
+                {{ store.states[p.id].session ? 'Sign in again' : actionLabel(p) }}
+              </button>
+            </div>
           </div>
 
           <!-- Flow -->
@@ -341,18 +356,6 @@ onUnmounted(() => store.dispose())
             >
               {{ store.states[p.id].error ?? store.states[p.id].session!.error ?? 'Sign-in failed.' }}
             </p>
-
-            <button
-              type="button"
-              class="w-fit"
-              :class="primaryButtonClass"
-              :disabled="store.states[p.id].busy"
-              :data-testid="`credentials-start-${p.id}`"
-              @click="start(p.id)"
-            >
-              <span v-if="store.states[p.id].busy" :class="spinnerClass" />
-              {{ store.states[p.id].session ? `Sign in again` : actionLabel(p) }}
-            </button>
           </template>
         </div>
       </Card>
