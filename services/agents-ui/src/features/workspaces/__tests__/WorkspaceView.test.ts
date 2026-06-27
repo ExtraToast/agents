@@ -411,7 +411,7 @@ describe('workspaceView terminal persistence', () => {
     expect(sendInput.mock.calls[0]?.[2]).not.toContain('large document')
   })
 
-  it('composes the console with session list, hero terminal, lifecycle controls, and status rail', async () => {
+  it('composes the console with session list, hero terminal, controls, and status rail', async () => {
     getWorkspace.mockResolvedValue(
       detail(
         [fakeSession({ id: 'sess-a', gatewayAgentId: 'abc12345', pendingSetup: { id: 'setup-next', version: 2 } })],
@@ -441,9 +441,10 @@ describe('workspaceView terminal persistence', () => {
     expect(tabs.find('[data-testid="session-tab-sess-a"]').exists()).toBe(true)
     expect(hero.find('[data-testid="session-terminal"]').exists()).toBe(true)
     expect(sidebar.find('[data-testid="session-status-rail"]').exists()).toBe(true)
-    expect(sidebar.find('[data-testid="workspace-lifecycle-controls"]').exists()).toBe(true)
+    expect(sidebar.find('[data-testid="session-status-rail-running-chip"]').exists()).toBe(true)
+    expect(sidebar.find('[data-testid="workspace-lifecycle-controls"]').exists()).toBe(false)
     expect(sidebar.find('[data-testid="session-setup-picker"]').exists()).toBe(false)
-    expect(sidebar.find('[data-testid="workspace-new-agent"]').exists()).toBe(true)
+    expect(sidebar.find('[data-testid="workspace-new-agent"]').exists()).toBe(false)
     expect(sidebar.find('[data-testid="workspace-tools-panel"]').exists()).toBe(true)
     expect(sidebar.find('[data-testid="stage-input-open"]').exists()).toBe(true)
     expect(sidebar.find('[data-testid="workspace-repositories-panel"]').exists()).toBe(true)
@@ -498,12 +499,13 @@ describe('workspaceView terminal persistence', () => {
 
     expect(openSessionStatusStream).toHaveBeenCalledOnce()
     await vi.waitFor(() => expect(openWorkspaceRunnerStatusStream).toHaveBeenCalledOnce())
-    expect(wrapper.get('[data-testid="session-status-rail-connection"]').attributes('data-state')).toBe('connecting')
+    expect(wrapper.find('[data-testid="session-status-rail-connected-chip"]').exists()).toBe(false)
 
     statusStreamOptions?.onOpen?.()
     await flush()
 
-    expect(wrapper.get('[data-testid="session-status-rail-connection"]').attributes('data-state')).toBe('open')
+    expect(wrapper.get('[data-testid="session-status-rail-connected-chip"]').attributes('data-state')).toBe('open')
+    expect(wrapper.get('[data-testid="session-status-rail-connected-chip"]').text()).toBe('Connected')
 
     wrapper.unmount()
 
@@ -511,7 +513,7 @@ describe('workspaceView terminal persistence', () => {
     expect(runnerStatusStream.close).toHaveBeenCalledOnce()
   })
 
-  it('drives restart confirmation, progress, replay, live, and failed states through the rail', async () => {
+  it('drives restart confirmation while keeping progress rows out of the rail', async () => {
     getWorkspace.mockResolvedValue(detail([fakeSession({ id: 'sess-a', generation: 3 })]))
     const wrapper = await mountView()
     const store = useWorkspacesStore()
@@ -522,7 +524,7 @@ describe('workspaceView terminal persistence', () => {
     expect(wrapper.find('[data-testid="workspace-restart-confirmation"]').exists()).toBe(true)
     expect(wrapper.get('[data-testid="workspace-restart-confirmation-copy"]').text()).toContain('reattach the terminal')
     await vi.waitFor(() => {
-      expect(document.activeElement).toBe(wrapper.get('[data-testid="workspace-lifecycle-controls"]').element)
+      expect(document.activeElement).toBe(wrapper.get('[data-testid="workspace-restart-confirmation"]').element)
     })
 
     await wrapper.get('[data-testid="workspace-restart-confirm"]').trigger('click')
@@ -533,20 +535,21 @@ describe('workspaceView terminal persistence', () => {
       expectedSetupId: 'setup-current',
       expectedSetupVersion: 1,
     })
-    expect(wrapper.get('[data-testid="session-status-rail-restart"]').text()).toContain('Reattaching terminal')
+    expect(wrapper.find('[data-testid="session-status-rail-restart"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="workspace-restart-transition"]').exists()).toBe(false)
 
     store.markRestartReplayingHistory('sess-a')
     await wrapper.vm.$nextTick()
-    expect(wrapper.get('[data-testid="session-status-rail-restart"]').text()).toContain('Replaying terminal history')
+    expect(wrapper.find('[data-testid="session-status-rail-restart"]').exists()).toBe(false)
 
     store.markRestartLive('sess-a')
     await wrapper.vm.$nextTick()
-    expect(wrapper.get('[data-testid="session-status-rail-restart"]').text()).toContain('Restart complete')
-    expect(wrapper.find('[data-testid="workspace-restart-dismiss"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="session-status-rail-restart"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="workspace-restart-dismiss"]').exists()).toBe(false)
 
     store.markRestartFailed('sess-a')
     await wrapper.vm.$nextTick()
-    expect(wrapper.get('[data-testid="session-status-rail-restart"]').text()).toContain('Restart failed')
+    expect(wrapper.find('[data-testid="session-status-rail-restart"]').exists()).toBe(false)
   })
 
   it('confirms restart without loading setup choices or target setup preconditions', async () => {
@@ -571,13 +574,13 @@ describe('workspaceView terminal persistence', () => {
     })
   })
 
-  it('keeps restart setup metadata out of the lifecycle controls', async () => {
+  it('keeps restart setup metadata out of the restart controls', async () => {
     getWorkspace.mockResolvedValue(detail([fakeSession({ id: 'sess-a' })]))
     const wrapper = await mountView()
     await flush()
 
     expect(wrapper.find('[data-testid="session-setup-picker"]').exists()).toBe(false)
-    expect(wrapper.get('[data-testid="workspace-new-agent"]').text()).toBe('Start Claude Code')
+    expect(wrapper.find('[data-testid="workspace-new-agent"]').exists()).toBe(false)
 
     await wrapper.get('[data-testid="workspace-active-restart"]').trigger('click')
     await flush()
@@ -585,13 +588,14 @@ describe('workspaceView terminal persistence', () => {
     expect(listSetupOptions).not.toHaveBeenCalled()
     expect(previewSetup).not.toHaveBeenCalled()
     expect(wrapper.find('[data-testid="session-setup-picker"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="workspace-lifecycle-controls"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="workspace-restart-confirmation"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="workspace-new-agent"]').exists()).toBe(false)
 
     await wrapper.get('[data-testid="workspace-restart-cancel"]').trigger('click')
     await flush()
 
-    expect(wrapper.get('[data-testid="workspace-new-agent"]').text()).toBe('Start Claude Code')
+    expect(wrapper.find('[data-testid="workspace-new-agent"]').exists()).toBe(false)
   })
 
   it('shows reattaching state after restart generation conflicts', async () => {
@@ -606,7 +610,8 @@ describe('workspaceView terminal persistence', () => {
     await wrapper.get('[data-testid="workspace-restart-confirm"]').trigger('click')
     await flush()
 
-    expect(wrapper.get('[data-testid="session-status-rail-restart"]').text()).toContain('Reattaching terminal')
+    expect(useWorkspacesStore().restartStateFor('sess-a')).toBe('reattaching')
+    expect(wrapper.find('[data-testid="session-status-rail-restart"]').exists()).toBe(false)
     expect(restartSession).toHaveBeenCalledWith('ws-1', 'sess-a', {
       expectedGeneration: 3,
       expectedSetupId: 'setup-current',
@@ -647,7 +652,7 @@ describe('workspaceView terminal persistence', () => {
       .mockResolvedValueOnce(detail([fakeSession({ id: 'sess-new', status: 'STOPPED' })]))
     const wrapper = await mountView()
 
-    await wrapper.get('[data-testid="workspace-new-agent"]').trigger('click')
+    await wrapper.get('[data-testid="workspace-empty-start"]').trigger('click')
     await flush()
 
     expect(startSession).toHaveBeenCalledWith('ws-1', 'CLAUDE', expect.any(Function))
@@ -801,8 +806,8 @@ describe('workspaceView terminal persistence', () => {
     getWorkspace.mockResolvedValue(detail([]))
     const wrapper = await mountView()
 
-    expect(wrapper.get('[data-testid="workspace-new-agent"]').attributes('disabled')).toBeDefined()
-    expect(wrapper.get('[data-testid="workspace-new-agent"]').text()).toBe('Runner booting…')
+    expect(wrapper.get('[data-testid="workspace-empty-start"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[data-testid="workspace-empty-start"]').text()).toBe('Runner booting…')
   })
 
   it('enables the start button once the runner is ready', async () => {
@@ -810,8 +815,8 @@ describe('workspaceView terminal persistence', () => {
     getWorkspace.mockResolvedValue(detail([]))
     const wrapper = await mountView()
 
-    expect(wrapper.get('[data-testid="workspace-new-agent"]').attributes('disabled')).toBeUndefined()
-    expect(wrapper.get('[data-testid="workspace-new-agent"]').text()).toBe('Start Claude Code')
+    expect(wrapper.get('[data-testid="workspace-empty-start"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.get('[data-testid="workspace-empty-start"]').text()).toBe('Start Claude Code')
   })
 
   it('open does not POST a session when no sessions exist (no auto-spawn)', async () => {
@@ -834,7 +839,7 @@ describe('workspaceView terminal persistence', () => {
       .mockResolvedValue(detail([fakeSession({ id: 'sess-new' })]))
     const wrapper = await mountView()
 
-    const btn = wrapper.get('[data-testid="workspace-new-agent"]')
+    const btn = wrapper.get('[data-testid="workspace-empty-start"]')
     void btn.trigger('click')
     void btn.trigger('click')
     resolveStart({ sessionId: 'sess-new' })
@@ -854,7 +859,7 @@ describe('workspaceView terminal persistence', () => {
     getWorkspace.mockResolvedValue(detail([]))
     const wrapper = await mountView()
 
-    void wrapper.get('[data-testid="workspace-new-agent"]').trigger('click')
+    void wrapper.get('[data-testid="workspace-empty-start"]').trigger('click')
 
     // Navigate to a different workspace before the start resolves.
     await router.push('/workspaces/ws-2')
@@ -883,7 +888,7 @@ describe('workspaceView terminal persistence', () => {
 
     const connectCallsBefore = connectWorkspace.mock.calls.length
 
-    void wrapper.get('[data-testid="workspace-new-agent"]').trigger('click')
+    void wrapper.get('[data-testid="workspace-empty-start"]').trigger('click')
     await flush()
 
     // getWorkspace called once for initial open + once for the 503 snapshot refresh
@@ -899,7 +904,7 @@ describe('workspaceView terminal persistence', () => {
       .mockResolvedValue(detail([]))
     const wrapper = await mountView()
 
-    void wrapper.get('[data-testid="workspace-new-agent"]').trigger('click')
+    void wrapper.get('[data-testid="workspace-empty-start"]').trigger('click')
     // The store re-fetches the snapshot inside its 503 catch before rethrowing,
     // so the rejection reaches onSpawn a few microtasks later — drain fully.
     await flush()

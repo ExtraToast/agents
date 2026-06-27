@@ -4,7 +4,6 @@ import type { AgentKind } from '../types'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { Modal, useToast } from '@/lib/vueWebCommons'
-import AgentKindPicker from '../components/AgentKindPicker.vue'
 import SessionStatusRail from '../components/SessionStatusRail.vue'
 import SessionTabs from '../components/SessionTabs.vue'
 import SessionTerminal from '../components/SessionTerminal.vue'
@@ -122,7 +121,7 @@ const restartLabels: Record<RestartSessionState, string | null> = {
   'idle': null,
   'confirm-pending': 'Confirm restart',
   'in-progress': 'Restart request in progress',
-  'reconnecting': 'Waiting for runner',
+  'reconnecting': 'Reconnecting',
   'reattaching': 'Reattaching terminal',
   'replaying-history': 'Replaying terminal history',
   'live': 'Restart complete',
@@ -133,27 +132,6 @@ const activeRestartState = computed<RestartSessionState>(() => {
   return session ? store.restartStateFor(session.id) : 'idle'
 })
 const activeRestartLabel = computed(() => restartLabels[activeRestartState.value])
-const restartTransitionCopy = computed(() => {
-  switch (activeRestartState.value) {
-    case 'in-progress':
-      return 'Restart request is pending.'
-    case 'reconnecting':
-      return 'Restart was accepted, but the runner is still reconnecting.'
-    case 'reattaching':
-      return 'Restart accepted; reattaching the terminal.'
-    case 'replaying-history':
-      return 'Restart accepted; replaying terminal history.'
-    case 'failed':
-      return 'Restart failed.'
-    case 'live':
-      return 'Restart complete.'
-    default:
-      return null
-  }
-})
-const showStartControls = computed(() =>
-  !['confirm-pending', 'in-progress', 'reconnecting', 'reattaching', 'replaying-history'].includes(activeRestartState.value),
-)
 const canRestartActive = computed(() => {
   if (!activeSession.value) return false
   return !['confirm-pending', 'in-progress', 'reconnecting', 'reattaching', 'replaying-history'].includes(activeRestartState.value)
@@ -288,12 +266,6 @@ async function onUpdateRunner(): Promise<void> {
   } finally {
     await focusConsoleSurface()
   }
-}
-
-function onClearRestartState(): void {
-  const session = activeSession.value
-  if (!session) return
-  store.clearRestartState(session.id)
 }
 
 function closeStageInput(): void {
@@ -530,24 +502,18 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
             Copy selection
           </button>
           <SessionStatusRail
-          class="shrink-0"
-          :session="activeRailSession"
-          :connection-state="statuses.connectionState"
-          :connection-error="statuses.connectionError"
-          :restart-label="activeRestartLabel"
-          :runner-image="store.activeWorkspace.runnerImage ?? null"
-          @update-runner="onUpdateRunner"
-        />
-        <section
-          ref="restartConfirmPanel"
-          tabindex="-1"
-          class="rounded-md border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)]"
-          data-testid="workspace-lifecycle-controls"
-        >
-          <h2 class="text-sm font-semibold">Lifecycle</h2>
+            class="shrink-0"
+            :session="activeRailSession"
+            :connection-state="statuses.connectionState"
+            :connection-error="statuses.connectionError"
+            :runner-image="store.activeWorkspace.runnerImage ?? null"
+            @update-runner="onUpdateRunner"
+          />
           <div
             v-if="activeRestartState === 'confirm-pending'"
-            class="mt-3 space-y-3 rounded border border-amber-500/30 bg-amber-500/10 p-3 text-sm"
+            ref="restartConfirmPanel"
+            tabindex="-1"
+            class="space-y-3 rounded border border-amber-500/30 bg-amber-500/10 p-3 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)]"
             data-testid="workspace-restart-confirmation"
           >
             <p class="text-amber-100" data-testid="workspace-restart-confirmation-copy">
@@ -572,58 +538,26 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
               </button>
             </div>
           </div>
-          <div
-            v-if="activeRestartState !== 'confirm-pending' && restartTransitionCopy"
-            class="mt-3 space-y-3 rounded border border-[var(--color-surface-border)] bg-white/5 p-3 text-sm"
-            data-testid="workspace-restart-transition"
+
+          <section
+            class="rounded-md border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-3"
+            data-testid="workspace-tools-panel"
           >
-            <p class="text-[var(--color-text-primary)]">
-              {{ restartTransitionCopy }}
+            <h2 class="text-sm font-semibold">Tools</h2>
+            <p id="stage-input-hint" class="sr-only">
+              Stage text is available when the active session is running.
             </p>
             <button
-              v-if="activeRestartState === 'failed' || activeRestartState === 'live'"
               type="button"
-              class="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-[var(--color-surface-border)] px-3 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-border)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)]"
-              data-testid="workspace-restart-dismiss"
-              @click="onClearRestartState"
+              class="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-md border border-[var(--color-surface-border)] bg-[var(--color-surface-elevated)] px-3 py-2 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-border)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface-dark)] disabled:cursor-not-allowed disabled:opacity-60"
+              :disabled="!activeStageSession || isStaging"
+              data-testid="stage-input-open"
+              aria-describedby="stage-input-hint"
+              @click="showStageInput = true"
             >
-              Dismiss restart status
+              {{ isStaging ? 'Staging…' : 'Stage text' }}
             </button>
-          </div>
-          <div v-if="showStartControls" class="mt-3 grid gap-2">
-            <AgentKindPicker v-model="pickerKind" stacked class="min-w-0" />
-            <button
-              type="button"
-              class="inline-flex min-h-10 w-full items-center justify-center whitespace-nowrap rounded-md border border-transparent bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[var(--color-accent-light)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface-dark)] disabled:cursor-not-allowed disabled:opacity-60"
-              :disabled="spawnDisabled"
-              data-testid="workspace-new-agent"
-              aria-label="Start a new agent session"
-              @click="onSpawn"
-            >
-              {{ spawnButtonLabel }}
-            </button>
-          </div>
-        </section>
-
-        <section
-          class="rounded-md border border-[var(--color-surface-border)] bg-[var(--color-surface)] p-3"
-          data-testid="workspace-tools-panel"
-        >
-          <h2 class="text-sm font-semibold">Tools</h2>
-          <p id="stage-input-hint" class="sr-only">
-            Stage text is available when the active session is running.
-          </p>
-          <button
-            type="button"
-            class="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-md border border-[var(--color-surface-border)] bg-[var(--color-surface-elevated)] px-3 py-2 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-border)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface-dark)] disabled:cursor-not-allowed disabled:opacity-60"
-            :disabled="!activeStageSession || isStaging"
-            data-testid="stage-input-open"
-            aria-describedby="stage-input-hint"
-            @click="showStageInput = true"
-          >
-            {{ isStaging ? 'Staging…' : 'Stage text' }}
-          </button>
-        </section>
+          </section>
 
         <WorkspaceRepositoriesPanel
           :repositories="store.activeWorkspace.repositories ?? []"

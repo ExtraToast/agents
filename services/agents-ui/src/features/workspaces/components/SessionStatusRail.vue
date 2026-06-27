@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import type { SessionConsoleViewModel } from '../stores/sessionConsoleViewModels'
 import type { WorkspaceRunnerImage } from '../types'
-import { computed, useSlots } from 'vue'
-import SessionStatusChip from './SessionStatusChip.vue'
+import { computed } from 'vue'
 
 type ConnectionState = 'idle' | 'connecting' | 'open' | 'reconnecting' | 'error'
 
@@ -17,41 +16,23 @@ interface Props {
   session: RailSession | null
   connectionState?: ConnectionState
   connectionError?: string | null
-  restartLabel?: string | null
   runnerImage?: WorkspaceRunnerImage | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
   connectionState: 'idle',
   connectionError: null,
-  restartLabel: null,
   runnerImage: null,
 })
 
 const emit = defineEmits<{ (e: 'updateRunner'): void }>()
 
-const slots = useSlots()
-
-const connectionCopy: Record<ConnectionState, { label: string; detail: string; shape: string }> = {
-  idle: { label: 'Stream idle', detail: 'Status stream is idle', shape: 'ring' },
-  connecting: { label: 'Connecting', detail: 'Status stream is connecting', shape: 'ring' },
-  reconnecting: { label: 'Reconnecting', detail: 'Status stream is reconnecting', shape: 'ring' },
-  open: { label: 'Connected', detail: 'Status stream is connected', shape: 'dot' },
-  error: { label: 'Disconnected', detail: 'Status stream is disconnected', shape: 'diamond' },
-}
-
-const connectionToneClass: Record<ConnectionState, string> = {
-  idle: 'border-[var(--color-surface-border)] bg-white/5 text-[var(--color-text-muted)]',
-  connecting: 'border-sky-500/35 bg-sky-500/15 text-sky-200',
-  reconnecting: 'border-amber-500/35 bg-amber-500/15 text-amber-200',
-  open: 'border-emerald-500/35 bg-emerald-500/15 text-emerald-200',
-  error: 'border-red-500/40 bg-red-500/15 text-red-200',
-}
-
-const shapeClass: Record<string, string> = {
-  dot: 'rounded-full bg-current',
-  ring: 'rounded-full border-2 border-current bg-transparent',
-  diamond: 'rotate-45 rounded-[1px] bg-current',
+const connectionCopy: Record<ConnectionState, string> = {
+  idle: 'Status stream is idle',
+  connecting: 'Status stream is connecting',
+  reconnecting: 'Status stream is reconnecting',
+  open: 'Status stream is connected',
+  error: 'Status stream is disconnected',
 }
 
 const lastStatusUpdate = computed(() => props.session?.lastStatusUpdate ?? props.session?.updatedAt ?? null)
@@ -69,9 +50,9 @@ const runnerImageLabel = computed(() => {
   if (!version) return 'No runner'
   return runnerUpgradeAvailable.value ? `${version} · update available` : `${version} · up to date`
 })
-const connection = computed(() => connectionCopy[props.connectionState])
-const connectionLabel = computed(() => props.connectionError ?? connection.value.detail)
-const hasRestartProgress = computed(() => Boolean(props.restartLabel) || Boolean(slots['restart-progress']))
+const isConnected = computed(() => props.connectionState === 'open')
+const isRunning = computed(() => props.session?.status === 'RUNNING')
+const connectionLabel = computed(() => props.connectionError ?? connectionCopy[props.connectionState])
 const railLabel = computed(() => {
   if (!props.session) return 'No active session status'
   return [
@@ -106,7 +87,29 @@ function formatTimestamp(value: string | null): string {
           {{ session.kindLabel }}
         </p>
       </div>
-      <SessionStatusChip :session="session" compact />
+      <div class="ml-auto flex shrink-0 items-center gap-1.5">
+        <span
+          v-if="isConnected"
+          class="inline-flex h-7 shrink-0 items-center gap-1.5 rounded border border-orange-500/35 bg-orange-500/10 px-2 text-[0.6875rem] font-medium leading-none text-orange-300"
+          data-testid="session-status-rail-connected-chip"
+          :data-state="connectionState"
+          :aria-label="connectionLabel"
+          :title="connectionLabel"
+        >
+          <span class="block size-2 rounded-full bg-current" aria-hidden="true" />
+          <span>Connected</span>
+        </span>
+        <span
+          v-if="isRunning"
+          class="inline-flex h-7 shrink-0 items-center gap-1.5 rounded border border-emerald-500/35 bg-emerald-500/15 px-2 text-[0.6875rem] font-medium leading-none text-emerald-300"
+          data-testid="session-status-rail-running-chip"
+          aria-label="Session is running"
+          title="Session is running"
+        >
+          <span class="block size-2 rounded-full bg-current" aria-hidden="true" />
+          <span>Running</span>
+        </span>
+      </div>
     </div>
     <p v-else class="min-h-8 text-sm text-[var(--color-text-muted)]" data-testid="session-status-rail-empty">
       No active session.
@@ -148,31 +151,5 @@ function formatTimestamp(value: string | null): string {
         </button>
       </div>
     </dl>
-
-    <div
-      class="flex min-h-9 items-center gap-2 rounded border px-2 py-1.5 text-xs"
-      :class="connectionToneClass[connectionState]"
-      data-testid="session-status-rail-connection"
-      :data-state="connectionState"
-      :aria-label="connectionLabel"
-    >
-      <span class="flex h-4 w-4 shrink-0 items-center justify-center" aria-hidden="true">
-        <span class="block h-2.5 w-2.5" :class="shapeClass[connection.shape]" />
-      </span>
-      <span class="shrink-0 font-medium">{{ connection.label }}</span>
-      <span v-if="connectionError" class="min-w-0 truncate text-[var(--color-text-muted)]">
-        {{ connectionError }}
-      </span>
-    </div>
-
-    <div
-      v-if="hasRestartProgress"
-      class="min-h-9 rounded border border-[var(--color-surface-border)] bg-white/5 px-2 py-1.5 text-xs text-[var(--color-text-primary)]"
-      data-testid="session-status-rail-restart"
-    >
-      <slot name="restart-progress" :session="session">
-        <span>{{ restartLabel }}</span>
-      </slot>
-    </div>
   </section>
 </template>
