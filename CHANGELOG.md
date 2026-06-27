@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.0](https://github.com/ExtraToast/agents/compare/v0.15.4...v0.16.0) (2026-06-27)
+
+
+### Features
+
+* **agents-api:** identify repositories by URL, not name ([#142](https://github.com/ExtraToast/agents/issues/142)) ([76e0e5e](https://github.com/ExtraToast/agents/commit/76e0e5e352d54c2dd94aa8bbd5d59dc9431ede62))
+
 ## [0.15.4](https://github.com/ExtraToast/agents/compare/v0.15.3...v0.15.4) (2026-06-27)
 
 
