@@ -1,12 +1,19 @@
 package com.jorisjonkers.personalstack.agentgateway.tmux
 
+import tools.jackson.databind.ObjectMapper
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.Path
 
 class ClaudeTranscriptLocator(
     private val projectsDir: Path = defaultClaudeProjectsDir(),
+    private val objectMapper: ObjectMapper = ObjectMapper(),
 ) {
+    data class Transcript(
+        val path: Path,
+        val cwd: String,
+    )
+
     fun transcriptPath(
         cwd: String,
         sessionId: String,
@@ -18,15 +25,59 @@ class ClaudeTranscriptLocator(
     fun transcriptExists(
         cwd: String,
         sessionId: String,
-    ): Boolean = Files.exists(transcriptPath(cwd, sessionId))
+    ): Boolean = findTranscript(cwd, sessionId) != null
+
+    fun findTranscript(
+        cwd: String,
+        sessionId: String,
+    ): Transcript? {
+        val normalizedCwd = normalizeCwd(cwd)
+        val exact = transcriptPath(normalizedCwd, sessionId)
+        if (Files.isRegularFile(exact)) {
+            return Transcript(exact, transcriptCwd(exact) ?: normalizedCwd)
+        }
+        if (!Files.isDirectory(projectsDir)) return null
+        var match: Transcript? = null
+        Files.list(projectsDir).use { projects ->
+            val iterator = projects.iterator()
+            while (match == null && iterator.hasNext()) {
+                val candidate = iterator.next()
+                if (!Files.isDirectory(candidate)) continue
+                val transcript = candidate.resolve("$sessionId.jsonl")
+                if (!Files.isRegularFile(transcript)) continue
+                val cwdFromTranscript = transcriptCwd(transcript)?.let(::normalizeCwd) ?: continue
+                match = Transcript(transcript, cwdFromTranscript)
+            }
+        }
+        return match
+    }
 
     private fun encodeProjectPath(cwd: String): String =
+        normalizeCwd(cwd)
+            .replace('/', '-')
+            .replace('.', '-')
+
+    private fun normalizeCwd(cwd: String): String =
         Path(cwd)
             .toAbsolutePath()
             .normalize()
             .toString()
-            .replace('/', '-')
-            .replace('.', '-')
+
+    private fun transcriptCwd(path: Path): String? =
+        Files
+            .newBufferedReader(path)
+            .useLines { lines ->
+                lines.firstNotNullOfOrNull(::lineCwd)
+            }
+
+    private fun lineCwd(line: String): String? =
+        runCatching {
+            objectMapper
+                .readTree(line)
+                .get("cwd")
+                ?.asText()
+                ?.takeIf(String::isNotBlank)
+        }.getOrNull()
 
     companion object {
         fun fromEnvironment(env: Map<String, String> = System.getenv()): ClaudeTranscriptLocator =
