@@ -715,8 +715,7 @@ class Fabric8AgentRunnerOrchestrator(
                     "/workspace/.agent-state/claude/shell-snapshots " +
                     "/workspace/.agent-state/codex/session-homes && " +
                     "chown -R 1000:1000 /workspace/.agent-state",
-            )
-            .withVolumeMounts(VolumeMountBuilder().withName("workspace").withMountPath("/workspace").build())
+            ).withVolumeMounts(VolumeMountBuilder().withName("workspace").withMountPath("/workspace").build())
             .withNewSecurityContext()
             .withRunAsUser(0L)
             .withRunAsGroup(0L)
