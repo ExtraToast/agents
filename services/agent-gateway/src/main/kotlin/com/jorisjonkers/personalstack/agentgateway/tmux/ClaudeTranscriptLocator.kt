@@ -37,20 +37,24 @@ class ClaudeTranscriptLocator(
             return Transcript(exact, transcriptCwd(exact) ?: normalizedCwd)
         }
         if (!Files.isDirectory(projectsDir)) return null
-        var match: Transcript? = null
-        Files.list(projectsDir).use { projects ->
-            val iterator = projects.iterator()
-            while (match == null && iterator.hasNext()) {
-                val candidate = iterator.next()
-                if (!Files.isDirectory(candidate)) continue
-                val transcript = candidate.resolve("$sessionId.jsonl")
-                if (!Files.isRegularFile(transcript)) continue
-                val cwdFromTranscript = transcriptCwd(transcript)?.let(::normalizeCwd) ?: continue
-                match = Transcript(transcript, cwdFromTranscript)
-            }
-        }
-        return match
+        return scanForTranscript(sessionId)
     }
+
+    // The original launch cwd is not always replayed on revival, so when the
+    // exact project dir misses, scan every persisted Claude project dir for a
+    // transcript with this id and recover the cwd Claude itself recorded.
+    private fun scanForTranscript(sessionId: String): Transcript? =
+        Files
+            .list(projectsDir)
+            .use { projects ->
+                projects
+                    .filter(Files::isDirectory)
+                    .map { it.resolve("$sessionId.jsonl") }
+                    .filter(Files::isRegularFile)
+                    .toList()
+            }.firstNotNullOfOrNull { transcript ->
+                transcriptCwd(transcript)?.let { Transcript(transcript, normalizeCwd(it)) }
+            }
 
     private fun encodeProjectPath(cwd: String): String =
         normalizeCwd(cwd)
