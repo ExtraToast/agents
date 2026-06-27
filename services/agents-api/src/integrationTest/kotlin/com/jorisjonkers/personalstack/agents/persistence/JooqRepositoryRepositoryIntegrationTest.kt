@@ -64,12 +64,18 @@ class JooqRepositoryRepositoryIntegrationTest : IntegrationTestBase() {
         val name = "dup-name-${UUID.randomUUID()}"
         val old =
             Repository(
-                id = RepositoryId.random(), name = name,
+                id = RepositoryId.random(),
+                name = name,
                 repoUrl = "git@github.com:ExtraToast/$name.git",
-                defaultBranch = "main", createdAt = Instant.now(), updatedAt = Instant.now(),
+                defaultBranch = "main",
+                createdAt = Instant.now(),
+                updatedAt = Instant.now(),
             )
         val new =
-            old.copy(id = RepositoryId.random(), repoUrl = "https://github.com/JorisJonkers-dev/$name")
+            old.copy(
+                id = RepositoryId.random(),
+                repoUrl = "https://github.com/JorisJonkers-dev/$name",
+            )
         repositories.save(old)
         repositories.save(new)
 
