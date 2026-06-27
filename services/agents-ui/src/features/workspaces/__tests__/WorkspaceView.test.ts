@@ -452,6 +452,20 @@ describe('workspaceView terminal persistence', () => {
     expect(sidebar.find('[data-testid="workspace-repositories-panel"]').exists()).toBe(true)
   })
 
+  it('keeps the new-session tab adjacent to the session strip instead of pushing it right', async () => {
+    getWorkspace.mockResolvedValue(detail([fakeSession({ id: 'sess-a' })]))
+
+    const wrapper = await mountView()
+    const tabs = wrapper.get('[data-testid="workspace-tabs"]')
+    const sessionTabsShell = tabs.get('[data-testid="session-tabs"]').element.parentElement
+    if (!sessionTabsShell) throw new Error('missing session tabs shell')
+
+    expect(tabs.classes()).toContain('overflow-x-auto')
+    expect(tabs.classes()).not.toContain('gap-2')
+    expect(sessionTabsShell.classList.contains('shrink-0')).toBe(true)
+    expect(sessionTabsShell.classList.contains('flex-1')).toBe(false)
+  })
+
   for (const status of ['STOPPED', 'FAILED'] as const) {
     it(`keeps retained ${status.toLowerCase()} sessions in the session rail without mounting a terminal`, async () => {
       getWorkspace.mockResolvedValue(detail([fakeSession({ id: 'sess-a' }), fakeSession({ id: 'sess-b', status })]))
@@ -893,13 +907,26 @@ describe('workspaceView terminal persistence', () => {
   })
 
   it('disables the start button while the runner is booting after connect', async () => {
-    connectWorkspace.mockResolvedValue({ workspaceId: 'ws-1', setupId: 'setup-current', setupVersion: 1, state: 'STARTING', reason: null, checkedAt: '2026-06-17T08:00:00Z' })
-    getWorkspace.mockResolvedValue(detail([]))
+    connectWorkspace
+      .mockResolvedValueOnce({ workspaceId: 'ws-1', setupId: 'setup-current', setupVersion: 1, state: 'STARTING', reason: null, checkedAt: '2026-06-17T08:00:00Z' })
+      .mockResolvedValueOnce({ workspaceId: 'ws-1', setupId: 'setup-current', setupVersion: 1, state: 'READY', reason: null, checkedAt: '2026-06-17T08:00:00Z' })
+    getWorkspace
+      .mockResolvedValueOnce(detail([]))
+      .mockResolvedValueOnce(detail([fakeSession({ id: 'sess-codex', kind: 'CODEX' })]))
     const wrapper = await mountView()
+    const newSession = wrapper.get('[data-testid="workspace-new-session"]')
 
     expect(wrapper.get('[data-testid="workspace-empty-start"]').attributes('disabled')).toBeDefined()
-    expect(wrapper.get('[data-testid="workspace-new-session"]').attributes('disabled')).toBeDefined()
+    expect(newSession.attributes('disabled')).toBeUndefined()
+    expect(newSession.classes()).toContain('cursor-pointer')
     expect(wrapper.get('[data-testid="workspace-empty-start"]').text()).toBe('Runner booting…')
+
+    await newSession.trigger('click')
+    await flush()
+    await wrapper.get('[data-testid="workspace-new-session-option-codex"]').trigger('click')
+    await flush()
+
+    expect(startSession).toHaveBeenCalledWith('ws-1', 'CODEX', expect.any(Function))
   })
 
   it('enables the start button once the runner is ready', async () => {
