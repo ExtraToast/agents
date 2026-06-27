@@ -42,7 +42,7 @@ function fakeSession(over: Partial<RailSession> = {}): RailSession {
 }
 
 describe('sessionStatusRail', () => {
-  it('presents status, kind, update time, epoch generation, and connection state', () => {
+  it('presents status, kind, update time, epoch generation, and header status chips', () => {
     const wrapper = mount(SessionStatusRail, {
       props: { session: fakeSession(), connectionState: 'open' },
     })
@@ -52,14 +52,15 @@ describe('sessionStatusRail', () => {
     )
     expect(wrapper.get('[data-testid="session-status-rail-label"]').text()).toBe('backend')
     expect(wrapper.get('[data-testid="session-status-rail-kind"]').text()).toBe('Codex')
-    expect(wrapper.get('[data-testid="session-status-chip-text"]').text()).toBe('Running')
+    expect(wrapper.get('[data-testid="session-status-rail-running-chip"]').text()).toBe('Running')
+    expect(wrapper.get('[data-testid="session-status-rail-connected-chip"]').text()).toBe('Connected')
+    expect(wrapper.get('[data-testid="session-status-rail-connected-chip"]').attributes('data-state')).toBe('open')
     expect(wrapper.get('[data-testid="session-status-rail-updated"]').text()).toBe('2026-06-12 10:05 UTC')
     expect(wrapper.get('[data-testid="session-status-rail-epoch"]').text()).toBe('Epoch 2 / Gen 4')
-    expect(wrapper.get('[data-testid="session-status-rail-connection"]').attributes('data-state')).toBe('open')
-    expect(wrapper.get('[data-testid="session-status-rail-connection"]').text()).toContain('Connected')
+    expect(wrapper.find('[data-testid="session-status-rail-connection"]').exists()).toBe(false)
   })
 
-  it('shows idle connection and missing metadata distinctly', () => {
+  it('hides the connected chip for idle connection and shows missing metadata distinctly', () => {
     const wrapper = mount(SessionStatusRail, {
       props: {
         session: fakeSession({ lastStatusUpdate: null, epoch: null, generation: null }),
@@ -67,33 +68,30 @@ describe('sessionStatusRail', () => {
       },
     })
 
-    expect(wrapper.get('[data-testid="session-status-rail-connection"]').attributes('data-state')).toBe('idle')
-    expect(wrapper.get('[data-testid="session-status-rail-connection"]').text()).toContain('Stream idle')
+    expect(wrapper.find('[data-testid="session-status-rail-connected-chip"]').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="session-status-rail-running-chip"]').text()).toBe('Running')
     expect(wrapper.get('[data-testid="session-status-rail-updated"]').text()).toBe('No status update')
     expect(wrapper.get('[data-testid="session-status-rail-epoch"]').text()).toBe('Epoch - / Gen -')
   })
 
-  it('renders restart progress through the named slot', () => {
+  it('hides the running chip when the active session is not running', () => {
     const wrapper = mount(SessionStatusRail, {
-      props: { session: fakeSession(), connectionState: 'connecting' },
-      slots: {
-        'restart-progress': '<span data-testid="custom-restart">Restarting generation 5</span>',
-      },
+      props: { session: fakeSession({ status: 'STOPPED' }), connectionState: 'open' },
     })
 
-    expect(wrapper.find('[data-testid="session-status-rail-restart"]').exists()).toBe(true)
-    expect(wrapper.get('[data-testid="custom-restart"]').text()).toBe('Restarting generation 5')
+    expect(wrapper.find('[data-testid="session-status-rail-running-chip"]').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="session-status-rail-connected-chip"]').text()).toBe('Connected')
   })
 
-  it('keeps stable rail dimensions and renders the restart label fallback', () => {
+  it('keeps stable rail dimensions without restart progress chrome', () => {
     const wrapper = mount(SessionStatusRail, {
-      props: { session: fakeSession(), restartLabel: 'Restart queued' },
+      props: { session: fakeSession() },
     })
 
     const rail = wrapper.get('[data-testid="session-status-rail"]')
     expect(rail.classes()).toContain('min-h-[6.5rem]')
     expect(rail.classes()).toContain('min-w-[18rem]')
-    expect(wrapper.get('[data-testid="session-status-rail-restart"]').text()).toBe('Restart queued')
+    expect(wrapper.find('[data-testid="session-status-rail-restart"]').exists()).toBe(false)
   })
 
   it('shows the runner image as up to date with no update button', () => {
