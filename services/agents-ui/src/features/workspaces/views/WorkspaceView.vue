@@ -4,6 +4,7 @@ import type { AgentKind } from '../types'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { Modal, useToast } from '@/lib/vueWebCommons'
+import NewSessionTabDropdown from '../components/NewSessionTabDropdown.vue'
 import SessionStatusRail from '../components/SessionStatusRail.vue'
 import SessionTabs from '../components/SessionTabs.vue'
 import SessionTerminal from '../components/SessionTerminal.vue'
@@ -24,7 +25,6 @@ const consoleViewModels = useSessionConsoleViewModelsStore()
 const toast = useToast()
 
 const workspaceId = computed(() => String(route.params.id))
-const pickerKind = ref<AgentKind>('CLAUDE')
 // The controls live in a right-side rail that folds in/out via an arrow that
 // rides the pane edge; on phones it folds away by default so the terminal is
 // the priority. Fullscreen (mobile) breaks the console out of the app shell so
@@ -115,7 +115,7 @@ const spawnDisabled = computed(() => store.startingSession || store.runnerReadin
 const spawnButtonLabel = computed(() => {
   if (store.startingSession) return 'Starting runner…'
   if (store.runnerReadiness === 'booting') return 'Runner booting…'
-  return `Start ${agentKindLabels[pickerKind.value]}`
+  return `Start ${agentKindLabels.CLAUDE}`
 })
 const restartLabels: Record<RestartSessionState, string | null> = {
   'idle': null,
@@ -207,9 +207,9 @@ async function focusConsoleSurface(): Promise<void> {
   consoleSurface.value?.focus()
 }
 
-async function onSpawn(): Promise<void> {
+async function onSpawn(kind: AgentKind = 'CLAUDE'): Promise<void> {
   try {
-    await store.newSession(pickerKind.value)
+    await store.newSession(kind)
   } catch (e) {
     toast.errorFromCatch('Could not start session', e)
   }
@@ -424,29 +424,11 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
               @delete="onStopSession"
             />
           </div>
-          <div class="flex shrink-0 items-center gap-2 py-1" aria-label="Start a new agent session">
-            <label class="sr-only" for="workspace-new-session-kind">Agent kind</label>
-            <select
-              id="workspace-new-session-kind"
-              v-model="pickerKind"
-              class="h-9 w-28 rounded-md border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] sm:w-36"
-              :disabled="spawnDisabled"
-              data-testid="workspace-new-session-kind"
-            >
-              <option value="CLAUDE">Claude</option>
-              <option value="CODEX">Codex</option>
-              <option value="SHELL">Shell</option>
-            </select>
-            <button
-              type="button"
-              class="inline-flex h-9 shrink-0 items-center justify-center rounded-md bg-[var(--color-accent)] px-3 text-sm font-medium text-white transition-colors hover:bg-[var(--color-accent-light)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] disabled:cursor-not-allowed disabled:opacity-60"
-              :disabled="spawnDisabled"
-              data-testid="workspace-new-session"
-              @click="onSpawn"
-            >
-              {{ store.startingSession ? 'Starting...' : '+ New agent' }}
-            </button>
-          </div>
+          <NewSessionTabDropdown
+            :disabled="spawnDisabled"
+            :starting="store.startingSession"
+            @select="onSpawn"
+          />
         </nav>
         <div
           ref="consoleSurface"
@@ -476,7 +458,7 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
                 class="inline-flex min-h-10 items-center justify-center rounded-md bg-[var(--color-accent)] px-4 text-sm font-medium text-white transition-colors hover:bg-[var(--color-accent-light)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] disabled:cursor-not-allowed disabled:opacity-60"
                 :disabled="spawnDisabled"
                 data-testid="workspace-empty-start"
-                @click="onSpawn"
+                @click="onSpawn('CLAUDE')"
               >
                 {{ spawnButtonLabel }}
               </button>

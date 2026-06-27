@@ -439,8 +439,8 @@ describe('workspaceView terminal persistence', () => {
     expect(header.find('[data-testid="stage-input-open"]').exists()).toBe(false)
     expect(tabs.find('[data-testid="session-tabs"]').exists()).toBe(true)
     expect(tabs.find('[data-testid="session-tab-sess-a"]').exists()).toBe(true)
-    expect(tabs.find('[data-testid="workspace-new-session-kind"]').exists()).toBe(true)
     expect(tabs.find('[data-testid="workspace-new-session"]').exists()).toBe(true)
+    expect(tabs.find('[data-testid="workspace-new-session-kind"]').exists()).toBe(false)
     expect(hero.find('[data-testid="session-terminal"]').exists()).toBe(true)
     expect(sidebar.find('[data-testid="session-status-rail"]').exists()).toBe(true)
     expect(sidebar.find('[data-testid="session-status-rail-running-chip"]').exists()).toBe(true)
@@ -692,16 +692,20 @@ describe('workspaceView terminal persistence', () => {
     const wrapper = await mountView()
 
     expect(wrapper.find('[data-testid="workspace-empty-start"]').exists()).toBe(false)
-    await wrapper.get('[data-testid="workspace-new-session-kind"]').setValue('CODEX')
+    // Open the "+" dropdown and select Codex
     await wrapper.get('[data-testid="workspace-new-session"]').trigger('click')
+    await flush()
+    await wrapper.get('[data-testid="workspace-new-session-option-codex"]').trigger('click')
     await flush()
 
     expect(startSession).toHaveBeenCalledWith('ws-1', 'CODEX', expect.any(Function))
     expect(wrapper.find('[data-testid="session-tab-sess-claude"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="session-tab-sess-codex"]').exists()).toBe(true)
 
-    await wrapper.get('[data-testid="workspace-new-session-kind"]').setValue('SHELL')
+    // Open the "+" dropdown and select Shell
     await wrapper.get('[data-testid="workspace-new-session"]').trigger('click')
+    await flush()
+    await wrapper.get('[data-testid="workspace-new-session-option-shell"]').trigger('click')
     await flush()
 
     expect(startSession).toHaveBeenCalledWith('ws-1', 'SHELL', expect.any(Function))
@@ -895,7 +899,6 @@ describe('workspaceView terminal persistence', () => {
 
     expect(wrapper.get('[data-testid="workspace-empty-start"]').attributes('disabled')).toBeDefined()
     expect(wrapper.get('[data-testid="workspace-new-session"]').attributes('disabled')).toBeDefined()
-    expect(wrapper.get('[data-testid="workspace-new-session-kind"]').attributes('disabled')).toBeDefined()
     expect(wrapper.get('[data-testid="workspace-empty-start"]').text()).toBe('Runner booting…')
   })
 
@@ -906,7 +909,6 @@ describe('workspaceView terminal persistence', () => {
 
     expect(wrapper.get('[data-testid="workspace-empty-start"]').attributes('disabled')).toBeUndefined()
     expect(wrapper.get('[data-testid="workspace-new-session"]').attributes('disabled')).toBeUndefined()
-    expect(wrapper.get('[data-testid="workspace-new-session-kind"]').attributes('disabled')).toBeUndefined()
     expect(wrapper.get('[data-testid="workspace-empty-start"]').text()).toBe('Start Claude Code')
   })
 
