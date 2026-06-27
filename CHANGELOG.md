@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.3](https://github.com/ExtraToast/agents/compare/v0.15.2...v0.15.3) (2026-06-27)
+
+
+### Bug Fixes
+
+* **agents-ui:** make the "+" agent dropdown actually open ([#138](https://github.com/ExtraToast/agents/issues/138)) ([286275d](https://github.com/ExtraToast/agents/commit/286275d83cb183fbb5de0b0e3bbbcf37ae9660a2))
+
 ## [0.15.2](https://github.com/ExtraToast/agents/compare/v0.15.1...v0.15.2) (2026-06-27)
 
 
