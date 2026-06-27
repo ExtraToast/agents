@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.8](https://github.com/ExtraToast/agents/compare/v0.14.7...v0.14.8) (2026-06-27)
+
+
+### Bug Fixes
+
+* **agents-ui:** restore starting parallel agent sessions + collapsible repo/guidance panels ([#128](https://github.com/ExtraToast/agents/issues/128)) ([9ebc3d5](https://github.com/ExtraToast/agents/commit/9ebc3d59a6129ec89e92a5cbb023fd617af39fdf))
+
 ## [0.14.7](https://github.com/ExtraToast/agents/compare/v0.14.6...v0.14.7) (2026-06-27)
 
 
