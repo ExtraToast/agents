@@ -504,8 +504,10 @@ describe('workspaceView terminal persistence', () => {
     statusStreamOptions?.onOpen?.()
     await flush()
 
-    expect(wrapper.get('[data-testid="session-status-rail-connected-chip"]').attributes('data-state')).toBe('open')
-    expect(wrapper.get('[data-testid="session-status-rail-connected-chip"]').text()).toBe('Connected')
+    // Session is running, so the single chip reads "Running"; the opened
+    // connection is reflected by its data-state.
+    expect(wrapper.get('[data-testid="session-status-rail-running-chip"]').attributes('data-state')).toBe('open')
+    expect(wrapper.get('[data-testid="session-status-rail-running-chip"]').text()).toBe('Running')
 
     wrapper.unmount()
 

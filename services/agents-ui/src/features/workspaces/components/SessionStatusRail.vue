@@ -53,6 +53,12 @@ const runnerImageLabel = computed(() => {
 const isConnected = computed(() => props.connectionState === 'open')
 const isRunning = computed(() => props.session?.status === 'RUNNING')
 const connectionLabel = computed(() => props.connectionError ?? connectionCopy[props.connectionState])
+// One status chip: Running (green) wins; otherwise Connected (orange). Nothing if neither.
+const statusChip = computed<{ tone: 'running' | 'connected'; label: string } | null>(() => {
+  if (isRunning.value) return { tone: 'running', label: 'Running' }
+  if (isConnected.value) return { tone: 'connected', label: 'Connected' }
+  return null
+})
 const railLabel = computed(() => {
   if (!props.session) return 'No active session status'
   return [
@@ -87,27 +93,22 @@ function formatTimestamp(value: string | null): string {
           {{ session.kindLabel }}
         </p>
       </div>
-      <div class="ml-auto flex shrink-0 items-center gap-1.5">
+      <div class="ml-auto flex shrink-0 items-center">
         <span
-          v-if="isConnected"
-          class="inline-flex h-7 shrink-0 items-center gap-1.5 rounded border border-orange-500/35 bg-orange-500/10 px-2 text-[0.6875rem] font-medium leading-none text-orange-300"
-          data-testid="session-status-rail-connected-chip"
+          v-if="statusChip"
+          class="inline-flex h-7 shrink-0 items-center gap-1.5 rounded border px-2 text-[0.6875rem] font-medium leading-none"
+          :class="
+            statusChip.tone === 'running'
+              ? 'border-emerald-500/35 bg-emerald-500/15 text-emerald-300'
+              : 'border-orange-500/35 bg-orange-500/10 text-orange-300'
+          "
+          :data-testid="`session-status-rail-${statusChip.tone}-chip`"
           :data-state="connectionState"
-          :aria-label="connectionLabel"
-          :title="connectionLabel"
+          :aria-label="statusChip.tone === 'running' ? 'Session is running' : connectionLabel"
+          :title="statusChip.tone === 'running' ? 'Session is running' : connectionLabel"
         >
           <span class="block size-2 rounded-full bg-current" aria-hidden="true" />
-          <span>Connected</span>
-        </span>
-        <span
-          v-if="isRunning"
-          class="inline-flex h-7 shrink-0 items-center gap-1.5 rounded border border-emerald-500/35 bg-emerald-500/15 px-2 text-[0.6875rem] font-medium leading-none text-emerald-300"
-          data-testid="session-status-rail-running-chip"
-          aria-label="Session is running"
-          title="Session is running"
-        >
-          <span class="block size-2 rounded-full bg-current" aria-hidden="true" />
-          <span>Running</span>
+          <span>{{ statusChip.label }}</span>
         </span>
       </div>
     </div>

@@ -52,9 +52,10 @@ describe('sessionStatusRail', () => {
     )
     expect(wrapper.get('[data-testid="session-status-rail-label"]').text()).toBe('backend')
     expect(wrapper.get('[data-testid="session-status-rail-kind"]').text()).toBe('Codex')
+    // Single chip: Running wins over Connected when the session is running.
     expect(wrapper.get('[data-testid="session-status-rail-running-chip"]').text()).toBe('Running')
-    expect(wrapper.get('[data-testid="session-status-rail-connected-chip"]').text()).toBe('Connected')
-    expect(wrapper.get('[data-testid="session-status-rail-connected-chip"]').attributes('data-state')).toBe('open')
+    expect(wrapper.get('[data-testid="session-status-rail-running-chip"]').attributes('data-state')).toBe('open')
+    expect(wrapper.find('[data-testid="session-status-rail-connected-chip"]').exists()).toBe(false)
     expect(wrapper.get('[data-testid="session-status-rail-updated"]').text()).toBe('2026-06-12 10:05 UTC')
     expect(wrapper.get('[data-testid="session-status-rail-epoch"]').text()).toBe('Epoch 2 / Gen 4')
     expect(wrapper.find('[data-testid="session-status-rail-connection"]').exists()).toBe(false)
