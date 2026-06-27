@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.15.0](https://github.com/ExtraToast/agents/compare/v0.14.8...v0.15.0) (2026-06-27)
+
+
+### Features
+
+* **agent-runner:** boot-time repository manifest + dynamic CLAUDE.md/AGENTS.md ([#131](https://github.com/ExtraToast/agents/issues/131)) ([5edc535](https://github.com/ExtraToast/agents/commit/5edc5354d18430db0c95e4eb2702289e050ca192))
+
+
+### Bug Fixes
+
+* **agents:** persist Claude+Codex session state across runner Pod recreation ([#130](https://github.com/ExtraToast/agents/issues/130)) ([442f907](https://github.com/ExtraToast/agents/commit/442f9073ca3feaa6a4934ca663e59934ecb960a0))
+
 ## [0.14.8](https://github.com/ExtraToast/agents/compare/v0.14.7...v0.14.8) (2026-06-27)
 
 
