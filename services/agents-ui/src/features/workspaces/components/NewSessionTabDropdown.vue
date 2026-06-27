@@ -3,12 +3,10 @@ import type { AgentKind } from '../types'
 import { Dropdown } from '@/lib/vueWebCommons'
 
 interface Props {
-  disabled?: boolean
   starting?: boolean
 }
 
 withDefaults(defineProps<Props>(), {
-  disabled: false,
   starting: false,
 })
 
@@ -36,8 +34,7 @@ function onSelect(kind: AgentKind, close: () => void): void {
     <template #trigger="{ open }">
       <button
         type="button"
-        class="relative flex items-center justify-center rounded-t-md border border-t-2 px-3 py-2 text-sm transition-colors border-[var(--color-surface-border)] border-t-transparent bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface-dark)] disabled:cursor-not-allowed disabled:opacity-60"
-        :disabled="disabled"
+        class="relative flex cursor-pointer items-center justify-center rounded-t-md border border-t-2 border-[var(--color-surface-border)] border-t-transparent bg-[var(--color-surface)] px-3 py-2 text-sm leading-normal text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface-dark)]"
         :aria-expanded="open"
         aria-label="Start a new agent session"
         data-testid="workspace-new-session"

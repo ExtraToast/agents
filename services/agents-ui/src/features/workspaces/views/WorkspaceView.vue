@@ -411,11 +411,11 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
              underline meets the terminal with no gap. -->
         <nav
           v-if="store.activeWorkspace && !isFullscreen"
-          class="flex min-w-0 shrink-0 items-stretch gap-2 bg-[var(--color-surface-dark)] pr-2"
+          class="flex min-w-0 shrink-0 items-stretch overflow-x-auto overflow-y-hidden bg-[var(--color-surface-dark)] pr-2"
           data-testid="workspace-tabs"
           aria-label="Sessions"
         >
-          <div class="min-w-0 flex-1">
+          <div class="min-w-0 shrink-0">
             <SessionTabs
               :sessions="consoleSessions"
               :active-id="store.activeSessionId"
@@ -425,7 +425,6 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
             />
           </div>
           <NewSessionTabDropdown
-            :disabled="spawnDisabled"
             :starting="store.startingSession"
             @select="onSpawn"
           />
