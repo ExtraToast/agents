@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.15.2](https://github.com/ExtraToast/agents/compare/v0.15.1...v0.15.2) (2026-06-27)
+
+
+### Bug Fixes
+
+* **agents-api:** make codex config.toml optional ([#135](https://github.com/ExtraToast/agents/issues/135)) ([264dcba](https://github.com/ExtraToast/agents/commit/264dcba63299d7f04edbd6907f49a79cc04cfb57))
+* **agents-ui:** place the "+" agent tab beside the tabs, always clickable, tab-height ([#136](https://github.com/ExtraToast/agents/issues/136)) ([3fba519](https://github.com/ExtraToast/agents/commit/3fba519ab6e5b07988d93bd2d2dee96cf09047ae))
+
 ## [0.15.1](https://github.com/ExtraToast/agents/compare/v0.15.0...v0.15.1) (2026-06-27)
 
 
