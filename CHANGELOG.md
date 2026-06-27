@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.4](https://github.com/ExtraToast/agents/compare/v0.15.3...v0.15.4) (2026-06-27)
+
+
+### Bug Fixes
+
+* **agent-gateway:** resume Claude from the transcript's cwd after runner update/restart ([#140](https://github.com/ExtraToast/agents/issues/140)) ([667d242](https://github.com/ExtraToast/agents/commit/667d2428b3f9c4c161594b5b68428e3121d20edf))
+
 ## [0.15.3](https://github.com/ExtraToast/agents/compare/v0.15.2...v0.15.3) (2026-06-27)
 
 
