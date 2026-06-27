@@ -409,13 +409,16 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
       <section class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <!-- Tabs sit flush on top of the terminal: the active tab's accent
              underline meets the terminal with no gap. -->
+        <!-- Only the tab strip scrolls horizontally; the "+" dropdown sits
+             outside the overflow container so its absolutely-positioned menu
+             is never clipped by overflow-x/overflow-y. -->
         <nav
           v-if="store.activeWorkspace && !isFullscreen"
-          class="flex min-w-0 shrink-0 items-stretch overflow-x-auto overflow-y-hidden bg-[var(--color-surface-dark)] pr-2"
+          class="flex min-w-0 shrink-0 items-stretch bg-[var(--color-surface-dark)] pr-2"
           data-testid="workspace-tabs"
           aria-label="Sessions"
         >
-          <div class="min-w-0 shrink-0">
+          <div class="flex min-w-0 items-stretch">
             <SessionTabs
               :sessions="consoleSessions"
               :active-id="store.activeSessionId"
