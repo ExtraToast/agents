@@ -706,8 +706,7 @@ class AgentSessionManagerTest {
 
     private fun GatewayActiveSessionsSample.labels(): List<String> = listOf(status.label, kind.label, mode.label)
 
-    private fun jsonString(value: String): String =
-        "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+    private fun jsonString(value: String): String = "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
     private class RecordingTelemetry : AgentGatewayTelemetry {
         val operations = CopyOnWriteArrayList<GatewayOperationTelemetry>()

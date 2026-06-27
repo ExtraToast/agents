@@ -75,7 +75,7 @@ class ClaudeTranscriptLocator(
             objectMapper
                 .readTree(line)
                 .get("cwd")
-                ?.asText()
+                ?.asString()
                 ?.takeIf(String::isNotBlank)
         }.getOrNull()
 
