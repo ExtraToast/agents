@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.14.6](https://github.com/ExtraToast/agents/compare/v0.14.5...v0.14.6) (2026-06-27)
+
+
+### Bug Fixes
+
+* **agent-gateway:** fall back to a fresh session when a Claude transcript is gone on revival ([#124](https://github.com/ExtraToast/agents/issues/124)) ([68dcf0a](https://github.com/ExtraToast/agents/commit/68dcf0a2fe22f92b4ca3d1775ae53f16c03d827e))
+* **agents-ui:** declutter the workspace status rail ([#123](https://github.com/ExtraToast/agents/issues/123)) ([602a698](https://github.com/ExtraToast/agents/commit/602a698ec864513c62ff15494a57d7bba20ebb3f))
+
 ## [0.14.5](https://github.com/ExtraToast/agents/compare/v0.14.4...v0.14.5) (2026-06-26)
 
 
