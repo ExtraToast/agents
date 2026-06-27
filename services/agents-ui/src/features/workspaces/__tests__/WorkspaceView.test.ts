@@ -439,6 +439,8 @@ describe('workspaceView terminal persistence', () => {
     expect(header.find('[data-testid="stage-input-open"]').exists()).toBe(false)
     expect(tabs.find('[data-testid="session-tabs"]').exists()).toBe(true)
     expect(tabs.find('[data-testid="session-tab-sess-a"]').exists()).toBe(true)
+    expect(tabs.find('[data-testid="workspace-new-session-kind"]').exists()).toBe(true)
+    expect(tabs.find('[data-testid="workspace-new-session"]').exists()).toBe(true)
     expect(hero.find('[data-testid="session-terminal"]').exists()).toBe(true)
     expect(sidebar.find('[data-testid="session-status-rail"]').exists()).toBe(true)
     expect(sidebar.find('[data-testid="session-status-rail-running-chip"]').exists()).toBe(true)
@@ -668,6 +670,53 @@ describe('workspaceView terminal persistence', () => {
     expect(wrapper.get('[data-testid="workspace-empty-state"]').text()).toContain('Session stopped')
   })
 
+  it('starts parallel sessions from the persistent tab-bar control and switches between them', async () => {
+    getWorkspace
+      .mockResolvedValueOnce(detail([fakeSession({ id: 'sess-claude', kind: 'CLAUDE' })]))
+      .mockResolvedValueOnce(
+        detail([
+          fakeSession({ id: 'sess-claude', kind: 'CLAUDE' }),
+          fakeSession({ id: 'sess-codex', kind: 'CODEX' }),
+        ]),
+      )
+      .mockResolvedValueOnce(
+        detail([
+          fakeSession({ id: 'sess-claude', kind: 'CLAUDE' }),
+          fakeSession({ id: 'sess-codex', kind: 'CODEX' }),
+          fakeSession({ id: 'sess-shell', kind: 'SHELL' }),
+        ]),
+      )
+    startSession
+      .mockResolvedValueOnce({ sessionId: 'sess-codex' })
+      .mockResolvedValueOnce({ sessionId: 'sess-shell' })
+    const wrapper = await mountView()
+
+    expect(wrapper.find('[data-testid="workspace-empty-start"]').exists()).toBe(false)
+    await wrapper.get('[data-testid="workspace-new-session-kind"]').setValue('CODEX')
+    await wrapper.get('[data-testid="workspace-new-session"]').trigger('click')
+    await flush()
+
+    expect(startSession).toHaveBeenCalledWith('ws-1', 'CODEX', expect.any(Function))
+    expect(wrapper.find('[data-testid="session-tab-sess-claude"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="session-tab-sess-codex"]').exists()).toBe(true)
+
+    await wrapper.get('[data-testid="workspace-new-session-kind"]').setValue('SHELL')
+    await wrapper.get('[data-testid="workspace-new-session"]').trigger('click')
+    await flush()
+
+    expect(startSession).toHaveBeenCalledWith('ws-1', 'SHELL', expect.any(Function))
+    expect(wrapper.find('[data-testid="session-tab-sess-shell"]').exists()).toBe(true)
+    expect(wrapper.findAll('[data-testid="session-terminal"]').length).toBe(3)
+
+    await wrapper.get('[data-testid="session-tab-sess-claude"]').trigger('click')
+    await flush()
+    expect(useWorkspacesStore().activeSessionId).toBe('sess-claude')
+
+    await wrapper.get('[data-testid="session-tab-sess-shell"]').trigger('click')
+    await flush()
+    expect(useWorkspacesStore().activeSessionId).toBe('sess-shell')
+  })
+
   it('renders attached repositories, marks the primary, and shows split guidance', async () => {
     const primary = fakeWorkspaceRepository({ id: 'repo-primary', name: 'primary', isPrimary: true })
     const destination = fakeWorkspaceRepository({
@@ -694,6 +743,42 @@ describe('workspaceView terminal persistence', () => {
     expect(wrapper.find('[data-testid="split-follow-up"]').text()).toContain(
       'Start the next runner from owner/split-dest after the split lands.',
     )
+  })
+
+  it('collapses and expands repository and split guidance panels', async () => {
+    const primary = fakeWorkspaceRepository({ id: 'repo-primary', name: 'primary', isPrimary: true })
+    const destination = fakeWorkspaceRepository({
+      id: 'repo-dest',
+      name: 'split-dest',
+      repoUrl: 'git@github.com:owner/split-dest.git',
+    })
+    getWorkspace.mockResolvedValue(detail([fakeSession({ id: 'sess-a' })], { repositories: [primary, destination] }))
+
+    const wrapper = await mountView()
+    const repositoryToggle = wrapper.get('[data-testid="workspace-repositories-toggle"]')
+    const splitToggle = wrapper.get('[data-testid="workspace-split-guidance-toggle"]')
+
+    expect(repositoryToggle.attributes('aria-expanded')).toBe('true')
+    expect(splitToggle.attributes('aria-expanded')).toBe('true')
+    expect(wrapper.find('[data-testid="workspace-repositories-list"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="workspace-split-command"]').exists()).toBe(true)
+
+    await repositoryToggle.trigger('click')
+    await splitToggle.trigger('click')
+
+    expect(repositoryToggle.attributes('aria-expanded')).toBe('false')
+    expect(splitToggle.attributes('aria-expanded')).toBe('false')
+    expect(wrapper.find('[data-testid="workspace-repositories-list"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="workspace-split-command"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="workspace-add-repository"]').exists()).toBe(true)
+
+    await repositoryToggle.trigger('click')
+    await splitToggle.trigger('click')
+
+    expect(repositoryToggle.attributes('aria-expanded')).toBe('true')
+    expect(splitToggle.attributes('aria-expanded')).toBe('true')
+    expect(wrapper.find('[data-testid="workspace-repositories-list"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="workspace-split-command"]').exists()).toBe(true)
   })
 
   it('shows non-project split follow-up wording', async () => {
@@ -809,6 +894,8 @@ describe('workspaceView terminal persistence', () => {
     const wrapper = await mountView()
 
     expect(wrapper.get('[data-testid="workspace-empty-start"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[data-testid="workspace-new-session"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[data-testid="workspace-new-session-kind"]').attributes('disabled')).toBeDefined()
     expect(wrapper.get('[data-testid="workspace-empty-start"]').text()).toBe('Runner booting…')
   })
 
@@ -818,6 +905,8 @@ describe('workspaceView terminal persistence', () => {
     const wrapper = await mountView()
 
     expect(wrapper.get('[data-testid="workspace-empty-start"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.get('[data-testid="workspace-new-session"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.get('[data-testid="workspace-new-session-kind"]').attributes('disabled')).toBeUndefined()
     expect(wrapper.get('[data-testid="workspace-empty-start"]').text()).toBe('Start Claude Code')
   })
 

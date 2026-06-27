@@ -411,17 +411,42 @@ async function onDetachRepository(repositoryId: string, repositoryName: string):
              underline meets the terminal with no gap. -->
         <nav
           v-if="store.activeWorkspace && !isFullscreen"
-          class="min-w-0 shrink-0"
+          class="flex min-w-0 shrink-0 items-stretch gap-2 bg-[var(--color-surface-dark)] pr-2"
           data-testid="workspace-tabs"
           aria-label="Sessions"
         >
-          <SessionTabs
-            :sessions="consoleSessions"
-            :active-id="store.activeSessionId"
-            orientation="horizontal"
-            @select="onSelectSession"
-            @delete="onStopSession"
-          />
+          <div class="min-w-0 flex-1">
+            <SessionTabs
+              :sessions="consoleSessions"
+              :active-id="store.activeSessionId"
+              orientation="horizontal"
+              @select="onSelectSession"
+              @delete="onStopSession"
+            />
+          </div>
+          <div class="flex shrink-0 items-center gap-2 py-1" aria-label="Start a new agent session">
+            <label class="sr-only" for="workspace-new-session-kind">Agent kind</label>
+            <select
+              id="workspace-new-session-kind"
+              v-model="pickerKind"
+              class="h-9 w-28 rounded-md border border-[var(--color-surface-border)] bg-[var(--color-surface)] px-2 text-sm text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] sm:w-36"
+              :disabled="spawnDisabled"
+              data-testid="workspace-new-session-kind"
+            >
+              <option value="CLAUDE">Claude</option>
+              <option value="CODEX">Codex</option>
+              <option value="SHELL">Shell</option>
+            </select>
+            <button
+              type="button"
+              class="inline-flex h-9 shrink-0 items-center justify-center rounded-md bg-[var(--color-accent)] px-3 text-sm font-medium text-white transition-colors hover:bg-[var(--color-accent-light)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] disabled:cursor-not-allowed disabled:opacity-60"
+              :disabled="spawnDisabled"
+              data-testid="workspace-new-session"
+              @click="onSpawn"
+            >
+              {{ store.startingSession ? 'Starting...' : '+ New agent' }}
+            </button>
+          </div>
         </nav>
         <div
           ref="consoleSurface"
