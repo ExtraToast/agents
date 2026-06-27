@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.7](https://github.com/ExtraToast/agents/compare/v0.14.6...v0.14.7) (2026-06-27)
+
+
+### Bug Fixes
+
+* **agents-ui:** single status chip — Running (green) wins, else Connected (orange) ([#126](https://github.com/ExtraToast/agents/issues/126)) ([12eb591](https://github.com/ExtraToast/agents/commit/12eb591924863d66566fbb33eaa6cff7af98255a))
+
 ## [0.14.6](https://github.com/ExtraToast/agents/compare/v0.14.5...v0.14.6) (2026-06-27)
 
 
