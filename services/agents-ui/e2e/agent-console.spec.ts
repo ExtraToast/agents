@@ -18,8 +18,8 @@ test('workspace agent console starts agents and stages text for the active sessi
   await installAuthenticatedAppMocks(page)
 
   await page.goto('/sessions/workspace/ws-1')
-  await page.getByRole('button', { name: 'Codex' }).click()
-  await page.getByTestId('workspace-new-agent').click()
+  await page.getByTestId('workspace-new-session').click()
+  await page.getByTestId('workspace-new-session-option-codex').click()
 
   await expect(page.getByTestId('session-tab-sess-2')).toBeVisible()
   await expect(page.getByTestId('session-status-rail-label')).toContainText('sess-2')
@@ -37,10 +37,9 @@ test('connect-on-open readiness: READY runner enables the spawn button', async (
   await page.goto('/sessions/workspace/ws-1')
 
   await expect(page.getByTestId('workspace-console')).toBeVisible()
-  // With READY state the spawn button is enabled and shows the agent kind label.
-  await expect(page.getByTestId('workspace-new-agent')).toBeEnabled()
-  await expect(page.getByTestId('workspace-new-agent')).toContainText('Start')
-  await expect(page.getByTestId('workspace-new-agent')).not.toContainText('Runner booting')
+  // With READY state the "+" tab button is enabled.
+  await expect(page.getByTestId('workspace-new-session')).toBeEnabled()
+  await expect(page.getByTestId('workspace-new-session')).not.toContainText('Runner booting')
 })
 
 test('runner in BOOTING state disables the spawn button', async ({ page }) => {
@@ -49,8 +48,7 @@ test('runner in BOOTING state disables the spawn button', async ({ page }) => {
   await page.goto('/sessions/workspace/ws-1')
 
   await expect(page.getByTestId('workspace-console')).toBeVisible()
-  await expect(page.getByTestId('workspace-new-agent')).toBeDisabled()
-  await expect(page.getByTestId('workspace-new-agent')).toContainText('Runner booting')
+  await expect(page.getByTestId('workspace-new-session')).toBeDisabled()
 })
 
 test('workspace opens without auto-starting a session', async ({ page }) => {
@@ -70,14 +68,18 @@ test('duplicate explicit start creates only one session', async ({ page }) => {
   await page.goto('/sessions/workspace/ws-1')
   await expect(page.getByTestId('workspace-console')).toBeVisible()
 
-  // Two synchronous clicks hit newSession() before the first in-flight POST
-  // completes; the startingSessionByKey dedup map returns the existing promise
-  // to the second caller, so only one session is created.
+  // Two synchronous startSession calls via the dropdown menu; the
+  // startingSessionByKey dedup map returns the existing promise to the second
+  // caller, so only one session is created.
   await page.evaluate(() => {
-    const btn = document.querySelector('[data-testid="workspace-new-agent"]')
-    if (btn instanceof HTMLElement) {
-      btn.click()
-      btn.click()
+    const btn = document.querySelector('[data-testid="workspace-new-session"]')
+    if (btn instanceof HTMLElement) btn.click()
+  })
+  await page.evaluate(() => {
+    const opt = document.querySelector('[data-testid="workspace-new-session-option-claude"]')
+    if (opt instanceof HTMLElement) {
+      opt.click()
+      opt.click()
     }
   })
 
@@ -119,8 +121,8 @@ test('post-stop refresh does not reconnect the runner', async ({ page }) => {
   await page.goto('/sessions/workspace/ws-1')
 
   // First connect returns READY → spawn button enabled with agent kind label.
-  await expect(page.getByTestId('workspace-new-agent')).toBeEnabled()
-  await expect(page.getByTestId('workspace-new-agent')).not.toContainText('Runner booting')
+  await expect(page.getByTestId('workspace-new-session')).toBeEnabled()
+  await expect(page.getByTestId('workspace-new-session')).not.toContainText('Runner booting')
 
   // Stop the active session. endSession calls open({ connectRunner: false }),
   // so no second connect request is issued.
@@ -133,8 +135,8 @@ test('post-stop refresh does not reconnect the runner', async ({ page }) => {
   // The spawn button should retain READY state. If a reconnect had fired, the
   // mock's second connect returns BOOTING and the label would change to
   // "Runner booting…", causing this assertion to fail.
-  await expect(page.getByTestId('workspace-new-agent')).not.toContainText('Runner booting')
-  await expect(page.getByTestId('workspace-new-agent')).not.toBeDisabled()
+  await expect(page.getByTestId('workspace-new-session')).not.toContainText('Runner booting')
+  await expect(page.getByTestId('workspace-new-session')).not.toBeDisabled()
 })
 
 test('post-start refresh does not reconnect the runner', async ({ page }) => {
@@ -143,14 +145,14 @@ test('post-start refresh does not reconnect the runner', async ({ page }) => {
   await page.goto('/sessions/workspace/ws-1')
 
   // First connect returns READY.
-  await expect(page.getByTestId('workspace-new-agent')).toBeEnabled()
+  await expect(page.getByTestId('workspace-new-session')).toBeEnabled()
 
-  // Start a new session. startNewSession calls open({ connectRunner: false }) after
-  // the POST, so no second connect request should be issued.
-  await page.getByTestId('workspace-new-agent').click()
+  // Start a new session. Open the "+" dropdown and pick Claude.
+  await page.getByTestId('workspace-new-session').click()
+  await page.getByTestId('workspace-new-session-option-claude').click()
   await expect(page.getByTestId('session-tab-sess-2')).toBeVisible()
 
   // Spawn button should still reflect READY (not BOOTING from a second connect).
-  await expect(page.getByTestId('workspace-new-agent')).not.toContainText('Runner booting')
-  await expect(page.getByTestId('workspace-new-agent')).not.toBeDisabled()
+  await expect(page.getByTestId('workspace-new-session')).not.toContainText('Runner booting')
+  await expect(page.getByTestId('workspace-new-session')).not.toBeDisabled()
 })
