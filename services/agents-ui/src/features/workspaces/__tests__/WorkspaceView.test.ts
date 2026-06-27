@@ -460,10 +460,19 @@ describe('workspaceView terminal persistence', () => {
     const sessionTabsShell = tabs.get('[data-testid="session-tabs"]').element.parentElement
     if (!sessionTabsShell) throw new Error('missing session tabs shell')
 
-    expect(tabs.classes()).toContain('overflow-x-auto')
+    // Neither the nav nor the tab strip may grow (flex-1), or the "+" would be
+    // pushed to the far right instead of sitting beside the rightmost tab.
+    expect(tabs.classes()).not.toContain('flex-1')
     expect(tabs.classes()).not.toContain('gap-2')
-    expect(sessionTabsShell.classList.contains('shrink-0')).toBe(true)
     expect(sessionTabsShell.classList.contains('flex-1')).toBe(false)
+    // The "+" dropdown must follow the tab strip in DOM order so it renders
+    // immediately to its right.
+    const newSession = tabs.get('[data-testid="workspace-new-session"]').element
+    const order = sessionTabsShell.compareDocumentPosition(newSession)
+    expect(order & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // The overflow scroll lives on the inner tab strip (SessionTabs), not on the
+    // nav — otherwise it would clip the absolutely-positioned dropdown menu.
+    expect(tabs.classes()).not.toContain('overflow-x-auto')
   })
 
   for (const status of ['STOPPED', 'FAILED'] as const) {

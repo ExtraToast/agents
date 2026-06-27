@@ -29,18 +29,19 @@ function onSelect(kind: AgentKind, close: () => void): void {
 <template>
   <Dropdown
     trigger-label="Start a new agent session"
-    align="right"
+    align="left"
   >
+    <!-- The commons Dropdown renders its own <button> wrapper that toggles the
+         menu, so the trigger slot must be a non-button element (no nested
+         buttons) and just supplies the tab-styled visual. -->
     <template #trigger="{ open }">
-      <button
-        type="button"
-        class="relative flex cursor-pointer items-center justify-center rounded-t-md border border-t-2 border-[var(--color-surface-border)] border-t-transparent bg-[var(--color-surface)] px-3 py-2 text-sm leading-normal text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-light)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface-dark)]"
-        :aria-expanded="open"
-        aria-label="Start a new agent session"
+      <span
+        class="relative flex h-full cursor-pointer items-center justify-center rounded-t-md border border-t-2 border-[var(--color-surface-border)] border-t-transparent bg-[var(--color-surface)] px-3 py-2 text-sm leading-normal transition-colors"
+        :class="open ? 'text-[var(--color-text-primary)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'"
         data-testid="workspace-new-session"
       >
         {{ starting ? '…' : '+' }}
-      </button>
+      </span>
     </template>
 
     <template #default="{ close }">
