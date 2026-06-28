@@ -88,10 +88,10 @@ class AgentRuntimePropertiesBindingTest {
     }
 
     @Test
-    fun `default mcp profile is cluster when not overridden`() {
+    fun `default mcp profile is minimal when not overridden`() {
         val props = bind(base)
 
-        assertThat(props.defaultMcpProfile).isEqualTo("cluster")
+        assertThat(props.defaultMcpProfile).isEqualTo("minimal")
     }
 
     @Test
