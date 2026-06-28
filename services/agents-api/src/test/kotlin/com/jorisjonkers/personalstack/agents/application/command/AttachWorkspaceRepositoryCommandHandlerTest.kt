@@ -37,11 +37,9 @@ class AttachWorkspaceRepositoryCommandHandlerTest {
     private val repositoryId = RepositoryId.random()
     private val command = AttachWorkspaceRepositoryCommand(workspaceId, repositoryId)
 
-    init {
-        every { projectRepositories.link(any(), any()) } answers {
-            ProjectRepositoryRepository.Link(firstArg(), secondArg(), Instant.now())
-        }
-    }
+    // projectRepositories is a relaxed mock and link()'s return value is unused, so no stub
+    // is needed. (A custom answers{} reconstructing Link via firstArg() breaks here because
+    // ProjectId is a value class — mockk records the unboxed UUID.)
 
     @Test
     fun `attaches a non-primary link and clones into a running workspace`() {

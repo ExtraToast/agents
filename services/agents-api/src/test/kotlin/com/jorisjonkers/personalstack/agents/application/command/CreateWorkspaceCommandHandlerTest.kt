@@ -89,9 +89,9 @@ class CreateWorkspaceCommandHandlerTest {
 
     init {
         every { setupSelection.defaultSelectable() } returns setup
-        every { projectRepositoryLinks.link(any(), any()) } answers {
-            ProjectRepositoryRepository.Link(firstArg(), secondArg(), Instant.now())
-        }
+        // projectRepositoryLinks is relaxed and link()'s return is unused; no stub needed.
+        // (firstArg() can't reconstruct the Link — ProjectId is a value class, so mockk
+        // records the unboxed UUID and the cast fails.)
         every { lifecycleService.boot(any(), any()) } returns
             BootOutcome.Ready(
                 workspace = mockk(relaxed = true),

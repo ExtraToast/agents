@@ -88,9 +88,8 @@ class RunnerSessionBindingServiceTest {
         every { setupSelection.defaultSelectable() } returns setup
         every { setupValidation.validate(any()) } returns validSetupResult()
         every { setupValidation.requireValid(any()) } returns validSetupResult()
-        every { projectRepositories.link(any(), any()) } answers {
-            ProjectRepositoryRepository.Link(firstArg(), secondArg(), Instant.now())
-        }
+        // projectRepositories is relaxed and link()'s return is unused; no stub needed.
+        // (firstArg() can't reconstruct the Link — ProjectId is a value class.)
     }
 
     @Test
