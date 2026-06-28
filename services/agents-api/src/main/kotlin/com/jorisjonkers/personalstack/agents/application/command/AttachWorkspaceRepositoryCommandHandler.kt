@@ -1,6 +1,7 @@
 package com.jorisjonkers.personalstack.agents.application.command
 
 import com.jorisjonkers.personalstack.agents.domain.port.AgentGatewayClient
+import com.jorisjonkers.personalstack.agents.domain.port.ProjectRepositoryRepository
 import com.jorisjonkers.personalstack.agents.domain.port.RepositoryRepository
 import com.jorisjonkers.personalstack.agents.domain.port.WorkspaceRepository
 import com.jorisjonkers.personalstack.agents.domain.port.WorkspaceRepositoryRepository
@@ -13,6 +14,7 @@ class AttachWorkspaceRepositoryCommandHandler(
     private val workspaces: WorkspaceRepository,
     private val repositories: RepositoryRepository,
     private val links: WorkspaceRepositoryRepository,
+    private val projectRepositories: ProjectRepositoryRepository,
     private val gateway: AgentGatewayClient,
 ) : CommandHandler<AttachWorkspaceRepositoryCommand> {
     @Transactional
@@ -24,6 +26,9 @@ class AttachWorkspaceRepositoryCommandHandler(
             repositories.findById(command.repositoryId)
                 ?: throw NoSuchElementException("repository not found: ${command.repositoryId}")
         links.attach(command.workspaceId, command.repositoryId, isPrimary = false)
+        workspace.projectId?.let { projectId ->
+            projectRepositories.link(projectId, command.repositoryId)
+        }
         if (workspace.gatewayEndpoint != null && gateway.isReady(workspace)) {
             gateway.clone(workspace, repository.repoUrl, repository.defaultBranch)
         }

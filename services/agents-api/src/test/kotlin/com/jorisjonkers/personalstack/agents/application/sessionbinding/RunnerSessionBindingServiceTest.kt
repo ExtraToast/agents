@@ -21,6 +21,8 @@ import com.jorisjonkers.personalstack.agents.domain.model.AgentSetupValidationIs
 import com.jorisjonkers.personalstack.agents.domain.model.AgentSetupValidationIssueCode
 import com.jorisjonkers.personalstack.agents.domain.model.AgentSetupValidationResult
 import com.jorisjonkers.personalstack.agents.domain.model.AgentSetupVersion
+import com.jorisjonkers.personalstack.agents.domain.model.ProjectId
+import com.jorisjonkers.personalstack.agents.domain.model.RepositoryId
 import com.jorisjonkers.personalstack.agents.domain.model.RunnerSetupProvisioningSpec
 import com.jorisjonkers.personalstack.agents.domain.model.Workspace
 import com.jorisjonkers.personalstack.agents.domain.model.WorkspaceAgentKind
@@ -31,12 +33,15 @@ import com.jorisjonkers.personalstack.agents.domain.model.WorkspaceId
 import com.jorisjonkers.personalstack.agents.domain.model.WorkspaceStatus
 import com.jorisjonkers.personalstack.agents.domain.port.AgentGatewayClient
 import com.jorisjonkers.personalstack.agents.domain.port.AgentRunnerOrchestrator
+import com.jorisjonkers.personalstack.agents.domain.port.ProjectRepositoryRepository
 import com.jorisjonkers.personalstack.agents.domain.port.WorkspaceAgentSessionRepository
 import com.jorisjonkers.personalstack.agents.domain.port.WorkspaceRepository
+import com.jorisjonkers.personalstack.agents.domain.port.WorkspaceRepositoryRepository
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import io.mockk.verifyOrder
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -50,6 +55,8 @@ class RunnerSessionBindingServiceTest {
     private val orchestrator = mockk<AgentRunnerOrchestrator>()
     private val setupSelection = mockk<AgentSetupSelectionService>()
     private val setupValidation = mockk<AgentSetupValidationService>()
+    private val projectRepositories = mockk<ProjectRepositoryRepository>(relaxed = true)
+    private val workspaceRepositories = mockk<WorkspaceRepositoryRepository>()
     private val sessionStatus = mockk<SessionStatusPublisher>(relaxed = true)
     private val telemetry = RecordingAgentsApiTelemetry()
     private val setup = setupEntry()
@@ -62,6 +69,8 @@ class RunnerSessionBindingServiceTest {
             orchestrator = orchestrator,
             setupSelection = setupSelection,
             setupValidation = setupValidation,
+            projectRepositories = projectRepositories,
+            workspaceRepositories = workspaceRepositories,
             tx = RunnerSessionBindingTransactions(workspaces, sessions, sessionStatus),
             sessionStatus = sessionStatus,
             telemetry = telemetry,
@@ -79,6 +88,9 @@ class RunnerSessionBindingServiceTest {
         every { setupSelection.defaultSelectable() } returns setup
         every { setupValidation.validate(any()) } returns validSetupResult()
         every { setupValidation.requireValid(any()) } returns validSetupResult()
+        every { projectRepositories.link(any(), any()) } answers {
+            ProjectRepositoryRepository.Link(firstArg(), secondArg(), Instant.now())
+        }
     }
 
     @Test
@@ -127,6 +139,56 @@ class RunnerSessionBindingServiceTest {
         assertThat(created.captured.currentSetupId).isEqualTo(setup.definition.id)
         assertThat(created.captured.currentSetupVersion).isEqualTo(setup.definition.version)
         verify(exactly = 0) { orchestrator.provision(any()) }
+    }
+
+    @Test
+    fun `start links workspace repositories to project before setup validation`() {
+        val projectId = ProjectId.random()
+        val primaryRepoId = RepositoryId.random()
+        val extraRepoId = RepositoryId.random()
+        val secondExtraRepoId = RepositoryId.random()
+        val ws = workspace().copy(repositoryId = primaryRepoId, projectId = projectId)
+        val sessionId = WorkspaceAgentSessionId.random()
+        every { workspaces.findById(ws.id) } returns ws
+        every { workspaceRepositories.findAllByWorkspaceId(ws.id) } returns
+            listOf(
+                WorkspaceRepositoryRepository.Link(
+                    ws.id,
+                    primaryRepoId,
+                    isPrimary = true,
+                    attachedAt = Instant.now(),
+                ),
+                WorkspaceRepositoryRepository.Link(
+                    ws.id,
+                    extraRepoId,
+                    isPrimary = false,
+                    attachedAt = Instant.now(),
+                ),
+                WorkspaceRepositoryRepository.Link(
+                    ws.id,
+                    secondExtraRepoId,
+                    isPrimary = false,
+                    attachedAt = Instant.now(),
+                ),
+            )
+        every { orchestrator.isReady(ws, setupSpec.identity(ws.runnerSetupGeneration)) } returns false
+
+        val result =
+            binder.start(
+                StartRunnerSessionBindingInput(
+                    workspaceId = ws.id,
+                    sessionId = sessionId,
+                    kind = WorkspaceAgentKind.CLAUDE,
+                ),
+            )
+
+        assertThat(result).isInstanceOf(RunnerSessionBindingResult.Unavailable::class.java)
+        verifyOrder {
+            projectRepositories.link(projectId, primaryRepoId)
+            projectRepositories.link(projectId, extraRepoId)
+            projectRepositories.link(projectId, secondExtraRepoId)
+            setupValidation.validate(any())
+        }
     }
 
     @Test
