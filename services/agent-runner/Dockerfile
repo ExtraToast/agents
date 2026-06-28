@@ -193,7 +193,10 @@ RUN rm -f /usr/bin/sg \
 # entrypoint launches it with ZGC the same way every other service does.
 COPY --from=gateway-build /app/services/agent-gateway/build/libs/*.jar /opt/agent-gateway.jar
 COPY --from=otel /otel-javaagent.jar /opt/otel-javaagent.jar
-COPY .specify /opt/agent-kit/sdd
+COPY services/agent-runner/agent-kit/home /opt/agent-kit/home
+COPY services/agent-runner/agent-kit/home/.specify /opt/agent-kit/sdd
+COPY services/agent-runner/agent-kit/mcp /opt/agent-kit/mcp
+RUN chmod -R a+rX /opt/agent-kit
 COPY services/agent-runner/entrypoint.sh /opt/entrypoint.sh
 RUN chmod +x /opt/entrypoint.sh
 RUN set -eu; \
@@ -210,6 +213,35 @@ RUN set -eu; \
     printf 'version=current\n' > "${tmp}/.codex/.knowledge-system-version"; \
     output="$(HOME="${tmp}" CODEX_HOME="${tmp}/.codex" CLAUDE_CONFIG_DIR="${tmp}/.claude" AGENT_KIT_EXPECTED_VERSION=current AGENT_RUNNER_ENTRYPOINT_SELF_TEST=agent-kit-manifest /opt/entrypoint.sh)"; \
     test -z "${output}"; \
+    install_tmp="$(mktemp -d)"; \
+    install_output="$(HOME="${install_tmp}" CODEX_HOME="${install_tmp}/.codex" CLAUDE_CONFIG_DIR="${install_tmp}/.claude" AGENT_KIT_BAKED_VERSION=current AGENT_RUNNER_ENTRYPOINT_SELF_TEST=agent-kit-home-install /opt/entrypoint.sh)"; \
+    test -z "${install_output}"; \
+    test -f "${install_tmp}/.claude/skills/kb-first/SKILL.md"; \
+    test -f "${install_tmp}/.claude/commands/speckit.specify.md"; \
+    test -x "${install_tmp}/.claude/hooks/kb-stop-digest.sh"; \
+    test -f "${install_tmp}/.agents/skills/speckit-implement/SKILL.md"; \
+    test -f "${install_tmp}/.codex/hooks.json"; \
+    test -x "${install_tmp}/.codex/hooks/kb-stop-digest.sh"; \
+    test -f "${install_tmp}/.specify/templates/spec-template.md"; \
+    test -x "${install_tmp}/.specify/scripts/bash/create-new-feature.sh"; \
+    jq -e --arg home "${install_tmp}" '.hooks.UserPromptSubmit[0].hooks[0].command == ("bash \"" + $home + "/.claude/hooks/kb-user-prompt-recall.sh\"")' "${install_tmp}/.claude/settings.json" >/dev/null; \
+    jq -e --arg home "${install_tmp}" '.hooks.PreToolUse[0].hooks[0].command == ("env KB_AUTO_MCP_HOME=" + $home + "/.codex " + $home + "/.codex/hooks/pre-tool-use-edit-recall.sh")' "${install_tmp}/.codex/hooks.json" >/dev/null; \
+    test "$(awk -F= '/^version=/{print $2; exit}' "${install_tmp}/.claude/.knowledge-system-version")" = 'current'; \
+    test "$(awk -F= '/^version=/{print $2; exit}' "${install_tmp}/.codex/.knowledge-system-version")" = 'current'; \
+    install_before="$(sha256sum "${install_tmp}/.claude/settings.json" "${install_tmp}/.codex/hooks.json" "${install_tmp}/.agents/skills/kb-first/SKILL.md")"; \
+    install_output="$(HOME="${install_tmp}" CODEX_HOME="${install_tmp}/.codex" CLAUDE_CONFIG_DIR="${install_tmp}/.claude" AGENT_KIT_BAKED_VERSION=current AGENT_RUNNER_ENTRYPOINT_SELF_TEST=agent-kit-home-install /opt/entrypoint.sh)"; \
+    install_after="$(sha256sum "${install_tmp}/.claude/settings.json" "${install_tmp}/.codex/hooks.json" "${install_tmp}/.agents/skills/kb-first/SKILL.md")"; \
+    test -z "${install_output}"; \
+    test "${install_before}" = "${install_after}"; \
+    mcp_profile="$(AGENT_RUNNER_ENTRYPOINT_SELF_TEST=mcp-profile /opt/entrypoint.sh)"; \
+    printf '%s\n' "${mcp_profile}" | grep -q '^profile=cluster$'; \
+    printf '%s\n' "${mcp_profile}" | grep -q '^claude=/opt/agent-kit/mcp/claude-mcp-servers.cluster.json$'; \
+    printf '%s\n' "${mcp_profile}" | grep -q '^codex=/opt/agent-kit/mcp/codex-mcp-servers.cluster.toml$'; \
+    mcp_claude="$(KB_URL='http://kb' KB_BEARER_TOKEN='secret' AGENT_CLUSTER_MCP_URL='http://cluster/mcp' AGENT_RUNNER_ENTRYPOINT_SELF_TEST=mcp-render /opt/entrypoint.sh)"; \
+    printf '%s\n' "${mcp_claude}" | jq -e '.knowledge.url == "http://kb/mcp" and .cluster.url == "http://cluster/mcp"' >/dev/null; \
+    mcp_codex="$(KB_URL='http://kb' AGENT_CLUSTER_MCP_URL='http://cluster/mcp' AGENT_MCP_RENDER_AGENT=codex AGENT_RUNNER_ENTRYPOINT_SELF_TEST=mcp-render /opt/entrypoint.sh)"; \
+    printf '%s\n' "${mcp_codex}" | grep -q 'url = "http://kb/mcp"'; \
+    printf '%s\n' "${mcp_codex}" | grep -q 'url = "http://cluster/mcp"'; \
     allow="$(REPO_URL='git@github.com:o/primary.git' REPO_URLS='https://github.com/o/extra.git#dev git@github.com:o/second.git' AGENT_RUNNER_ENTRYPOINT_SELF_TEST=repo-allow /opt/entrypoint.sh)"; \
     test "${allow}" = 'o/primary o/extra o/second'; \
     test -z "$(REPO_URL='' REPO_URLS='' AGENT_RUNNER_ENTRYPOINT_SELF_TEST=repo-allow /opt/entrypoint.sh)"; \
@@ -251,7 +283,7 @@ RUN set -eu; \
     test ! -e "${noop_tmp}/home/.claude/.credentials.json"; \
     test ! -e "${noop_tmp}/home/.codex/auth.json"; \
     test ! -e "${noop_tmp}/home/.codex/config.toml"; \
-    rm -rf "${cred_tmp}" "${noop_tmp}"; \
+    rm -rf "${cred_tmp}" "${noop_tmp}" "${install_tmp}"; \
     rm -rf "${tmp}"
 
 # Shared token helper used by gh, GitHub MCP, and Git's credential
