@@ -112,10 +112,7 @@ class AttachWorkspaceRepositoryCommandHandlerTest {
         verify(exactly = 0) { links.attach(any(), any(), any()) }
     }
 
-    private fun workspace(
-        gatewayEndpoint: String? = "http://runner:8090",
-        projectId: ProjectId? = null,
-    ) =
+    private fun workspace(gatewayEndpoint: String? = "http://runner:8090", projectId: ProjectId? = null) =
         Workspace(
             id = workspaceId,
             name = "workspace",
