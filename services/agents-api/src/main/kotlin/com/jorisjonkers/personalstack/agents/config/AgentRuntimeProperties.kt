@@ -49,7 +49,7 @@ data class AgentRuntimeProperties(
     // runner image's baked agent-kit MCP profiles.
     val mcpServersConfigMap: String = "agents-mcp-servers",
     // MCP server profile selected by the runner entrypoint.
-    val defaultMcpProfile: String = "cluster",
+    val defaultMcpProfile: String = "minimal",
     // Mount the host Docker socket into runner Pods so agent sessions can run
     // Docker CLI commands and JVM Testcontainers suites from inside /workspace.
     // This is host-equivalent access. The supplemental group default is pinned

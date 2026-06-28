@@ -119,7 +119,7 @@ agent-runtime:
   knowledge-bearer-secret-key: ${AGENT_RUNTIME_KB_BEARER_SECRET_KEY:bearer}
   # Runner MCP profile. The live runner default includes knowledge, GitHub,
   # and the in-cluster Kubernetes MCP.
-  default-mcp-profile: ${AGENT_RUNTIME_DEFAULT_MCP_PROFILE:cluster}
+  default-mcp-profile: ${AGENT_RUNTIME_DEFAULT_MCP_PROFILE:minimal}
   # Runner Pods mount the host Docker socket so future agent sessions can run
   # Docker CLI commands and JVM Testcontainers suites. This is host-equivalent
   # access. The default gid is pinned in the Nix host definition for the
