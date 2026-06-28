@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.2](https://github.com/ExtraToast/agents/compare/v0.16.1...v0.16.2) (2026-06-28)
+
+
+### Bug Fixes
+
+* **agent-runner:** bake agent-kit tooling into runner image + default MCP profile to cluster ([#146](https://github.com/ExtraToast/agents/issues/146)) ([b0e6304](https://github.com/ExtraToast/agents/commit/b0e630454f0e2025ad2482c7041ffb1d77d262c5))
+
 ## [0.16.1](https://github.com/ExtraToast/agents/compare/v0.16.0...v0.16.1) (2026-06-28)
 
 
