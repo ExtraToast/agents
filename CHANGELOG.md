@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.3](https://github.com/ExtraToast/agents/compare/v0.16.2...v0.16.3) (2026-06-28)
+
+
+### Bug Fixes
+
+* **agents-api:** revert default MCP profile to minimal (unbreaks new sessions) ([#148](https://github.com/ExtraToast/agents/issues/148)) ([cfa72a1](https://github.com/ExtraToast/agents/commit/cfa72a1ea4e19434eee8480e1a3e9013b9607faa))
+
 ## [0.16.2](https://github.com/ExtraToast/agents/compare/v0.16.1...v0.16.2) (2026-06-28)
 
 
