@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.1](https://github.com/ExtraToast/agents/compare/v0.16.0...v0.16.1) (2026-06-28)
+
+
+### Bug Fixes
+
+* **agents-api:** link workspace repositories to their project (fixes session 422) ([#144](https://github.com/ExtraToast/agents/issues/144)) ([75106e5](https://github.com/ExtraToast/agents/commit/75106e5435bb687b545b5789a174b6a03c0bd56d))
+
 ## [0.16.0](https://github.com/ExtraToast/agents/compare/v0.15.4...v0.16.0) (2026-06-27)
 
 
