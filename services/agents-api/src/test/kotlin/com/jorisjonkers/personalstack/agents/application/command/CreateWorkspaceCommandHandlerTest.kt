@@ -5,7 +5,6 @@ import com.jorisjonkers.personalstack.agents.application.setup.AgentSetupSelecti
 import com.jorisjonkers.personalstack.agents.application.workspacerunner.RunnerUnavailableReason
 import com.jorisjonkers.personalstack.agents.application.workspacerunner.WorkspaceRunnerLifecycleService
 import com.jorisjonkers.personalstack.agents.application.workspacerunner.WorkspaceRunnerLifecycleService.BootOutcome
-import com.jorisjonkers.personalstack.agents.application.workspacerunner.WorkspaceRunnerLifecycleService.BootProvisioningOutcome
 import com.jorisjonkers.personalstack.agents.domain.model.AgentSetupAvailability
 import com.jorisjonkers.personalstack.agents.domain.model.AgentSetupCatalogEntry
 import com.jorisjonkers.personalstack.agents.domain.model.AgentSetupDefinition
@@ -90,10 +89,18 @@ class CreateWorkspaceCommandHandlerTest {
 
     init {
         every { setupSelection.defaultSelectable() } returns setup
+        // projectRepositoryLinks is relaxed and link()'s return is unused; no stub needed.
+        // (firstArg() can't reconstruct the Link — ProjectId is a value class, so mockk
+        // records the unboxed UUID and the cast fails.)
         every { lifecycleService.boot(any(), any()) } returns
             BootOutcome.Ready(
                 workspace = mockk(relaxed = true),
-                provisioning = BootProvisioningOutcome.Provisioned("p", "v", "http://p.svc:8090"),
+                provisioning =
+                    WorkspaceRunnerLifecycleService.BootProvisioningOutcome.Provisioned(
+                        "p",
+                        "v",
+                        "http://p.svc:8090",
+                    ),
             )
     }
 
@@ -212,6 +219,7 @@ class CreateWorkspaceCommandHandlerTest {
 
     @Test
     fun `repositoryId create persists then attaches primary before boot`() {
+        val projectId = ProjectId.random()
         val repoId = RepositoryId.random()
         val repository =
             Repository(
@@ -224,6 +232,7 @@ class CreateWorkspaceCommandHandlerTest {
             )
         every { repositories.findById(repoId) } returns repository
         every { githubLinks.findById(GithubLinkId(repoId.value)) } returns null
+        every { projectRepositoryLinks.findAllByProjectId(projectId) } returns emptyList()
         every { workspaces.save(any()) } answers { firstArg() }
         val workspaceId = WorkspaceId.random()
 
@@ -233,6 +242,7 @@ class CreateWorkspaceCommandHandlerTest {
                 name = "demo",
                 repoUrl = null,
                 branch = null,
+                projectId = projectId,
                 repositoryId = repoId,
             ),
         )
@@ -240,6 +250,7 @@ class CreateWorkspaceCommandHandlerTest {
         verifyOrder {
             workspaces.save(match { it.id == workspaceId && it.status == WorkspaceStatus.PENDING })
             workspaceRepositoryLinks.attach(workspaceId, repoId, isPrimary = true)
+            projectRepositoryLinks.link(projectId, repoId)
             lifecycleService.boot(workspaceId, WorkspaceAgentKind.CLAUDE)
         }
     }

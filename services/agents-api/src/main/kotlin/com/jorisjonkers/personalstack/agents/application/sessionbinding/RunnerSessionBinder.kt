@@ -28,8 +28,10 @@ import com.jorisjonkers.personalstack.agents.domain.model.WorkspaceAgentSession
 import com.jorisjonkers.personalstack.agents.domain.model.WorkspaceAgentSessionStatus
 import com.jorisjonkers.personalstack.agents.domain.port.AgentGatewayClient
 import com.jorisjonkers.personalstack.agents.domain.port.AgentRunnerOrchestrator
+import com.jorisjonkers.personalstack.agents.domain.port.ProjectRepositoryRepository
 import com.jorisjonkers.personalstack.agents.domain.port.WorkspaceAgentSessionRepository
 import com.jorisjonkers.personalstack.agents.domain.port.WorkspaceRepository
+import com.jorisjonkers.personalstack.agents.domain.port.WorkspaceRepositoryRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
@@ -47,6 +49,8 @@ class RunnerSessionBinder(
     private val orchestrator: AgentRunnerOrchestrator,
     private val setupSelection: AgentSetupSelectionService,
     private val setupValidation: AgentSetupValidationService,
+    private val projectRepositories: ProjectRepositoryRepository,
+    private val workspaceRepositories: WorkspaceRepositoryRepository,
     private val tx: RunnerSessionBindingTransactions,
     private val sessionStatus: SessionStatusPublisher,
     private val backoffInitialMs: Long = BACKOFF_INITIAL_MS,
@@ -64,6 +68,7 @@ class RunnerSessionBinder(
         val workspace =
             workspaces.findById(request.workspaceId)
                 ?: throw NoSuchElementException("workspace not found: ${request.workspaceId.value}")
+        linkWorkspaceRepositoriesToProject(workspace)
         val target = resolveNewSessionSetup(workspace, request.kind, request.setupId, request.setupVersion)
         // Validate readiness before persisting — genuine cold-start returns Unavailable with no row created.
         checkBindingReadiness(workspace, target)?.let { return it }
@@ -110,6 +115,20 @@ class RunnerSessionBinder(
             gatewayAgent = gatewayAgent,
             provisioning = RunnerProvisioningResult.AlreadyReady,
         )
+    }
+
+    private fun linkWorkspaceRepositoriesToProject(workspace: Workspace) {
+        val projectId = workspace.projectId ?: return
+        val repositoryIds =
+            buildList {
+                workspace.repositoryId?.let { add(it) }
+                workspaceRepositories
+                    .findAllByWorkspaceId(workspace.id)
+                    .mapTo(this) { it.repositoryId }
+            }.distinct()
+        repositoryIds.forEach { repositoryId ->
+            projectRepositories.link(projectId, repositoryId)
+        }
     }
 
     @Suppress("LongMethod", "ReturnCount", "CyclomaticComplexMethod", "ComplexCondition")

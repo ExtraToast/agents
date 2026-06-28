@@ -1,11 +1,13 @@
 package com.jorisjonkers.personalstack.agents.application.command
 
+import com.jorisjonkers.personalstack.agents.domain.model.ProjectId
 import com.jorisjonkers.personalstack.agents.domain.model.Repository
 import com.jorisjonkers.personalstack.agents.domain.model.RepositoryId
 import com.jorisjonkers.personalstack.agents.domain.model.Workspace
 import com.jorisjonkers.personalstack.agents.domain.model.WorkspaceId
 import com.jorisjonkers.personalstack.agents.domain.model.WorkspaceStatus
 import com.jorisjonkers.personalstack.agents.domain.port.AgentGatewayClient
+import com.jorisjonkers.personalstack.agents.domain.port.ProjectRepositoryRepository
 import com.jorisjonkers.personalstack.agents.domain.port.RepositoryRepository
 import com.jorisjonkers.personalstack.agents.domain.port.WorkspaceRepository
 import com.jorisjonkers.personalstack.agents.domain.port.WorkspaceRepositoryRepository
@@ -20,12 +22,24 @@ class AttachWorkspaceRepositoryCommandHandlerTest {
     private val workspaces = mockk<WorkspaceRepository>()
     private val repositories = mockk<RepositoryRepository>()
     private val links = mockk<WorkspaceRepositoryRepository>(relaxed = true)
+    private val projectRepositories = mockk<ProjectRepositoryRepository>(relaxed = true)
     private val gateway = mockk<AgentGatewayClient>(relaxed = true)
-    private val handler = AttachWorkspaceRepositoryCommandHandler(workspaces, repositories, links, gateway)
+    private val handler =
+        AttachWorkspaceRepositoryCommandHandler(
+            workspaces,
+            repositories,
+            links,
+            projectRepositories,
+            gateway,
+        )
 
     private val workspaceId = WorkspaceId.random()
     private val repositoryId = RepositoryId.random()
     private val command = AttachWorkspaceRepositoryCommand(workspaceId, repositoryId)
+
+    // projectRepositories is a relaxed mock and link()'s return value is unused, so no stub
+    // is needed. (A custom answers{} reconstructing Link via firstArg() breaks here because
+    // ProjectId is a value class — mockk records the unboxed UUID.)
 
     @Test
     fun `attaches a non-primary link and clones into a running workspace`() {
@@ -39,6 +53,19 @@ class AttachWorkspaceRepositoryCommandHandlerTest {
 
         verify { links.attach(workspaceId, repositoryId, isPrimary = false) }
         verify { gateway.clone(workspace, repository.repoUrl, repository.defaultBranch) }
+    }
+
+    @Test
+    fun `attaches repository to workspace project`() {
+        val projectId = ProjectId.random()
+        val workspace = workspace(gatewayEndpoint = null, projectId = projectId)
+        every { workspaces.findById(workspaceId) } returns workspace
+        every { repositories.findById(repositoryId) } returns repository()
+
+        handler.handle(command)
+
+        verify { links.attach(workspaceId, repositoryId, isPrimary = false) }
+        verify { projectRepositories.link(projectId, repositoryId) }
     }
 
     @Test
@@ -83,19 +110,22 @@ class AttachWorkspaceRepositoryCommandHandlerTest {
         verify(exactly = 0) { links.attach(any(), any(), any()) }
     }
 
-    private fun workspace(gatewayEndpoint: String? = "http://runner:8090") =
-        Workspace(
-            id = workspaceId,
-            name = "workspace",
-            repoUrl = "git@github.com:o/primary.git",
-            branch = "main",
-            podName = "pod",
-            pvcName = "pvc",
-            gatewayEndpoint = gatewayEndpoint,
-            status = WorkspaceStatus.READY,
-            createdAt = Instant.now(),
-            updatedAt = Instant.now(),
-        )
+    private fun workspace(
+        gatewayEndpoint: String? = "http://runner:8090",
+        projectId: ProjectId? = null,
+    ) = Workspace(
+        id = workspaceId,
+        name = "workspace",
+        repoUrl = "git@github.com:o/primary.git",
+        branch = "main",
+        podName = "pod",
+        pvcName = "pvc",
+        gatewayEndpoint = gatewayEndpoint,
+        status = WorkspaceStatus.READY,
+        createdAt = Instant.now(),
+        updatedAt = Instant.now(),
+        projectId = projectId,
+    )
 
     private fun repository() =
         Repository(

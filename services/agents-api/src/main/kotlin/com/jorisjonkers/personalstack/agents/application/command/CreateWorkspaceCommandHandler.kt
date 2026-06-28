@@ -175,6 +175,7 @@ class CreateWorkspaceCommandHandler(
                 ?: return
 
         workspaceRepositories.attach(workspace.id, realPrimaryRepoId, isPrimary = true)
+        linkToProject(workspace, realPrimaryRepoId)
         selectedExtraRepositoryIds(command, realPrimaryRepoId)
             .forEach { repositoryId ->
                 val repository = requireRepository(repoPort, repositoryId)
@@ -183,7 +184,17 @@ class CreateWorkspaceCommandHandler(
                     repository.id,
                     isPrimary = false,
                 )
+                linkToProject(workspace, repository.id)
             }
+    }
+
+    private fun linkToProject(
+        workspace: Workspace,
+        repositoryId: RepositoryId,
+    ) {
+        workspace.projectId?.let { projectId ->
+            projectRepositories.link(projectId, repositoryId)
+        }
     }
 
     private fun selectedExtraRepositoryIds(
