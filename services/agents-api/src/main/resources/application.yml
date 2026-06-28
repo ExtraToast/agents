@@ -117,9 +117,9 @@ agent-runtime:
   knowledge-base-url: ${AGENT_RUNTIME_KB_URL:http://knowledge-api.knowledge-system.svc.cluster.local:8080}
   knowledge-bearer-secret: ${AGENT_RUNTIME_KB_BEARER_SECRET:agents-kb-bearer}
   knowledge-bearer-secret-key: ${AGENT_RUNTIME_KB_BEARER_SECRET_KEY:bearer}
-  # Runner MCP profile. Keep default tool count low; wider profiles are
-  # opt-ins via AGENT_RUNTIME_DEFAULT_MCP_PROFILE.
-  default-mcp-profile: ${AGENT_RUNTIME_DEFAULT_MCP_PROFILE:minimal}
+  # Runner MCP profile. The live runner default includes knowledge, GitHub,
+  # and the in-cluster Kubernetes MCP.
+  default-mcp-profile: ${AGENT_RUNTIME_DEFAULT_MCP_PROFILE:cluster}
   # Runner Pods mount the host Docker socket so future agent sessions can run
   # Docker CLI commands and JVM Testcontainers suites. This is host-equivalent
   # access. The default gid is pinned in the Nix host definition for the
@@ -171,7 +171,7 @@ agent-runtime:
         codex: ${AGENT_RUNTIME_SETUP_CODEX_VERSION:default}
       connector-config: {}
       tool-profiles:
-        - ${AGENT_RUNTIME_DEFAULT_MCP_PROFILE:minimal}
+        - ${AGENT_RUNTIME_DEFAULT_MCP_PROFILE:cluster}
       tool-allowlist: []
       default-selectable: true
   # Standing agent-gateway used for the workspace-independent

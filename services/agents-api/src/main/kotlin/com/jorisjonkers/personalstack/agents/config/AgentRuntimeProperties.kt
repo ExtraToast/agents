@@ -45,13 +45,11 @@ data class AgentRuntimeProperties(
     // from Vault by the agents-kb-bearer VaultStaticSecret.
     val knowledgeBearerSecret: String = "agents-kb-bearer",
     val knowledgeBearerSecretKey: String = "bearer",
-    // ConfigMap (mounted at /etc/agent-mcp) whose claude-mcp-servers.json
-    // the entrypoint seeds into Claude Code's mcpServers. Optional mount,
-    // so an absent ConfigMap just means no managed MCP servers.
+    // ConfigMap (mounted at /etc/agent-mcp) whose profile files override the
+    // runner image's baked agent-kit MCP profiles.
     val mcpServersConfigMap: String = "agents-mcp-servers",
-    // MCP server profile selected by the runner entrypoint. Keep the
-    // default narrow; wider diagnostic profiles are explicit opt-ins.
-    val defaultMcpProfile: String = "minimal",
+    // MCP server profile selected by the runner entrypoint.
+    val defaultMcpProfile: String = "cluster",
     // Mount the host Docker socket into runner Pods so agent sessions can run
     // Docker CLI commands and JVM Testcontainers suites from inside /workspace.
     // This is host-equivalent access. The supplemental group default is pinned

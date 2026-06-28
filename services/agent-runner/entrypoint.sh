@@ -13,8 +13,15 @@ set -eu
 CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 CLAUDE_CONFIG_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 WORKSPACE_ROOT="${WORKSPACE_ROOT:-/workspace}"
+AGENT_KIT_HOME_SOURCE="${AGENT_KIT_HOME_SOURCE:-/opt/agent-kit/home}"
+AGENT_KIT_HOME_MARKER_FILE="${AGENT_KIT_HOME_MARKER_FILE:-.agent-kit-home-install.sha256}"
+AGENT_KIT_BAKED_VERSION="${AGENT_KIT_BAKED_VERSION:-baked-in}"
 AGENT_KIT_SDD_SOURCE="${AGENT_KIT_SDD_SOURCE:-/opt/agent-kit/sdd}"
 AGENT_KIT_SDD_MARKER_FILE="${AGENT_KIT_SDD_MARKER_FILE:-.agent-kit-sdd-seed.sha256}"
+AGENT_KIT_MCP_FALLBACK_DIR="${AGENT_KIT_MCP_FALLBACK_DIR:-/opt/agent-kit/mcp}"
+AGENT_CLUSTER_MCP_URL="${AGENT_CLUSTER_MCP_URL:-http://kubernetes-mcp-server.agents-system.svc.cluster.local:8080/mcp}"
+AGENT_FRONTEND_DOCS_MCP_URL="${AGENT_FRONTEND_DOCS_MCP_URL:-https://mcp.context7.com/mcp}"
+AGENT_UI_DOCS_MCP_URL="${AGENT_UI_DOCS_MCP_URL:-https://mcp.vuetifyjs.com/mcp}"
 
 check_agent_kit_manifest() {
   agent_name="$1"
@@ -40,6 +47,188 @@ check_agent_kit_manifest() {
 check_agent_kit_manifests() {
   check_agent_kit_manifest "Claude" "${CLAUDE_CONFIG_DIR}/.knowledge-system-version"
   check_agent_kit_manifest "Codex" "${CODEX_HOME}/.knowledge-system-version"
+}
+
+agent_kit_home_marker_hash() {
+  _agent_kit_home_path="$1"
+  if [ -f "$_agent_kit_home_marker" ]; then
+    awk -v p="$_agent_kit_home_path" '$2 == p { print $1; exit }' "$_agent_kit_home_marker"
+  fi
+}
+
+agent_kit_home_destination() {
+  _agent_kit_home_rel="$1"
+  case "$_agent_kit_home_rel" in
+    .claude/*)
+      printf '%s/%s' "$CLAUDE_CONFIG_DIR" "${_agent_kit_home_rel#.claude/}"
+      ;;
+    .codex/*)
+      printf '%s/%s' "$CODEX_HOME" "${_agent_kit_home_rel#.codex/}"
+      ;;
+    .agents/*|.specify/*)
+      printf '%s/%s' "$HOME" "$_agent_kit_home_rel"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+agent_kit_install_home_file() {
+  _agent_kit_home_src="$1"
+  _agent_kit_home_rel="$2"
+  case "$_agent_kit_home_rel" in
+    # These checked-in files are project-scope templates. Runner home
+    # installs need absolute paths into CLAUDE_CONFIG_DIR/CODEX_HOME, rendered
+    # below by configure_agent_kit_hooks.
+    .claude/settings.json|.codex/hooks.json)
+      return 0
+      ;;
+  esac
+  _agent_kit_home_dest="$(agent_kit_home_destination "$_agent_kit_home_rel")" || return 0
+  _agent_kit_home_src_hash="$(sha256sum "$_agent_kit_home_src" | awk '{ print $1 }')"
+  _agent_kit_home_old_hash="$(agent_kit_home_marker_hash "$_agent_kit_home_rel")"
+  _agent_kit_home_record_hash=""
+
+  mkdir -p "$(dirname "$_agent_kit_home_dest")"
+  if [ ! -f "$_agent_kit_home_dest" ]; then
+    cp -p "$_agent_kit_home_src" "$_agent_kit_home_dest"
+    _agent_kit_home_record_hash="$_agent_kit_home_src_hash"
+  elif [ -n "$_agent_kit_home_old_hash" ]; then
+    _agent_kit_home_dest_hash="$(sha256sum "$_agent_kit_home_dest" | awk '{ print $1 }')"
+    if [ "$_agent_kit_home_dest_hash" = "$_agent_kit_home_old_hash" ]; then
+      if [ "$_agent_kit_home_dest_hash" != "$_agent_kit_home_src_hash" ]; then
+        cp -p "$_agent_kit_home_src" "$_agent_kit_home_dest"
+      fi
+      _agent_kit_home_record_hash="$_agent_kit_home_src_hash"
+    else
+      if [ "$_agent_kit_home_old_hash" != "$_agent_kit_home_src_hash" ]; then
+        echo "[entrypoint] WARN: ${_agent_kit_home_dest} has local changes and a stale agent-kit seed; leaving it unchanged"
+      fi
+      _agent_kit_home_record_hash="$_agent_kit_home_old_hash"
+    fi
+  else
+    _agent_kit_home_dest_hash="$(sha256sum "$_agent_kit_home_dest" | awk '{ print $1 }')"
+    if [ "$_agent_kit_home_dest_hash" = "$_agent_kit_home_src_hash" ]; then
+      _agent_kit_home_record_hash="$_agent_kit_home_src_hash"
+    else
+      echo "[entrypoint] WARN: ${_agent_kit_home_dest} already exists and is not managed by agent-kit; leaving it unchanged"
+    fi
+  fi
+
+  if [ -n "$_agent_kit_home_record_hash" ]; then
+    printf '%s %s\n' "$_agent_kit_home_record_hash" "$_agent_kit_home_rel" >> "$_agent_kit_home_new_marker"
+  fi
+}
+
+write_agent_kit_version_marker() {
+  _agent_kit_version_marker="$1"
+  mkdir -p "$(dirname "$_agent_kit_version_marker")"
+  {
+    printf 'version=%s\n' "$AGENT_KIT_BAKED_VERSION"
+    printf 'source=agent-runner-baked\n'
+  } > "$_agent_kit_version_marker"
+}
+
+merge_agent_kit_hooks_json() {
+  _agent_kit_hooks_target="$1"
+  _agent_kit_hooks_managed="$2"
+
+  mkdir -p "$(dirname "$_agent_kit_hooks_target")"
+  if [ ! -f "$_agent_kit_hooks_target" ]; then
+    echo '{}' > "$_agent_kit_hooks_target"
+  fi
+
+  _agent_kit_hooks_merged="$(mktemp)"
+  if jq -s '
+        .[0] as $cfg | .[1] as $managed
+        | $cfg + { hooks: (($cfg.hooks // {}) * $managed.hooks) }
+      ' "$_agent_kit_hooks_target" "$_agent_kit_hooks_managed" > "$_agent_kit_hooks_merged" 2>/dev/null; then
+    mv "$_agent_kit_hooks_merged" "$_agent_kit_hooks_target"
+  else
+    echo "[entrypoint] WARN: failed to merge agent-kit hooks into ${_agent_kit_hooks_target}"
+    rm -f "$_agent_kit_hooks_merged"
+  fi
+}
+
+configure_agent_kit_hooks() {
+  mkdir -p "$CLAUDE_CONFIG_DIR" "$CODEX_HOME"
+
+  _agent_kit_claude_hooks="$(mktemp)"
+  if jq -n \
+      --arg prompt "bash \"${CLAUDE_CONFIG_DIR}/hooks/kb-user-prompt-recall.sh\"" \
+      --arg edit "bash \"${CLAUDE_CONFIG_DIR}/hooks/pre-tool-use-edit-recall.sh\"" \
+      --arg commit "bash \"${CLAUDE_CONFIG_DIR}/hooks/pre-tool-use-git-commit-capture.sh\"" \
+      --arg stop "bash \"${CLAUDE_CONFIG_DIR}/hooks/kb-stop-digest.sh\"" \
+      '{
+        hooks: {
+          UserPromptSubmit: [
+            { matcher: ".*", hooks: [{ type: "command", command: $prompt, timeout: 5 }] }
+          ],
+          PreToolUse: [
+            { matcher: "Edit|Write|MultiEdit", hooks: [{ type: "command", command: $edit, timeout: 5 }] },
+            { matcher: "Bash", hooks: [{ type: "command", command: $commit, timeout: 5 }] }
+          ],
+          Stop: [
+            { matcher: ".*", hooks: [{ type: "command", command: $stop, async: true, timeout: 60 }] }
+          ]
+        }
+      }' > "$_agent_kit_claude_hooks"; then
+    merge_agent_kit_hooks_json "${CLAUDE_CONFIG_DIR}/settings.json" "$_agent_kit_claude_hooks"
+  else
+    echo "[entrypoint] WARN: failed to render Claude agent-kit hooks"
+  fi
+  rm -f "$_agent_kit_claude_hooks"
+
+  _agent_kit_codex_hooks="$(mktemp)"
+  if jq -n \
+      --arg prompt "${CODEX_HOME}/hooks/kb-user-prompt-recall.sh" \
+      --arg edit "env KB_AUTO_MCP_HOME=${CODEX_HOME} ${CODEX_HOME}/hooks/pre-tool-use-edit-recall.sh" \
+      --arg commit "env KB_AUTO_MCP_HOME=${CODEX_HOME} KB_AUTO_MCP_SOURCE=codex:auto-capture:git-commit KB_AUTO_MCP_CLIENT_NAME=Codex ${CODEX_HOME}/hooks/pre-tool-use-git-commit-capture.sh" \
+      --arg stop "${CODEX_HOME}/hooks/kb-stop-digest.sh" \
+      '{
+        hooks: {
+          UserPromptSubmit: [
+            { hooks: [{ type: "command", command: $prompt, timeout: 5, statusMessage: "Loading KB context" }] }
+          ],
+          PreToolUse: [
+            { matcher: "Edit|Write|apply_patch", hooks: [{ type: "command", command: $edit, timeout: 5, statusMessage: "Loading file KB context" }] },
+            { matcher: "Bash", hooks: [{ type: "command", command: $commit, timeout: 5, statusMessage: "Capturing commit decision" }] }
+          ],
+          Stop: [
+            { hooks: [{ type: "command", command: $stop, timeout: 60, statusMessage: "Capturing KB lessons" }] }
+          ]
+        }
+      }' > "$_agent_kit_codex_hooks"; then
+    merge_agent_kit_hooks_json "${CODEX_HOME}/hooks.json" "$_agent_kit_codex_hooks"
+  else
+    echo "[entrypoint] WARN: failed to render Codex agent-kit hooks"
+  fi
+  rm -f "$_agent_kit_codex_hooks"
+}
+
+install_agent_kit_home() {
+  if [ ! -d "$AGENT_KIT_HOME_SOURCE" ]; then
+    echo "[entrypoint] WARN: agent-kit home source missing at ${AGENT_KIT_HOME_SOURCE}; skipping home install"
+    return
+  fi
+
+  _agent_kit_home_marker="${HOME}/${AGENT_KIT_HOME_MARKER_FILE}"
+  _agent_kit_home_new_marker="$(mktemp)"
+  find "$AGENT_KIT_HOME_SOURCE" -type f | sort | while IFS= read -r _agent_kit_home_src; do
+    _agent_kit_home_rel="${_agent_kit_home_src#${AGENT_KIT_HOME_SOURCE}/}"
+    agent_kit_install_home_file "$_agent_kit_home_src" "$_agent_kit_home_rel"
+  done
+
+  if [ -s "$_agent_kit_home_new_marker" ]; then
+    mv "$_agent_kit_home_new_marker" "$_agent_kit_home_marker"
+  else
+    rm -f "$_agent_kit_home_new_marker"
+  fi
+
+  write_agent_kit_version_marker "${CLAUDE_CONFIG_DIR}/.knowledge-system-version"
+  write_agent_kit_version_marker "${CODEX_HOME}/.knowledge-system-version"
+  configure_agent_kit_hooks
 }
 
 prepare_injected_credentials() {
@@ -395,8 +584,66 @@ configure_otel_resource_attributes() {
   append_otel_resource_attribute "deployment.environment" "${DEPLOYMENT_ENVIRONMENT:-unknown}"
 }
 
+normalize_agent_mcp_profile() {
+  AGENT_MCP_PROFILE="${AGENT_MCP_PROFILE:-cluster}"
+  case "$AGENT_MCP_PROFILE" in
+    minimal|frontend|cluster|code-intel|full-diagnostic) ;;
+    *)
+      echo "[entrypoint] WARN: unknown AGENT_MCP_PROFILE=$AGENT_MCP_PROFILE; using cluster"
+      AGENT_MCP_PROFILE="cluster"
+      ;;
+  esac
+}
+
+render_mcp_template_placeholders() {
+  sed -e "s|@KB_URL@|${KB_URL:-}|g" \
+      -e "s|@KB_BEARER_TOKEN@|${KB_BEARER_TOKEN:-}|g" \
+      -e "s|@KNOWLEDGE_MCP_URL@|${KB_URL:-}|g" \
+      -e "s|@KNOWLEDGE_MCP_BEARER_TOKEN@|${KB_BEARER_TOKEN:-}|g" \
+      -e "s|@CLUSTER_MCP_URL@|${AGENT_CLUSTER_MCP_URL:-}|g" \
+      -e "s|@FRONTEND_DOCS_MCP_URL@|${AGENT_FRONTEND_DOCS_MCP_URL:-}|g" \
+      -e "s|@UI_DOCS_MCP_URL@|${AGENT_UI_DOCS_MCP_URL:-}|g" \
+      "$1"
+}
+
+select_mcp_profile_file() {
+  _mcp_prefix="$1"
+  _mcp_suffix="$2"
+  _mcp_override="$3"
+
+  if [ -n "$_mcp_override" ]; then
+    printf '%s' "$_mcp_override"
+    return
+  fi
+
+  _mcp_profile_file="${AGENT_MCP_DIR}/${_mcp_prefix}.${AGENT_MCP_PROFILE}.${_mcp_suffix}"
+  _mcp_baked_profile_file="${AGENT_KIT_MCP_FALLBACK_DIR}/${_mcp_prefix}.${AGENT_MCP_PROFILE}.${_mcp_suffix}"
+  _mcp_minimal_file="${AGENT_MCP_DIR}/${_mcp_prefix}.minimal.${_mcp_suffix}"
+  _mcp_baked_minimal_file="${AGENT_KIT_MCP_FALLBACK_DIR}/${_mcp_prefix}.minimal.${_mcp_suffix}"
+  _mcp_legacy_file="${AGENT_MCP_DIR}/${_mcp_prefix}.${_mcp_suffix}"
+
+  if [ -f "$_mcp_profile_file" ]; then
+    printf '%s' "$_mcp_profile_file"
+  elif [ -f "$_mcp_baked_profile_file" ]; then
+    printf '%s' "$_mcp_baked_profile_file"
+  elif [ -f "$_mcp_minimal_file" ]; then
+    echo "[entrypoint] WARN: MCP profile $AGENT_MCP_PROFILE not found; using minimal" >&2
+    printf '%s' "$_mcp_minimal_file"
+  elif [ -f "$_mcp_baked_minimal_file" ]; then
+    echo "[entrypoint] WARN: MCP profile $AGENT_MCP_PROFILE not found; using baked minimal" >&2
+    printf '%s' "$_mcp_baked_minimal_file"
+  else
+    printf '%s' "$_mcp_legacy_file"
+  fi
+}
+
 if [ "${AGENT_RUNNER_ENTRYPOINT_SELF_TEST:-}" = "agent-kit-manifest" ]; then
   check_agent_kit_manifests
+  exit 0
+fi
+
+if [ "${AGENT_RUNNER_ENTRYPOINT_SELF_TEST:-}" = "agent-kit-home-install" ]; then
+  install_agent_kit_home
   exit 0
 fi
 
@@ -479,12 +726,40 @@ if [ "${AGENT_RUNNER_ENTRYPOINT_SELF_TEST:-}" = "otel-resource-attributes" ]; th
   exit 0
 fi
 
+if [ "${AGENT_RUNNER_ENTRYPOINT_SELF_TEST:-}" = "mcp-profile" ]; then
+  normalize_agent_mcp_profile
+  AGENT_MCP_DIR="${AGENT_MCP_DIR:-/etc/agent-mcp}"
+  printf 'profile=%s\n' "$AGENT_MCP_PROFILE"
+  printf 'claude=%s\n' "$(select_mcp_profile_file "claude-mcp-servers" "json" "${AGENT_MCP_SERVERS_FILE:-}")"
+  printf 'codex=%s\n' "$(select_mcp_profile_file "codex-mcp-servers" "toml" "${AGENT_CODEX_MCP_FILE:-}")"
+  exit 0
+fi
+
+if [ "${AGENT_RUNNER_ENTRYPOINT_SELF_TEST:-}" = "mcp-render" ]; then
+  normalize_agent_mcp_profile
+  AGENT_MCP_DIR="${AGENT_MCP_DIR:-/etc/agent-mcp}"
+  case "${AGENT_MCP_RENDER_AGENT:-claude}" in
+    claude)
+      render_mcp_template_placeholders "$(select_mcp_profile_file "claude-mcp-servers" "json" "${AGENT_MCP_SERVERS_FILE:-}")"
+      ;;
+    codex)
+      render_mcp_template_placeholders "$(select_mcp_profile_file "codex-mcp-servers" "toml" "${AGENT_CODEX_MCP_FILE:-}")"
+      ;;
+    *)
+      echo "[entrypoint] WARN: unknown AGENT_MCP_RENDER_AGENT=${AGENT_MCP_RENDER_AGENT:-}"
+      exit 64
+      ;;
+  esac
+  exit 0
+fi
+
 if [ "${AGENT_RUNNER_ENTRYPOINT_SELF_TEST:-}" = "credentials" ]; then
   prepare_injected_credentials
   exit 0
 fi
 
 prepare_injected_credentials
+install_agent_kit_home
 check_agent_kit_manifests
 if [ -z "${OTEL_SERVICE_NAME:-}" ]; then
   export OTEL_SERVICE_NAME="agent-gateway"
@@ -567,40 +842,18 @@ fi
 
 # Register MCP servers into Claude Code from the declarative ConfigMap
 # (agents-mcp-servers, mounted at /etc/agent-mcp). The selected profile
-# is an mcpServers object with @KB_URL@/@KB_BEARER_TOKEN@ placeholders
-# filled from the Pod env, so no secret is baked into the ConfigMap.
+# is an mcpServers object with @KB_URL@/@KB_BEARER_TOKEN@ or agent-kit
+# @KNOWLEDGE_MCP_URL@ placeholders filled from the Pod env, so no secret
+# is baked into the ConfigMap.
 # The managed servers win for their own keys; any hand-added server
-# already in the config is preserved. Absent mount (feature off) => no-op.
-AGENT_MCP_PROFILE="${AGENT_MCP_PROFILE:-minimal}"
-case "$AGENT_MCP_PROFILE" in
-  minimal|frontend|cluster|code-intel|full-diagnostic) ;;
-  *)
-    echo "[entrypoint] WARN: unknown AGENT_MCP_PROFILE=$AGENT_MCP_PROFILE; using minimal"
-    AGENT_MCP_PROFILE="minimal"
-    ;;
-esac
-
+# already in the config is preserved. If the mount is absent, the baked
+# agent-kit MCP profiles under /opt/agent-kit/mcp are used.
+normalize_agent_mcp_profile
 AGENT_MCP_DIR="${AGENT_MCP_DIR:-/etc/agent-mcp}"
-if [ -n "${AGENT_MCP_SERVERS_FILE:-}" ]; then
-  MCP_SERVERS_FILE="$AGENT_MCP_SERVERS_FILE"
-else
-  MCP_PROFILE_FILE="${AGENT_MCP_DIR}/claude-mcp-servers.${AGENT_MCP_PROFILE}.json"
-  MCP_MINIMAL_FILE="${AGENT_MCP_DIR}/claude-mcp-servers.minimal.json"
-  MCP_LEGACY_FILE="${AGENT_MCP_DIR}/claude-mcp-servers.json"
-  if [ -f "$MCP_PROFILE_FILE" ]; then
-    MCP_SERVERS_FILE="$MCP_PROFILE_FILE"
-  elif [ -f "$MCP_MINIMAL_FILE" ]; then
-    echo "[entrypoint] WARN: MCP profile $AGENT_MCP_PROFILE not found; using minimal"
-    MCP_SERVERS_FILE="$MCP_MINIMAL_FILE"
-  else
-    MCP_SERVERS_FILE="$MCP_LEGACY_FILE"
-  fi
-fi
+MCP_SERVERS_FILE="$(select_mcp_profile_file "claude-mcp-servers" "json" "${AGENT_MCP_SERVERS_FILE:-}")"
 if [ -f "$MCP_SERVERS_FILE" ]; then
   mcp_rendered=$(mktemp)
-  sed -e "s|@KB_URL@|${KB_URL:-}|g" \
-      -e "s|@KB_BEARER_TOKEN@|${KB_BEARER_TOKEN:-}|g" \
-      "$MCP_SERVERS_FILE" > "$mcp_rendered"
+  render_mcp_template_placeholders "$MCP_SERVERS_FILE" > "$mcp_rendered"
   mcp_merged=$(mktemp)
   if jq -s '
         .[0] as $cfg | .[1] as $servers
@@ -651,22 +904,8 @@ fi
 #
 # Codex reads remote HTTP MCP servers natively and takes the bearer at
 # request time from KB_BEARER_TOKEN (bearer_token_env_var), so no secret
-# lands in config.toml — only @KB_URL@ is substituted.
-if [ -n "${AGENT_CODEX_MCP_FILE:-}" ]; then
-  CODEX_MCP_FILE="$AGENT_CODEX_MCP_FILE"
-else
-  CODEX_PROFILE_FILE="${AGENT_MCP_DIR}/codex-mcp-servers.${AGENT_MCP_PROFILE}.toml"
-  CODEX_MINIMAL_FILE="${AGENT_MCP_DIR}/codex-mcp-servers.minimal.toml"
-  CODEX_LEGACY_FILE="${AGENT_MCP_DIR}/codex-mcp-servers.toml"
-  if [ -f "$CODEX_PROFILE_FILE" ]; then
-    CODEX_MCP_FILE="$CODEX_PROFILE_FILE"
-  elif [ -f "$CODEX_MINIMAL_FILE" ]; then
-    echo "[entrypoint] WARN: Codex MCP profile $AGENT_MCP_PROFILE not found; using minimal"
-    CODEX_MCP_FILE="$CODEX_MINIMAL_FILE"
-  else
-    CODEX_MCP_FILE="$CODEX_LEGACY_FILE"
-  fi
-fi
+# lands in config.toml; URL placeholders are rendered from the Pod env.
+CODEX_MCP_FILE="$(select_mcp_profile_file "codex-mcp-servers" "toml" "${AGENT_CODEX_MCP_FILE:-}")"
 if [ -f "$CODEX_HOME/config.toml" ]; then
   codex_tmp=$(mktemp)
   # Strip every managed section so re-applying never duplicates a key: the
@@ -693,7 +932,7 @@ if [ -f "$CODEX_HOME/config.toml" ]; then
     echo "enabled = false"
     if [ -f "$CODEX_MCP_FILE" ]; then
       echo ""
-      sed -e "s|@KB_URL@|${KB_URL:-}|g" "$CODEX_MCP_FILE"
+      render_mcp_template_placeholders "$CODEX_MCP_FILE"
     fi
   } >> "$codex_tmp"
   # Collapse runs of blank lines so repeated boots don't grow the file.
