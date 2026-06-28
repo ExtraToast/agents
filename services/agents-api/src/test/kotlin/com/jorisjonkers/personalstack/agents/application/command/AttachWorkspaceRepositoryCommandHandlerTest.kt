@@ -112,20 +112,22 @@ class AttachWorkspaceRepositoryCommandHandlerTest {
         verify(exactly = 0) { links.attach(any(), any(), any()) }
     }
 
-    private fun workspace(gatewayEndpoint: String? = "http://runner:8090", projectId: ProjectId? = null) =
-        Workspace(
-            id = workspaceId,
-            name = "workspace",
-            repoUrl = "git@github.com:o/primary.git",
-            branch = "main",
-            podName = "pod",
-            pvcName = "pvc",
-            gatewayEndpoint = gatewayEndpoint,
-            status = WorkspaceStatus.READY,
-            createdAt = Instant.now(),
-            updatedAt = Instant.now(),
-            projectId = projectId,
-        )
+    private fun workspace(
+        gatewayEndpoint: String? = "http://runner:8090",
+        projectId: ProjectId? = null,
+    ) = Workspace(
+        id = workspaceId,
+        name = "workspace",
+        repoUrl = "git@github.com:o/primary.git",
+        branch = "main",
+        podName = "pod",
+        pvcName = "pvc",
+        gatewayEndpoint = gatewayEndpoint,
+        status = WorkspaceStatus.READY,
+        createdAt = Instant.now(),
+        updatedAt = Instant.now(),
+        projectId = projectId,
+    )
 
     private fun repository() =
         Repository(
