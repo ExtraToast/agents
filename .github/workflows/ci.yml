@@ -55,7 +55,7 @@ jobs:
       - uses: pnpm/action-setup@v6
         with:
           version: 9.15.4
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v6.4.0
         with:
           node-version: '22'
       - name: Install UI dependencies
@@ -84,7 +84,7 @@ jobs:
       - uses: pnpm/action-setup@v6
         with:
           version: 9.15.4
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v6.4.0
         with:
           node-version: '22'
       - run: |
@@ -105,7 +105,7 @@ jobs:
       - uses: pnpm/action-setup@v6
         with:
           version: 9.15.4
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v6.4.0
         with:
           node-version: '22'
           cache: pnpm
@@ -131,7 +131,7 @@ jobs:
       - uses: pnpm/action-setup@v6
         with:
           version: 9.15.4
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v6.4.0
         with:
           node-version: '22'
           cache: pnpm
@@ -156,7 +156,7 @@ jobs:
       - uses: pnpm/action-setup@v6
         with:
           version: 9.15.4
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v6.4.0
         with:
           node-version: '22'
           cache: pnpm
